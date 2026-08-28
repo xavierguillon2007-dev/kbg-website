@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KBG — Catalogue de jeux</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">K</span><span>KBG<span class="muted">/</span> GAMES</span></a>
+    <nav>
+      <a href="#catalogue">Catalogue</a>
+      <a href="#reservation">Réserver</a>
+      <a href="admin.html">Administration</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">BIBLIOTHÈQUE LUDIQUE · 01</p>
+        <h1>Choisissez votre<br><span>prochaine partie.</span></h1>
+        <p class="hero-copy">Explorez le catalogue, trouvez le jeu adapté à votre groupe et envoyez une demande de réservation en quelques secondes.</p>
+        <a class="button primary" href="#catalogue">Explorer le catalogue ↘</a>
+      </div>
+      <div class="orb" aria-hidden="true"><div></div></div>
+    </section>
+
+    <section id="catalogue" class="section">
+      <div class="section-head">
+        <div><p class="eyebrow">CATALOGUE</p><h2>Les jeux disponibles</h2></div>
+        <span id="count" class="counter">Chargement…</span>
+      </div>
+
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Rechercher un jeu…" autocomplete="off">
+        <select id="category"><option value="">Toutes les catégories</option></select>
+        <select id="players"><option value="">Joueurs</option><option value="2">2+</option><option value="4">4+</option><option value="6">6+</option><option value="8">8+</option></select>
+        <select id="sort"><option value="name">Nom A → Z</option><option value="duration">Durée croissante</option><option value="players">Nombre de joueurs</option><option value="newest">Nouveautés</option></select>
+      </div>
+
+      <div id="games" class="grid"><div class="loading">Connexion au catalogue…</div></div>
+    </section>
+
+    <section id="reservation" class="section reservation">
+      <div class="reservation-copy">
+        <p class="eyebrow">RÉSERVATION · 02</p>
+        <h2>Demander un jeu</h2>
+        <p>Choisissez un jeu et une période. Votre demande restera <strong>en attente</strong> jusqu'à sa validation par un administrateur.</p>
+      </div>
+      <form id="reservationForm" class="panel">
+        <label>Jeu<select id="game" name="game_id" required><option value="">Sélectionnez un jeu…</option></select></label>
+        <div class="two">
+          <label>Du<input name="date_start" type="date" required></label>
+          <label>Au<input name="date_end" type="date" required></label>
+        </div>
+        <div class="two">
+          <label>Prénom<input name="first_name" maxlength="80" required></label>
+          <label>Nom<input name="last_name" maxlength="80" required></label>
+        </div>
+        <label>Promotion<input name="promotion" maxlength="120" placeholder="Ex. DFGSM2"></label>
+        <button class="button primary" type="submit">Envoyer la demande →</button>
+        <p id="formMessage" class="form-message"></p>
+      </form>
+    </section>
+  </main>
+
+  <footer><span>KBG / Association ludique</span><span>Catalogue participatif</span></footer>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let allGames = [];
+
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+    async function loadGames() {
+      const { data, error } = await supabase.from('games').select('*').eq('is_active', true).order('name');
+      if (error) { document.querySelector('#games').innerHTML = `<div class="empty">Impossible de charger le catalogue.</div>`; return; }
+      allGames = data || [];
+      const cats = [...new Set(allGames.map(g => g.category).filter(Boolean))].sort();
+      document.querySelector('#category').innerHTML = '<option value="">Toutes les catégories</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('');
+      document.querySelector('#game').innerHTML = '<option value="">Sélectionnez un jeu…</option>' + allGames.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+      render();
+    }
+
+    function render() {
+      const q = document.querySelector('#search').value.toLowerCase().trim();
+      const cat = document.querySelector('#category').value;
+      const minPlayers = Number(document.querySelector('#players').value || 0);
+      const sort = document.querySelector('#sort').value;
+      let games = allGames.filter(g => (!q || `${g.name} ${g.publisher} ${g.description}`.toLowerCase().includes(q)) && (!cat || g.category === cat) && (!minPlayers || (g.players_max || 0) >= minPlayers));
+      games.sort((a,b) => sort === 'duration' ? (a.duration||999)-(b.duration||999) : sort === 'players' ? (a.players_min||0)-(b.players_min||0) : sort === 'newest' ? (b.created_at||0)-(a.created_at||0) : a.name.localeCompare(b.name, 'fr'));
+      document.querySelector('#count').textContent = `${games.length} jeu${games.length > 1 ? 'x' : ''}`;
+      document.querySelector('#games').innerHTML = games.length ? games.map(g => `
+        <article class="card">
+          <div class="cover">${g.cover_image ? `<img src="${esc(g.cover_image)}" alt="">` : '<span>✦</span>'}</div>
+          <div class="card-body"><p class="tag">${esc(g.category || 'Jeu')}</p><h3>${esc(g.name)}</h3><p class="publisher">${esc(g.publisher)}</p>
+          <div class="meta"><span>♙ ${g.players_min || '?'}–${g.players_max || '?'} joueurs</span><span>◷ ${g.duration || '?'} min</span></div>
+          <p class="desc">${esc(g.description || 'Aucune description.')}</p><button class="text-button" data-game="${esc(g.id)}">Réserver ce jeu →</button></div>
+        </article>`).join('') : '<div class="empty">Aucun jeu ne correspond à ces critères.</div>';
+      document.querySelectorAll('[data-game]').forEach(b => b.onclick = () => { document.querySelector('#game').value = b.dataset.game; document.querySelector('#reservation').scrollIntoView({behavior:'smooth'}); });
+    }
+
+    ['search','category','players','sort'].forEach(id => document.querySelector('#'+id).addEventListener('input', render));
+    document.querySelector('#reservationForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = new FormData(e.currentTarget), msg = document.querySelector('#formMessage');
+      if (f.get('date_end') < f.get('date_start')) { msg.textContent = 'La date de fin doit être postérieure ou égale à la date de début.'; return; }
+      msg.textContent = 'Envoi…';
+      const { error } = await supabase.from('reservations').insert({ id: crypto.randomUUID(), game_id: f.get('game_id'), first_name: f.get('first_name'), last_name: f.get('last_name'), promotion: f.get('promotion') || null, date_start: f.get('date_start'), date_end: f.get('date_end'), status: 'pending' });
+      if (error) { msg.textContent = 'La demande n’a pas pu être envoyée. Réessayez.'; return; }
+      e.currentTarget.reset(); msg.textContent = '✓ Demande envoyée. Elle sera examinée par un administrateur.';
+    });
+    loadGames();
+  </script>
+</body>
+</html>

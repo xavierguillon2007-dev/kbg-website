@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>KBG — Administration</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .admin-wrap{max-width:1250px;margin:auto;padding:55px 5vw}
+    .admin-top{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:35px}
+    .admin-grid{display:grid;grid-template-columns:1fr 1.4fr;gap:18px}
+    .admin-panel{border:1px solid var(--line);background:var(--panel);padding:25px}
+    .admin-panel h3{margin-top:0}
+    .admin-form{display:grid;gap:13px}
+    .admin-form label{display:grid;gap:6px;font:11px 'DM Mono';color:var(--muted)}
+    .admin-form input,.admin-form select,.admin-form textarea{width:100%;background:#080c11;border:1px solid var(--line);color:var(--text);padding:12px;font:13px Manrope}
+    .admin-form textarea{min-height:100px;resize:vertical}
+    .admin-form .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .requests{display:grid;gap:10px}
+    .request{border:1px solid var(--line);padding:17px;background:#0b1016}
+    .request-head{display:flex;justify-content:space-between;gap:12px}
+    .request h4{margin:0 0 5px;font-size:16px}
+    .request p{margin:5px 0;color:var(--muted);font-size:12px}
+    .status{font:10px 'DM Mono';padding:6px 8px;border:1px solid var(--line);height:max-content}
+    .status.pending{color:#ffd27a}.status.approved{color:var(--accent)}.status.rejected{color:#ff8d8d}
+    .actions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+    .small{padding:9px 12px;font-size:11px}
+    .danger{border-color:#63373a;color:#ff9b9b;background:transparent}
+    .hidden{display:none!important}
+    .login{max-width:430px;margin:90px auto;padding:0 25px}
+    .notice{font-size:12px;color:var(--muted);line-height:1.6}
+    .toast{position:fixed;right:25px;bottom:25px;padding:14px 18px;border:1px solid var(--accent);background:#0b1516;color:var(--accent);font-size:12px}
+    @media(max-width:850px){.admin-grid{grid-template-columns:1fr}.admin-top{align-items:start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">K</span><span>KBG<span class="muted">/</span> ADMIN</span></a>
+    <nav><a href="index.html">← Catalogue</a><button id="logout" class="text-button hidden">Déconnexion</button></nav>
+  </header>
+
+  <section id="loginView" class="login">
+    <p class="eyebrow">ACCÈS RESTREINT · ADMIN</p>
+    <h1 style="font-size:52px">Panneau<br><span>administrateur.</span></h1>
+    <form id="loginForm" class="panel">
+      <label>E-mail<input id="email" type="email" autocomplete="email" required></label>
+      <label>Mot de passe<input id="password" type="password" autocomplete="current-password" required></label>
+      <button class="button primary" type="submit">Se connecter →</button>
+      <p id="loginMessage" class="form-message"></p>
+      <p class="notice">Le compte doit avoir été créé dans Supabase Authentication et ajouté à la table des administrateurs.</p>
+    </form>
+  </section>
+
+  <main id="adminView" class="admin-wrap hidden">
+    <div class="admin-top">
+      <div><p class="eyebrow">CENTRE DE CONTRÔLE · 01</p><h2>Administration</h2></div>
+      <span id="adminEmail" class="counter"></span>
+    </div>
+
+    <div class="admin-grid">
+      <section class="admin-panel">
+        <p class="eyebrow">CATALOGUE · 02</p>
+        <h3 id="gameFormTitle">Ajouter un jeu</h3>
+        <form id="gameForm" class="admin-form">
+          <input type="hidden" id="editingId">
+          <label>Nom<input id="gName" required></label>
+          <label>Éditeur<input id="gPublisher" required></label>
+          <div class="two">
+            <label>Catégorie<input id="gCategory" required placeholder="Stratégie, Ambiance…"></label>
+            <label>Durée (minutes)<input id="gDuration" type="number" min="1"></label>
+          </div>
+          <div class="two">
+            <label>Joueurs min.<input id="gMin" type="number" min="1"></label>
+            <label>Joueurs max.<input id="gMax" type="number" min="1"></label>
+          </div>
+          <label>Image de couverture (URL)<input id="gImage" type="url" placeholder="https://…"></label>
+          <label>Description<textarea id="gDescription"></textarea></label>
+          <div class="actions"><button class="button primary" type="submit">Enregistrer</button><button id="cancelEdit" type="button" class="button hidden">Annuler</button></div>
+        </form>
+      </section>
+
+      <section class="admin-panel">
+        <p class="eyebrow">DEMANDES · 03</p>
+        <div id="requests" class="requests"><div class="loading">Chargement…</div></div>
+      </section>
+    </div>
+
+    <section class="admin-panel" style="margin-top:18px">
+      <p class="eyebrow">JEUX ACTIFS · 04</p>
+      <div id="gameAdminList" class="requests"><div class="loading">Chargement…</div></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let games = [];
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+    const toast = text => { $('toast').textContent=text; $('toast').classList.remove('hidden'); setTimeout(()=> $('toast').classList.add('hidden'),3000); };
+
+    async function isAdmin(userId) {
+      const { data, error } = await supabase.from('admins').select('user_id').eq('user_id', userId).maybeSingle();
+      return !error && !!data;
+    }
+
+    async function enterAdmin(user) {
+      if (!await isAdmin(user.id)) {
+        await supabase.auth.signOut();
+        $('loginMessage').textContent = 'Ce compte n’a pas les droits administrateur.';
+        return;
+      }
+      $('loginView').classList.add('hidden');
+      $('adminView').classList.remove('hidden');
+      $('logout').classList.remove('hidden');
+      $('adminEmail').textContent = user.email || '';
+      await Promise.all([loadGames(), loadRequests()]);
+    }
+
+    $('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      $('loginMessage').textContent='Connexion…';
+      const {data,error}=await supabase.auth.signInWithPassword({email:$('email').value,password:$('password').value});
+      if(error){$('loginMessage').textContent='E-mail ou mot de passe incorrect.';return;}
+      await enterAdmin(data.user);
+    });
+
+    $('logout').addEventListener('click', async e => { e.preventDefault(); await supabase.auth.signOut(); location.reload(); });
+
+    async function loadGames() {
+      const {data,error}=await supabase.from('games').select('*').order('name');
+      if(error){toast('Impossible de charger les jeux.');return;}
+      games=data||[];
+      $('gameAdminList').innerHTML=games.length ? games.map(g=>`
+        <div class="request">
+          <div class="request-head"><div><h4>${esc(g.name)}</h4><p>${esc(g.publisher)} · ${esc(g.category)} · ${g.players_min||'?'}–${g.players_max||'?'} joueurs · ${g.duration||'?'} min</p></div><span class="status ${g.is_active?'approved':'rejected'}">${g.is_active?'ACTIF':'DÉSACTIVÉ'}</span></div>
+          <div class="actions"><button class="button small" data-edit="${esc(g.id)}">Modifier</button><button class="button small" data-toggle="${esc(g.id)}">${g.is_active?'Désactiver':'Réactiver'}</button><button class="button small danger" data-delete="${esc(g.id)}">Supprimer</button></div>
+        </div>`).join('') : '<div class="empty">Aucun jeu dans le catalogue.</div>';
+      document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>editGame(b.dataset.edit));
+      document.querySelectorAll('[data-toggle]').forEach(b=>b.onclick=()=>toggleGame(b.dataset.toggle));
+      document.querySelectorAll('[data-delete]').forEach(b=>b.onclick=()=>deleteGame(b.dataset.delete));
+    }
+
+    function editGame(id) {
+      const g=games.find(x=>x.id===id); if(!g)return;
+      $('editingId').value=g.id;$('gName').value=g.name;$('gPublisher').value=g.publisher;$('gCategory').value=g.category;$('gDuration').value=g.duration||'';$('gMin').value=g.players_min||'';$('gMax').value=g.players_max||'';$('gImage').value=g.cover_image||'';$('gDescription').value=g.description||'';
+      $('gameFormTitle').textContent='Modifier le jeu';$('cancelEdit').classList.remove('hidden');scrollTo({top:0,behavior:'smooth'});
+    }
+    $('cancelEdit').onclick=()=>{ $('gameForm').reset();$('editingId').value='';$('gameFormTitle').textContent='Ajouter un jeu';$('cancelEdit').classList.add('hidden'); };
+
+    $('gameForm').addEventListener('submit',async e=>{
+      e.preventDefault();
+      const payload={name:$('gName').value.trim(),publisher:$('gPublisher').value.trim(),category:$('gCategory').value.trim(),duration:Number($('gDuration').value)||null,players_min:Number($('gMin').value)||null,players_max:Number($('gMax').value)||null,cover_image:$('gImage').value.trim()||null,description:$('gDescription').value.trim()||null,is_active:true};
+      let error;
+      if($('editingId').value) ({error}=await supabase.from('games').update(payload).eq('id',$('editingId').value));
+      else { payload.id=crypto.randomUUID(); ({error}=await supabase.from('games').insert(payload)); }
+      if(error){toast('Erreur : '+error.message);return;}
+      toast('Jeu enregistré.'); $('cancelEdit').click(); loadGames();
+    });
+
+    async function toggleGame(id){ const g=games.find(x=>x.id===id); if(!g)return; const {error}=await supabase.from('games').update({is_active:!g.is_active}).eq('id',id); if(error)toast('Erreur lors de la modification.'); else {toast('Statut mis à jour.');loadGames();} }
+    async function deleteGame(id){ if(!confirm('Supprimer définitivement ce jeu ? Les réservations liées seront également supprimées.'))return; const {error}=await supabase.from('games').delete().eq('id',id); if(error)toast('Erreur lors de la suppression.'); else {toast('Jeu supprimé.');loadGames();} }
+
+    async function loadRequests() {
+      const {data,error}=await supabase.from('reservations').select('*, games(name)').order('created_at',{ascending:false});
+      if(error){$('requests').innerHTML='<div class="empty">Impossible de charger les demandes.</div>';return;}
+      $('requests').innerHTML=data?.length ? data.map(r=>`
+        <article class="request">
+          <div class="request-head"><div><h4>${esc(r.games?.name || 'Jeu supprimé')}</h4><p>${esc(r.first_name)} ${esc(r.last_name)} · ${esc(r.promotion || 'Promotion non indiquée')}</p><p>Du <strong>${esc(r.date_start)}</strong> au <strong>${esc(r.date_end)}</strong></p></div><span class="status ${esc(r.status)}">${esc(r.status).toUpperCase()}</span></div>
+          ${r.status==='pending'?`<div class="actions"><button class="button small primary" data-approve="${esc(r.id)}">✓ Valider</button><button class="button small danger" data-reject="${esc(r.id)}">Refuser</button></div>`:''}
+        </article>`).join('') : '<div class="empty">Aucune demande.</div>';
+      document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>setStatus(b.dataset.approve,'approved'));
+      document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>setStatus(b.dataset.reject,'rejected'));
+    }
+    async function setStatus(id,status){ const {error}=await supabase.from('reservations').update({status,updated_at:Date.now()}).eq('id',id); if(error)toast('Erreur : '+error.message); else {toast(status==='approved'?'Réservation validée.':'Réservation refusée.');loadRequests();} }
+
+    const {data:{session}}=await supabase.auth.getSession();
+    if(session) await enterAdmin(session.user);
+    supabase.auth.onAuthStateChange((_event,session)=>{ if(session && $('adminView').classList.contains('hidden')) enterAdmin(session.user); });
+  </script>
+</body>
+</html>
