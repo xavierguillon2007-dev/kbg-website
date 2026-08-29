@@ -178,18 +178,19 @@
     }
 
     ['search','category','players','sort'].forEach(id => document.querySelector('#'+id).addEventListener('input', render));
+
     document.querySelector('#reservationForm').addEventListener('submit', async e => {
-  e.preventDefault();
+      e.preventDefault();
 
-  const form = e.currentTarget;
-  const submitBtn = form.querySelector('button[type=submit]');
-  const msg = document.querySelector('#formMessage');
+      const form = e.currentTarget;
+      const submitBtn = form.querySelector('button[type=submit]');
+      const msg = document.querySelector('#formMessage');
 
-  try {
-    const {data:{user}, error:userError} = await supabase.auth.getUser();
-    if (userError) console.error('Erreur récupération utilisateur :', userError);
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) console.error('Erreur récupération utilisateur :', userError);
 
-    const f = new FormData(form);
+        const f = new FormData(form);
         if (!user) { msg.textContent = 'Connectez-vous dans votre espace membre avant de réserver.'; document.querySelector('#account').scrollIntoView({behavior:'smooth'}); return; }
         if (!f.get('game_id')) { msg.textContent = 'Sélectionnez un jeu.'; return; }
         if (f.get('date_end') < f.get('date_start')) { msg.textContent = 'La date de fin doit être postérieure ou égale à la date de début.'; return; }
@@ -197,7 +198,7 @@
         submitBtn.disabled = true;
         const { error } = await supabase.from('reservations').insert({ id: crypto.randomUUID(), game_id: f.get('game_id'), first_name: f.get('first_name').trim(), last_name: f.get('last_name').trim(), promotion: f.get('promotion').trim(), date_start: f.get('date_start'), date_end: f.get('date_end'), status: 'pending', user_id: user.id });
         if (error) { console.error('Erreur création réservation :', error); msg.textContent = 'La demande n’a pas pu être envoyée : ' + error.message; return; }
-        e.currentTarget.reset(); msg.textContent = '✓ Demande envoyée. Elle sera examinée par un administrateur.';
+        form.reset(); msg.textContent = '✓ Demande envoyée. Elle sera examinée par un administrateur.';
       } catch (err) {
         console.error('Erreur inattendue lors de la réservation :', err);
         msg.textContent = 'Une erreur inattendue est survenue. Réessayez ou contactez un administrateur.';
@@ -205,6 +206,7 @@
         submitBtn.disabled = false;
       }
     });
+
     const today = new Date().toISOString().slice(0,10);
     document.querySelector('#dateStart').min = today;
     document.querySelector('#dateEnd').min = today;
@@ -213,6 +215,7 @@
       if (document.querySelector('#dateEnd').value && document.querySelector('#dateEnd').value < e.target.value)
         document.querySelector('#dateEnd').value = e.target.value;
     });
+
     let currentUser = null;
     let currentProfile = null;
     async function loadProfile(user) {
@@ -237,6 +240,7 @@
       $('reservationForm').querySelector('[name=last_name]').placeholder=p?.last_name||'Nom';
       $('reservationForm').querySelector('[name=promotion]').placeholder=p?.promotion||'Promotion — ex. DFGSM2';
     }
+
     $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginMsg').textContent='Connexion…';const {data,error}=await supabase.auth.signInWithPassword({email:$('loginEmail').value,password:$('loginPassword').value});if(error){console.error('Erreur connexion :',error);$('loginMsg').textContent='E-mail ou mot de passe incorrect.';return;}$('loginMsg').textContent='✓ Connexion réussie.';if(data.user)loadProfile(data.user);});
     $('signupForm').addEventListener('submit',async e=>{e.preventDefault();$('signupMsg').textContent='Création…';const {data,error}=await supabase.auth.signUp({email:$('signupEmail').value,password:$('signupPassword').value,options:{data:{first_name:$('signupFirst').value.trim(),last_name:$('signupLast').value.trim(),promotion:$('signupPromo').value.trim()}}});if(error){console.error('Erreur création de compte :',error);$('signupMsg').textContent=error.message;return;}console.log('Résultat inscription :',data);if(!data.session){$('signupMsg').textContent=data.user&&data.user.identities&&data.user.identities.length===0?'Un compte existe déjà avec cet e-mail. Connectez-vous plutôt, ou utilisez « mot de passe oublié ».':'✓ Compte créé. Vérifiez votre e-mail pour confirmer votre adresse.';return;}$('signupMsg').textContent='✓ Compte créé.';loadProfile(data.user);});
     $('logoutBtn').onclick=async()=>{await supabase.auth.signOut();loadProfile(null);};
