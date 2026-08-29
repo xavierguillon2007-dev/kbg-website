@@ -20,10 +20,48 @@
       <div>
         <p class="eyebrow">GESTION · BACKOFFICE</p>
         <h1>Espace <span>administration.</span></h1>
-        <p class="hero-copy">Gérez les demandes de réservation des membres et modifiez le statut des emprunts en temps réel.</p>
+        <p class="hero-copy">Gérez les demandes de réservation et administrez le catalogue de jeux.</p>
       </div>
     </section>
 
+    <!-- Section 1 : Gestion du Catalogue -->
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">CATALOGUE</p>
+          <h2>Ajouter un jeu</h2>
+        </div>
+      </div>
+
+      <form id="addGameForm" class="panel">
+        <div class="admin-form-grid">
+          <input name="name" placeholder="Nom du jeu" required>
+          <input name="publisher" placeholder="Éditeur" required>
+          <input name="category" placeholder="Catégorie (ex. Stratégie)">
+          <input name="cover_image" placeholder="URL de l'image de couverture">
+        </div>
+        <div class="admin-form-grid">
+          <input name="players_min" type="number" placeholder="Joueurs min" min="1">
+          <input name="players_max" type="number" placeholder="Joueurs max" min="1">
+          <input name="duration" type="number" placeholder="Durée (min)">
+        </div>
+        <textarea name="description" placeholder="Description du jeu..." style="width:100%; min-height:80px; margin-bottom:12px; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:4px;"></textarea>
+        <button type="submit" class="button primary">Ajouter au catalogue →</button>
+        <p id="addGameMsg" class="form-message" style="margin-top:8px;"></p>
+      </form>
+
+      <div class="section-head" style="margin-top:40px;">
+        <div>
+          <p class="eyebrow">CATALOGUE</p>
+          <h2>Jeux enregistrés</h2>
+        </div>
+      </div>
+      <div id="adminGamesList" class="grid">
+        <div class="loading">Chargement des jeux…</div>
+      </div>
+    </section>
+
+    <!-- Section 2 : Gestion des Réservations -->
     <section class="section">
       <div class="section-head">
         <div>
@@ -41,7 +79,7 @@
       </div>
 
       <div id="adminReservationsList" class="grid admin-grid">
-        <div class="loading">Chargement des données Supabase…</div>
+        <div class="loading">Chargement des réservations…</div>
       </div>
     </section>
   </main>
