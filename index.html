@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KBG — Le Club & Ludothèque des Jeux de Société</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- Client SDK Supabase v2 -->
+  <!-- SDK Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -20,12 +20,11 @@
       <a href="#catalogue">Catalogue</a>
       <a href="#evenement">Événement</a>
       <a href="#reservation">Réservation</a>
-      <a href="#avis">Avis</a>
     </nav>
     <button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>
   </header>
 
-  <!-- Section Hero & Panneau d'Événement Temps Réel -->
+  <!-- Hero & Panneau d'Événement -->
   <section class="hero" id="evenement">
     <div class="hero-text">
       <div class="eyebrow">✨ Club & Ludothèque KBG</div>
@@ -55,7 +54,7 @@
     </div>
   </section>
 
-  <!-- Section Catalogue de Jeux (Vide, prête à accueillir vos jeux) -->
+  <!-- Section Catalogue de Jeux -->
   <section id="catalogue" class="section">
     <div class="section-head">
       <div>
@@ -69,10 +68,10 @@
       <input type="text" id="search-input" placeholder="🔍 Rechercher un jeu...">
       <select id="genre-select">
         <option value="">Tous les genres</option>
-        <option value="strategie">Stratégie</option>
-        <option value="ambiance">Ambiance</option>
-        <option value="coop">Coopératif</option>
-        <option value="gestion">Gestion</option>
+        <option value="Stratégie">Stratégie</option>
+        <option value="Ambiance">Ambiance</option>
+        <option value="Coopératif">Coopératif</option>
+        <option value="Gestion">Gestion</option>
       </select>
       <select id="players-select">
         <option value="">Nombre de joueurs</option>
@@ -88,12 +87,8 @@
       </select>
     </div>
 
-    <!-- Grille de jeux sans données codées en dur -->
-    <div class="grid" id="games-grid">
-      <div class="empty-state" id="empty-games">
-        <p>🎲 Aucun jeu sélectionné pour le moment. Ajoutez vos propres jeux via la base de données ou le script.</p>
-      </div>
-    </div>
+    <!-- Grille dynamique des jeux -->
+    <div class="grid" id="games-grid"></div>
   </section>
 
   <!-- Section Réservation -->
@@ -140,21 +135,48 @@
     </div>
   </section>
 
-  <!-- Section Avis & Témoignages (Rétablie) -->
-  <section id="avis" class="section">
-    <div class="section-head">
-      <div>
-        <div class="eyebrow">💬 La communauté s'exprime</div>
-        <h2>Avis & Témoignages</h2>
+  <!-- MODAL : Fiche Jeu & Avis Spécifiques -->
+  <div class="modal-backdrop" id="game-modal">
+    <div class="modal-content panel">
+      <div class="modal-header">
+        <h3 id="modal-game-title">Titre du jeu</h3>
+        <button class="close-btn" id="close-game-modal">&times;</button>
       </div>
-      <button class="button primary" id="open-review-btn">✍️ Laisser un avis</button>
-    </div>
 
-    <!-- Liste des avis dynamiques -->
-    <div class="grid" id="reviews-grid">
-      <!-- Les avis des visiteurs/membres s'afficheront ici -->
+      <div class="game-modal-body">
+        <div class="game-modal-info">
+          <img id="modal-game-image" src="" alt="Jeu">
+          <div class="game-modal-meta">
+            <span id="modal-game-genre" class="badge">--</span>
+            <span id="modal-game-players">👥 --</span>
+            <span id="modal-game-duration">⏱️ --</span>
+          </div>
+          <p id="modal-game-desc"></p>
+        </div>
+
+        <hr style="border: 0; border-top: 1.5px solid var(--text); margin: 20px 0;">
+
+        <h4>💬 Avis des joueurs pour ce jeu</h4>
+        <div class="admin-list" id="modal-game-reviews"></div>
+
+        <form id="add-game-review-form" style="margin-top: 15px; display: grid; gap: 10px;">
+          <input type="hidden" id="modal-game-id">
+          <div class="two">
+            <input type="text" id="game-review-author" placeholder="Votre nom / pseudo" required>
+            <select id="game-review-rating" required>
+              <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+              <option value="4">⭐⭐⭐⭐ (4/5)</option>
+              <option value="3">⭐⭐⭐ (3/5)</option>
+              <option value="2">⭐⭐ (2/5)</option>
+              <option value="1">⭐ (1/5)</option>
+            </select>
+          </div>
+          <textarea id="game-review-comment" rows="2" placeholder="Qu'avez-vous pensé de ce jeu ?" required></textarea>
+          <button type="submit" class="button primary" style="justify-self: end;">Publier l'avis</button>
+        </form>
+      </div>
     </div>
-  </section>
+  </div>
 
   <!-- MODAL / ESPACE ADMIN COMPLET -->
   <div class="modal-backdrop" id="admin-modal">
@@ -166,9 +188,9 @@
 
       <!-- Onglets Admin -->
       <div class="admin-tabs">
-        <button class="tab-btn active" data-tab="tab-event">📢 Panneau Événement</button>
-        <button class="tab-btn" data-tab="tab-reviews">💬 Gestion des Avis</button>
-        <button class="tab-btn" data-tab="tab-bookings">📅 Réservations</button>
+        <button class="tab-btn active" data-tab="tab-event">📢 Événement</button>
+        <button class="tab-btn" data-tab="tab-add-game">➕ Créer un Jeu</button>
+        <button class="tab-btn" data-tab="tab-bookings">📅 Calendrier Réservations</button>
       </div>
 
       <!-- Onglet 1 : Modifier le Panneau Événement -->
@@ -176,84 +198,77 @@
         <form id="admin-event-form">
           <label>
             Titre de l'événement
-            <input type="text" id="input-title" placeholder="Ex: Tournoi Catan" required>
+            <input type="text" id="input-title" required>
           </label>
-
           <label>
             Date & Heure
-            <input type="text" id="input-date" placeholder="Ex: Vendredi 12 Septembre • 19h00" required>
+            <input type="text" id="input-date" required>
           </label>
-
           <label>
-            URL de l'image / Affiche
-            <input type="url" id="input-image" placeholder="Ex: https://images.unsplash.com/..." required>
+            URL de l'image
+            <input type="url" id="input-image" required>
           </label>
-
           <label>
             Description
-            <textarea id="input-desc" rows="3" placeholder="Description de l'événement..." required></textarea>
+            <textarea id="input-desc" rows="3" required></textarea>
           </label>
-
           <div class="admin-actions">
-            <button type="button" class="button" class="cancel-admin-btn">Annuler</button>
-            <button type="submit" class="button primary">💾 Publier en temps réel</button>
+            <button type="submit" class="button primary">💾 Publier l'événement</button>
           </div>
         </form>
       </div>
 
-      <!-- Onglet 2 : Modération des Avis -->
-      <div class="tab-content" id="tab-reviews">
-        <p class="desc">Consultez et modérez la liste des avis soumis par les joueurs :</p>
-        <div class="admin-list" id="admin-reviews-list">
-          <!-- Chargement dynamique des avis pour suppression/modération -->
-        </div>
+      <!-- Onglet 2 : Créer un Nouveau Jeu -->
+      <div class="tab-content" id="tab-add-game">
+        <form id="admin-add-game-form">
+          <label>
+            Nom du jeu
+            <input type="text" id="new-game-title" placeholder="Ex: Catan" required>
+          </label>
+          <div class="two">
+            <label>
+              Genre
+              <select id="new-game-genre" required>
+                <option value="Stratégie">Stratégie</option>
+                <option value="Ambiance">Ambiance</option>
+                <option value="Coopératif">Coopératif</option>
+                <option value="Gestion">Gestion</option>
+              </select>
+            </label>
+            <label>
+              Joueurs (ex: 2-4)
+              <input type="text" id="new-game-players" placeholder="Ex: 2-4" required>
+            </label>
+          </div>
+          <div class="two">
+            <label>
+              Durée (minutes)
+              <input type="number" id="new-game-duration" placeholder="Ex: 60" required>
+            </label>
+            <label>
+              URL de l'image
+              <input type="url" id="new-game-image" placeholder="https://..." required>
+            </label>
+          </div>
+          <label>
+            Description du jeu
+            <textarea id="new-game-desc" rows="3" placeholder="Présentation rapide du jeu..." required></textarea>
+          </label>
+          <div class="admin-actions">
+            <button type="submit" class="button primary">➕ Ajouter au Catalogue</button>
+          </div>
+        </form>
       </div>
 
-      <!-- Onglet 3 : Liste des Réservations -->
+      <!-- Onglet 3 : Calendrier des Réservations -->
       <div class="tab-content" id="tab-bookings">
-        <p class="desc">Dernières demandes de réservation de tables :</p>
-        <div class="admin-list" id="admin-bookings-list">
-          <!-- Chargement dynamique des réservations -->
+        <div class="calendar-filter">
+          <label>Filtrer par date :
+            <input type="date" id="calendar-date-picker">
+          </label>
         </div>
+        <div class="admin-list" id="admin-bookings-list"></div>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL : Soumettre un Avis -->
-  <div class="modal-backdrop" id="review-modal">
-    <div class="modal-content panel">
-      <div class="modal-header">
-        <h3>✍️ Donner votre avis sur KBG</h3>
-        <button class="close-btn" id="close-review-btn">&times;</button>
-      </div>
-
-      <form id="add-review-form">
-        <label>
-          Votre Nom / Pseudo
-          <input type="text" id="review-author" placeholder="Ex: Camille" required>
-        </label>
-
-        <label>
-          Note sur 5 étoiles
-          <select id="review-rating" required>
-            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-            <option value="4">⭐⭐⭐⭐ (4/5)</option>
-            <option value="3">⭐⭐⭐ (3/5)</option>
-            <option value="2">⭐⭐ (2/5)</option>
-            <option value="1">⭐ (1/5)</option>
-          </select>
-        </label>
-
-        <label>
-          Votre commentaire
-          <textarea id="review-comment" rows="3" placeholder="Qu'avez-vous pensé de l'ambiance, de la ludothèque... ?" required></textarea>
-        </label>
-
-        <div class="admin-actions">
-          <button type="button" class="button" id="cancel-review-btn">Annuler</button>
-          <button type="submit" class="button primary">Envoyer mon avis</button>
-        </div>
-      </form>
     </div>
   </div>
 
