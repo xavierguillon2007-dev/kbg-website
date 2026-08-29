@@ -87,11 +87,16 @@
   </main>
 
   <!-- MODALE ADMINISTRATION (Catalogue + Réservations) -->
-  <div id="adminModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="adminModal">×</button>
-      <p class="eyebrow">ESPACE ADMIN</p>
-      <h2>Panneau de gestion</h2>
+  <!-- Liste des Réservations -->
+      <div style="margin-top:30px;">
+        <p class="eyebrow" style="color:var(--warning);">⏳ DEMANDES EN COURS</p>
+        <div id="adminPendingReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
+      </div>
+
+      <div style="margin-top:30px;">
+        <p class="eyebrow" style="color:var(--muted);">📁 DEMANDES DÉJÀ TRAITÉES (MODIFIABLES)</p>
+        <div id="adminProcessedReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
+      </div>
 
       <!-- Formulaire Ajout de Jeu -->
       <form id="addGameForm" style="margin-top:20px; border-bottom:1px solid var(--line); padding-bottom:20px;">
