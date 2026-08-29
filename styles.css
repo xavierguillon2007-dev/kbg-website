@@ -1,193 +1,265 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;600;700;800&display=swap');
 
-/* ===== KBG — Thème Sombre & Néon (Basé sur les visuels) ===== */
+/* ==========================================================================
+   KBG — Refonte Graphique (Style Chaud & Élégant basé sur le Logo)
+   - Jaune Pastel mis en valeur (Accent principal)
+   - Style Néon / Lumineux retiré au profit de surfaces douces & épurées
+   ========================================================================== */
+
 :root {
-  --bg: #0d0824;
-  --panel: #18103c;
-  --panel-2: #221654;
-  --line: rgba(255, 255, 255, 0.12);
-  --line-strong: rgba(231, 82, 161, 0.4);
+  /* Fond principal : Violet profond & élégant (extrait du cercle extérieur du logo) */
+  --bg: #1c0e3a;
+  --bg-dark: #13082a;
+  
+  /* Surfaces & Panneaux : Violet riche & mat */
+  --panel: #27164e;
+  --panel-light: #321d63;
+  --panel-card: #2d1958;
+
+  /* Lignes de séparation douces & mates */
+  --line: rgba(255, 235, 175, 0.15);
+  --line-strong: rgba(252, 227, 138, 0.35);
+
+  /* Typographie */
   --text: #ffffff;
-  --muted: #a69bbd;
-  
-  /* Palette tirée du logo et des visuels */
-  --accent: #e752a1;         /* Rose bonbon / boutons d'action */
-  --accent-hover: #f763b2;   /* Survol rose */
-  --accent-blue: #a0c4ff;    /* Bleu pastel */
-  --accent-yellow: #fce38a;  /* Jaune d'or */
-  --card-bg: #fbeee0;        /* Card-bg secondaire / beige doux */
-  
-  --shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  --text-muted: #d2c8e8;
+
+  /* ==========================================================================
+     Palette tirée directement du Logo KBG
+     ========================================================================== */
+  --accent-yellow: #fce38a;      /* Jaune pastel principal (Dé à jouer / Étoiles) */
+  --accent-yellow-hover: #ffec9f;/* Jaune pastel survol */
+  --accent-pink: #e752a1;        /* Rose bonbon (Pion / Kool Board) */
+  --accent-blue: #a0c4ff;        /* Bleu pastel (Cartes & Texte KBG) */
+  --accent-cream: #faebd7;       /* Beige / Crème doux (Fond central du logo) */
+
+  /* Ombres mates & douces (sans effets néon/glow) */
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 18px 40px rgba(0, 0, 0, 0.5);
 }
 
-* { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
 
 body {
   margin: 0;
-  background: 
-    radial-gradient(circle at 85% 5%, #2a1866 0%, #0d0824 45%),
-    radial-gradient(circle at 10% 90%, #210d52 0%, #0d0824 50%);
+  background-color: var(--bg);
+  background-image: 
+    radial-gradient(circle at 80% 0%, var(--panel-light) 0%, transparent 50%),
+    radial-gradient(circle at 10% 100%, var(--bg-dark) 0%, transparent 50%);
   color: var(--text);
-  font-family: Manrope, system-ui, sans-serif;
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
 }
 
-a { color: inherit; text-decoration: none; transition: color .18s ease; }
-a:hover { color: var(--accent-blue); }
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
 
-/* Header & Navbar */
+a:hover {
+  color: var(--accent-yellow);
+}
+
+/* ==========================================================================
+   En-tête & Barre de navigation (Topbar)
+   ========================================================================== */
 .topbar, header {
   height: 74px;
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 5vw;
+  padding: 0 6vw;
   position: sticky;
   top: 0;
-  background: rgba(13, 8, 36, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  z-index: 5;
+  background: rgba(28, 14, 58, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100;
 }
 
 .brand {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: center;
-  font: 700 15px 'DM Mono';
+  font: 700 15px 'DM Mono', monospace;
   color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .brand-logo {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   object-fit: contain;
   border-radius: 50%;
-  box-shadow: 0 0 12px rgba(231, 82, 161, 0.3);
+  border: 2px solid var(--accent-yellow);
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-yellow);
+  color: var(--bg);
   font-weight: 800;
+  font-size: 16px;
 }
 
 nav {
   display: flex;
-  gap: 28px;
-  color: var(--muted);
-  font-size: 13px;
-  align-items: center;
+  gap: 32px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
 }
-nav a:hover { color: var(--accent-yellow); }
 
-/* Hero Section */
+nav a {
+  padding: 6px 0;
+  position: relative;
+}
+
+nav a:hover {
+  color: var(--accent-yellow);
+}
+
+/* ==========================================================================
+   Section Hero
+   ========================================================================== */
 .hero {
-  min-height: 540px;
-  padding: 80px 10vw;
+  min-height: 520px;
+  padding: 90px 8vw;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 40px;
   overflow: hidden;
 }
 
 .eyebrow {
-  font: 600 11px 'DM Mono';
-  letter-spacing: .16em;
+  font: 600 12px 'DM Mono', monospace;
+  letter-spacing: 0.18em;
   color: var(--accent-yellow);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: inline-block;
+  background: rgba(252, 227, 138, 0.1);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(252, 227, 138, 0.25);
 }
 
 h1 {
-  font-size: clamp(40px, 6vw, 80px);
+  font-size: clamp(40px, 5.5vw, 76px);
   line-height: 1.05;
-  margin: 20px 0;
-  letter-spacing: -.04em;
+  margin: 16px 0 24px;
+  letter-spacing: -0.04em;
+  font-weight: 800;
 }
 
 h1 span {
-  color: var(--accent-blue);
+  color: var(--accent-yellow);
   -webkit-text-stroke: 0px transparent;
 }
 
 .hero-copy {
-  max-width: 540px;
-  color: var(--muted);
-  line-height: 1.8;
-  margin-bottom: 32px;
+  max-width: 520px;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1.7;
+  margin-bottom: 36px;
 }
 
+/* Visuel sphérique d'ambiance (sans effet néon) */
 .orb {
-  width: 340px;
-  height: 340px;
-  border: 1px solid var(--line-strong);
+  width: 320px;
+  height: 320px;
+  border: 2px solid var(--accent-yellow);
   border-radius: 50%;
   display: grid;
   place-items: center;
-  box-shadow: 0 0 80px rgba(231, 82, 161, 0.2);
+  background: rgba(252, 227, 138, 0.03);
 }
 
 .orb div {
-  width: 220px;
-  height: 220px;
-  border: 1px solid var(--accent-blue);
+  width: 210px;
+  height: 210px;
+  border: 1px solid var(--accent-pink);
   border-radius: 50%;
-  box-shadow: inset 0 0 40px rgba(160, 196, 255, 0.2), 0 0 40px rgba(160, 196, 255, 0.15);
+  background: rgba(231, 82, 161, 0.05);
 }
 
-/* Boutons */
+/* ==========================================================================
+   Boutons & Actions
+   ========================================================================== */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  padding: 12px 24px;
+  border-radius: 12px;
+  border: 1.5px solid var(--line-strong);
+  padding: 13px 26px;
   font-weight: 700;
-  font-size: 13px;
-  background: rgba(255, 255, 255, 0.06);
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.04);
   color: var(--text);
   cursor: pointer;
-  transition: all .2s ease;
+  transition: all 0.2s ease;
+  text-align: center;
 }
 
 .button:hover {
   transform: translateY(-2px);
-  border-color: var(--accent-blue);
-  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-yellow);
+  background: rgba(252, 227, 138, 0.1);
+  color: var(--accent-yellow);
 }
 
+/* Bouton principal mis en valeur avec le Jaune Pastel */
 .button.primary {
-  background: var(--accent);
-  color: #ffffff;
-  border-color: transparent;
-  box-shadow: 0 8px 24px rgba(231, 82, 161, 0.35);
+  background: var(--accent-yellow);
+  color: #1a0c36;
+  border-color: var(--accent-yellow);
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(252, 227, 138, 0.25);
 }
 
 .button.primary:hover {
-  background: var(--accent-hover);
-  box-shadow: 0 10px 30px rgba(231, 82, 161, 0.5);
+  background: var(--accent-yellow-hover);
+  border-color: var(--accent-yellow-hover);
+  color: #120726;
+  box-shadow: 0 6px 20px rgba(252, 227, 138, 0.35);
 }
 
 .text-button {
   padding: 0;
   background: none;
   border: 0;
-  color: var(--accent);
+  color: var(--accent-yellow);
   font-weight: 700;
+  font-size: 13px;
   cursor: pointer;
-  transition: color .18s ease;
+  transition: color 0.18s ease;
 }
-.text-button:hover { color: var(--accent-yellow); }
 
-/* Layout & Cartes */
+.text-button:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   Sections, Grilles & Filtres
+   ========================================================================== */
 .section {
-  padding: 80px 7vw;
+  padding: 80px 8vw;
   border-top: 1px solid var(--line);
 }
 
@@ -198,70 +270,133 @@ h1 span {
   margin-bottom: 35px;
 }
 
-h2 { font-size: 38px; letter-spacing: -.03em; margin: 8px 0; }
-.counter { font: 12px 'DM Mono'; color: var(--accent-yellow); }
+h2 {
+  font-size: 38px;
+  letter-spacing: -0.03em;
+  margin: 6px 0 0;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.counter {
+  font: 600 13px 'DM Mono', monospace;
+  color: var(--accent-yellow);
+  background: var(--panel);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
 
 .toolbar {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 30px;
+  gap: 14px;
+  margin-bottom: 32px;
 }
 
-.toolbar input, .toolbar select, .panel input, .panel select, textarea {
+.toolbar input, 
+.toolbar select, 
+.panel input, 
+.panel select, 
+textarea {
   width: 100%;
   background: var(--panel);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   color: var(--text);
   padding: 14px 18px;
-  border-radius: 14px;
-  font: 13px Manrope;
-  transition: border-color .2s ease, box-shadow .2s ease;
+  border-radius: 12px;
+  font: 14px 'Manrope', sans-serif;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-input:focus, select:focus, textarea:focus {
+.toolbar input::placeholder,
+.panel input::placeholder,
+textarea::placeholder {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+input:focus, 
+select:focus, 
+textarea:focus {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(231, 82, 161, 0.2);
+  border-color: var(--accent-yellow);
+  background: var(--panel-light);
 }
 
+/* ==========================================================================
+   Cartes de Jeux (Catalogue)
+   ========================================================================== */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(auto-fill, minmax(285px, 1fr));
+  gap: 24px;
 }
 
 .card {
-  background: var(--panel);
+  background: var(--panel-card);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 16px;
   overflow: hidden;
   box-shadow: var(--shadow);
-  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .card:hover {
   transform: translateY(-4px);
-  border-color: var(--accent-strong, rgba(231, 82, 161, 0.5));
-  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent-yellow);
+  box-shadow: var(--shadow-hover);
 }
 
 .cover {
   height: 200px;
-  background: linear-gradient(135deg, var(--panel-2), #11092c);
+  background: var(--panel-light);
   display: grid;
   place-items: center;
   border-bottom: 1px solid var(--line);
   overflow: hidden;
 }
 
-.cover img { width: 100%; height: 100%; object-fit: cover; }
-.cover span { font-size: 48px; color: var(--accent-yellow); }
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
-.card-body { padding: 22px; }
-.tag { font: 10px 'DM Mono'; letter-spacing: .1em; color: var(--accent-yellow); text-transform: uppercase; }
-.card h3 { font-size: 20px; margin: 8px 0 4px; }
-.publisher, .desc { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.cover span {
+  font-size: 48px;
+  color: var(--accent-yellow);
+}
+
+.card-body {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tag {
+  font: 600 11px 'DM Mono', monospace;
+  letter-spacing: 0.12em;
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+
+.card h3 {
+  font-size: 20px;
+  margin: 4px 0;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.publisher, .desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
 
 .meta {
   display: flex;
@@ -271,53 +406,108 @@ input:focus, select:focus, textarea:focus {
   padding: 10px 0;
   margin: 16px 0;
 }
-.meta span { font: 11px 'DM Mono'; color: var(--accent-blue); }
 
-/* Panneaux & Formulaires */
+.meta span {
+  font: 500 12px 'DM Mono', monospace;
+  color: var(--accent-blue);
+}
+
+/* ==========================================================================
+   Réservations & Panneaux de Formulaires
+   ========================================================================== */
 .reservation {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6vw;
-  background: linear-gradient(180deg, #0d0824, #180e42);
+  background: var(--bg-dark);
+}
+
+.reservation-copy p:not(.eyebrow) {
+  color: var(--text-muted);
+  line-height: 1.8;
+  font-size: 15px;
 }
 
 .panel {
   background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 18px;
+  padding: 32px;
   display: grid;
   gap: 18px;
   box-shadow: var(--shadow);
 }
 
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.form-message { font-size: 12px; color: var(--accent-yellow); min-height: 18px; }
-
-.empty, .loading {
-  border: 1px dashed var(--line);
-  padding: 50px;
-  text-align: center;
-  color: var(--muted);
-  border-radius: 16px;
+.panel label {
+  display: grid;
+  gap: 8px;
+  font: 600 11px 'DM Mono', monospace;
+  color: var(--accent-yellow);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-message {
+  font-size: 13px;
+  color: var(--accent-yellow);
+  min-height: 18px;
+  font-weight: 600;
+}
+
+.empty, .loading {
+  border: 1px dashed var(--line-strong);
+  padding: 48px;
+  text-align: center;
+  color: var(--text-muted);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ==========================================================================
+   Avis & Modale
+   ========================================================================== */
+.stars {
+  color: var(--accent-yellow);
+  letter-spacing: 2px;
+}
+
+.notice {
+  border-radius: 10px;
+  padding: 14px;
+  background: rgba(252, 227, 138, 0.08);
+  border: 1px solid rgba(252, 227, 138, 0.2);
+  color: var(--accent-yellow);
+  font-size: 13px;
+}
+
+/* ==========================================================================
+   Pied de page (Footer)
+   ========================================================================== */
 footer {
-  padding: 30px 7vw;
+  padding: 32px 8vw;
   border-top: 1px solid var(--line);
   display: flex;
   justify-content: space-between;
-  color: var(--muted);
-  font: 11px 'DM Mono';
+  color: var(--text-muted);
+  font: 500 12px 'DM Mono', monospace;
+  background: var(--bg-dark);
 }
 
-/* Responsive */
-@media(max-width:800px){
+/* ==========================================================================
+   Adaptabilité Mobile (Responsive)
+   ========================================================================== */
+@media (max-width: 850px) {
   nav { display: none; }
-  .hero { padding: 60px 5vw; min-height: 480px; }
+  .hero { padding: 60px 6vw; min-height: 460px; }
   .orb { display: none; }
   .toolbar, .reservation { grid-template-columns: 1fr; }
-  .section { padding: 50px 5vw; }
+  .section { padding: 50px 6vw; }
   .two { grid-template-columns: 1fr; }
-  h2 { font-size: 30px; }
+  h2 { font-size: 32px; }
 }
