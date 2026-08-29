@@ -1,17 +1,17 @@
 :root {
-  --bg: #070a0e;
-  --panel: #0b1016; /* Retour à la couleur d'origine */
-  --panel-hover: #121922;
-  --line: #1c2635;
-  --text: #ecefe6;
-  --muted: #7e8b9b;
-  --accent: #d4a373;
+  /* Couleurs exactes du thème d'origine */
+  --bg: #05070a;
+  --panel: #0c1017;         /* Couleur principale des panneaux et cartes */
+  --panel-hover: #121824;
+  --line: #182232;
+  --text: #e6eaf0;
+  --muted: #6e7f93;
+  --accent: #d4a373;        /* Doré / Beige d'origine */
   --accent-hover: #faedcd;
   --danger: #e63946;
   --success: #2a9d8f;
   --warning: #e9c46a;
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   background: var(--bg);
