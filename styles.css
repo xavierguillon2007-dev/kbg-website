@@ -40,7 +40,7 @@ body {
 
 a { color: inherit; text-decoration: none; transition: all 0.2s ease; }
 
-/* Topbar */
+/* Navigation */
 .topbar {
   height: 76px;
   border-bottom: 2px solid var(--text);
@@ -80,7 +80,7 @@ nav { display: flex; gap: 20px; font-size: 14px; font-weight: 700; }
 nav a { padding: 8px 16px; border-radius: var(--radius-sm); }
 nav a:hover { background: rgba(28, 14, 58, 0.08); }
 
-/* Hero & Dynamic Event Panel */
+/* Hero & Panneau d'Événement */
 .hero {
   min-height: 540px;
   padding: 70px 8vw;
@@ -135,7 +135,7 @@ h1 span {
   font-weight: 500;
 }
 
-/* PANNEAU ÉVÉNEMENT */
+/* PANNEAU VISUEL ÉVÉNEMENT */
 .hero-visual {
   position: relative;
   width: 360px;
@@ -184,31 +184,13 @@ h1 span {
   transition: transform 0.4s ease;
 }
 
-.hero-visual:hover .event-image-container img {
-  transform: scale(1.05);
-}
+.hero-visual:hover .event-image-container img { transform: scale(1.05); }
 
-.event-details h3 {
-  margin: 6px 0 4px;
-  font-size: 20px;
-  font-weight: 800;
-  color: var(--text);
-}
+.event-details h3 { margin: 6px 0 4px; font-size: 20px; font-weight: 800; color: var(--text); }
+#event-date { font: 700 12.5px 'DM Mono', monospace; color: var(--accent-pink); margin: 2px 0 8px; }
+.event-details p { font-size: 13.5px; color: var(--text-muted); margin: 0; line-height: 1.5; }
 
-#event-date {
-  font: 700 12.5px 'DM Mono', monospace;
-  color: var(--accent-pink);
-  margin: 2px 0 8px;
-}
-
-.event-details p {
-  font-size: 13.5px;
-  color: var(--text-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
-/* Boutons */
+/* Boutons & Champs de saisie */
 .button {
   display: inline-flex;
   align-items: center;
@@ -231,7 +213,7 @@ h1 span {
 .button.primary { background: var(--accent-pink); color: #ffffff; }
 .button.primary:hover { background: var(--accent-pink-hover); }
 
-/* Grid & Cards */
+/* Sections & Grille */
 .section { padding: 80px 8vw; border-top: 2px solid var(--text); }
 .section-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 35px; }
 h2 { font-size: 36px; letter-spacing: -0.03em; margin: 6px 0 0; font-weight: 800; }
@@ -266,47 +248,41 @@ input:focus, select:focus, textarea:focus {
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px; }
 
-.card {
+/* Cartes d'Avis Clients */
+.review-card {
   background: var(--panel);
   border: 2px solid var(--text);
   border-radius: var(--radius-lg);
-  overflow: hidden;
+  padding: 24px;
   box-shadow: 0 6px 0 var(--text);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
+  gap: 10px;
 }
 
-.card:hover { transform: translateY(-6px); box-shadow: 0 12px 0 var(--text); }
-.cover { height: 180px; background: var(--panel-card); display: grid; place-items: center; border-bottom: 2px solid var(--text); font-size: 52px; }
-.card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
+.review-author { font-weight: 800; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+.review-stars { color: #f59e0b; font-size: 14px; }
+.review-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0; }
 
-.tag {
-  font: 700 11px 'DM Mono', monospace;
-  background: var(--accent-yellow);
-  padding: 4px 10px;
-  border-radius: 6px;
-  width: fit-content;
-  text-transform: uppercase;
-  border: 1.5px solid var(--text);
-  margin-bottom: 10px;
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 40px;
+  background: var(--panel-card);
+  border: 2px dashed var(--text);
+  border-radius: var(--radius-lg);
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
-.card h3 { font-size: 20px; margin: 4px 0 2px; font-weight: 800; }
-.publisher { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
-.meta { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1.5px dashed var(--line-strong); border-bottom: 1.5px dashed var(--line-strong); padding: 10px 0; margin: 10px 0 14px; }
-.meta span { font: 700 11px 'DM Mono', monospace; background: var(--accent-blue-light); border: 1px solid var(--accent-blue); padding: 3px 8px; border-radius: 14px; }
-.desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
-
-/* Reservation */
+/* Formulaire Réservation */
 .reservation { display: grid; grid-template-columns: 1fr 1.1fr; gap: 5vw; background: var(--bg-subtle); border-radius: var(--radius-lg); }
 .panel { background: var(--panel); border: 2.5px solid var(--text); border-radius: var(--radius-lg); padding: 32px; display: grid; gap: 18px; box-shadow: 6px 6px 0 var(--text); }
 .panel label { display: grid; gap: 6px; font: 700 11px 'DM Mono', monospace; text-transform: uppercase; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-
 .notice { margin-top: 20px; border-radius: var(--radius-md); padding: 16px; background: var(--accent-yellow); border: 2px solid var(--text); font-size: 13.5px; font-weight: 700; box-shadow: 0 4px 0 var(--text); }
 
-/* Modal Admin */
+/* Fenêtres Modales & Admin Dashboard */
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
@@ -319,11 +295,25 @@ input:focus, select:focus, textarea:focus {
 }
 
 .modal-backdrop.active { opacity: 1; pointer-events: all; }
-.modal-content { width: 90%; max-width: 520px; transform: translateY(20px); transition: transform 0.3s ease; }
+.modal-content { width: 90%; max-width: 580px; transform: translateY(20px); transition: transform 0.3s ease; max-height: 90vh; overflow-y: auto; }
 .modal-backdrop.active .modal-content { transform: translateY(0); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
 .modal-header h3 { margin: 0; font-size: 20px; font-weight: 800; }
 .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text); }
+
+/* Dashboard Admin : Onglets */
+.admin-tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--text); padding-bottom: 12px; margin-bottom: 12px; }
+.tab-btn { background: none; border: 1.5px solid var(--text); padding: 8px 14px; border-radius: var(--radius-sm); font: 700 12px 'DM Mono', monospace; cursor: pointer; }
+.tab-btn.active { background: var(--accent-pink); color: #fff; }
+
+.tab-content { display: none; }
+.tab-content.active { display: grid; gap: 14px; }
+
+.admin-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; }
+
+.admin-list { display: grid; gap: 10px; max-height: 250px; overflow-y: auto; }
+.admin-item { background: var(--panel-card); border: 1.5px solid var(--text); padding: 12px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.admin-item-delete { background: #ef4444; color: #fff; border: 1px solid var(--text); padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; }
 
 /* Footer */
 footer {
