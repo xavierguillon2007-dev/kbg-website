@@ -262,7 +262,7 @@ input:focus, select:focus, textarea:focus { outline: none; background: #ffffff; 
   color: var(--text-muted);
 }
 
-/* Formulaire Réservation */
+/* Formulaire Emprunt */
 .reservation { display: grid; grid-template-columns: 1fr 1.1fr; gap: 5vw; background: var(--bg-subtle); border-radius: var(--radius-lg); }
 .panel { background: var(--panel); border: 2.5px solid var(--text); border-radius: var(--radius-lg); padding: 32px; display: grid; gap: 18px; box-shadow: 6px 6px 0 var(--text); }
 .panel label { display: grid; gap: 6px; font: 700 11px 'DM Mono', monospace; text-transform: uppercase; }
@@ -293,6 +293,9 @@ input:focus, select:focus, textarea:focus { outline: none; background: #ffffff; 
 
 .tab-content { display: none; }
 .tab-content.active { display: grid; gap: 14px; }
+
+.calendar-filter { margin-bottom: 10px; }
+.calendar-filter label { font: 700 11px 'DM Mono', monospace; text-transform: uppercase; }
 
 .admin-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; }
 .admin-list { display: grid; gap: 10px; max-height: 250px; overflow-y: auto; }
