@@ -1,327 +1,155 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KBG — Emprunt & Ludothèque de Jeux de Société</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KBG — Catalogue de jeux</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- SDK Supabase v2 -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
-  <!-- En-tête / Navigation -->
   <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">K</div>
-      <span>KBG LUDO</span>
-    </div>
+    <a class="brand" href="index.html"><span class="brand-mark">K</span><span>KBG<span class="muted">/</span> GAMES</span></a>
     <nav>
       <a href="#catalogue">Catalogue</a>
-      <a href="#evenement">Événement</a>
-      <a href="#reservation">Emprunter un jeu</a>
+      <a href="#reservation">Réserver</a>
+      <div id="userNav" class="user-nav">
+        <!-- Rempli dynamiquement par app.js -->
+      </div>
     </nav>
-    <div class="user-nav">
-      <!-- Zone dynamic remplie en JS (Boutons Connexion ou Profil / Déconnexion) -->
-      <button class="button" id="open-auth-btn">👤 Se connecter</button>
-      <button class="button primary" id="open-admin-btn" style="display: none;">🔑 Espace Admin</button>
-    </div>
   </header>
 
-  <!-- Hero & Panneau d'Événement -->
-  <section class="hero" id="evenement">
-    <div class="hero-text">
-      <div class="eyebrow">✨ Club & Ludothèque KBG</div>
-      <h1>Jouez, découvrez & <span>emportez !</span></h1>
-      <p class="hero-copy">
-        Rejoignez-nous chaque semaine pour découvrir de nouveaux jeux de société, participer à nos événements et réserver vos emprunts de jeux à emporter chez vous.
-      </p>
-      <div style="display: flex; gap: 14px; flex-wrap: wrap;">
-        <a href="#catalogue" class="button primary">🎲 Voir le catalogue</a>
-        <a href="#reservation" class="button">📦 Réserver un emprunt</a>
-      </div>
-    </div>
-
-    <!-- PANNEAU ÉVÉNEMENT DYNAMIQUE -->
-    <div class="hero-visual" id="event-banner">
-      <span class="event-badge">🎲 PROCHAIN ÉVÉNEMENT</span>
-
-      <div class="event-image-container">
-        <img id="event-image" src="https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=600&q=80" alt="Affiche événement KBG">
-      </div>
-
-      <div class="event-details">
-        <h3 id="event-title">Chargement de l'événement...</h3>
-        <p id="event-date">📅 --/--/----</p>
-        <p id="event-desc">Connexion en cours...</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Section Catalogue de Jeux -->
-  <section id="catalogue" class="section">
-    <div class="section-head">
+  <main>
+    <section class="hero">
       <div>
-        <div class="eyebrow">📚 Collection KBG</div>
-        <h2>Catalogue des Jeux</h2>
+        <p class="eyebrow">BIBLIOTHÈQUE LUDIQUE · 01</p>
+        <h1>Choisissez votre<br><span>prochaine partie.</span></h1>
+        <p class="hero-copy">Explorez le catalogue, trouvez le jeu adapté à votre groupe et envoyez une demande de réservation en quelques secondes.</p>
+        <a class="button primary" href="#catalogue">Explorer le catalogue ↘</a>
       </div>
-      <span class="counter" id="games-counter">0 Jeu Disponible</span>
-    </div>
+      <div class="orb" aria-hidden="true"><div></div></div>
+    </section>
 
-    <div class="toolbar">
-      <input type="text" id="search-input" placeholder="🔍 Rechercher un jeu...">
-      <select id="genre-select">
-        <option value="">Tous les genres</option>
-        <option value="Stratégie">Stratégie</option>
-        <option value="Ambiance">Ambiance</option>
-        <option value="Coopératif">Coopératif</option>
-        <option value="Gestion">Gestion</option>
-      </select>
-      <select id="players-select">
-        <option value="">Nombre de joueurs</option>
-        <option value="2">2 Joueurs</option>
-        <option value="3-5">3 à 5 Joueurs</option>
-        <option value="6+">6+ Joueurs</option>
-      </select>
-      <select id="duration-select">
-        <option value="">Durée de jeu</option>
-        <option value="30">&lt; 30 min</option>
-        <option value="60">30 - 60 min</option>
-        <option value="90">+ 60 min</option>
-      </select>
-    </div>
+    <section id="catalogue" class="section">
+      <div class="section-head">
+        <div><p class="eyebrow">CATALOGUE</p><h2>Les jeux disponibles</h2></div>
+        <span id="count" class="counter">Chargement…</span>
+      </div>
 
-    <div class="grid" id="games-grid"></div>
-  </section>
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Rechercher un jeu…" autocomplete="off">
+        <select id="category"><option value="">Toutes les catégories</option></select>
+        <select id="players">
+          <option value="">Joueurs</option>
+          <option value="2">2+</option>
+          <option value="4">4+</option>
+          <option value="6">6+</option>
+          <option value="8">8+</option>
+        </select>
+        <select id="sort">
+          <option value="name">Nom A → Z</option>
+          <option value="duration">Durée croissante</option>
+          <option value="players">Nombre de joueurs</option>
+          <option value="newest">Nouveautés</option>
+        </select>
+      </div>
 
-  <!-- Section Emprunt / Réservation -->
-  <section id="reservation" class="section reservation-section">
-    <div class="reservation">
+      <div id="games" class="grid"><div class="loading">Connexion au catalogue…</div></div>
+    </section>
+
+    <section id="reservation" class="section reservation">
       <div class="reservation-copy">
-        <div class="eyebrow">📦 Emporter un jeu chez vous</div>
-        <h2>Réservez vos dates d'emprunt</h2>
-        <p>Sélectionnez les dates où vous souhaitez emprunter un ou plusieurs jeux. Le retrait et le retour s'effectuent aux horaires d'ouverture du club.</p>
-        <div class="notice">
-          ⚡ Les emprunts s'effectuent pour une durée maximale de 14 jours consécutifs.
-        </div>
+        <p class="eyebrow">RÉSERVATION · 02</p>
+        <h2>Demander un jeu</h2>
+        <p>Choisissez un jeu et une période. Votre demande restera <strong>en attente</strong> jusqu'à sa validation par un administrateur.</p>
+        <ol class="reservation-steps">
+          <li><span>1</span>Sélectionnez un jeu et vos dates</li>
+          <li><span>2</span>Indiquez vos informations</li>
+          <li><span>3</span>Recevez la validation d'un administrateur</li>
+        </ol>
+      </div>
+      
+      <div id="authWarning" class="reservation-login-notice hidden">
+        <p class="eyebrow">CONNEXION REQUISE</p>
+        <p>Vous devez créer un compte et être connecté pour envoyer une demande de réservation.</p>
+        <button class="button primary" id="noticeAuthBtn">Créer un compte / Se connecter →</button>
       </div>
 
-      <form class="panel" id="booking-form">
-        <div id="auth-warning" class="notice" style="background: #fee2e2; border-color: #ef4444; margin-top:0; display:none;">
-          🔒 Vous devez être connecté à votre compte pour effectuer une réservation.
+      <form id="reservationForm" class="panel reservation-panel">
+        <div class="field-group">
+          <label class="field-label" for="gameSelect">Jeu</label>
+          <select id="gameSelect" name="game_id" required><option value="">Sélectionnez un jeu…</option></select>
         </div>
-
-        <label>
-          NOM & PRÉNOM
-          <input type="text" id="book-name" placeholder="Ex: Alex Dupont" required>
-        </label>
-
-        <label>
-          JEU À EMPRUNTER
-          <select id="book-game" required>
-            <option value="">-- Sélectionnez un jeu --</option>
-          </select>
-        </label>
-
         <div class="two">
-          <label>
-            DATE DE DÉBUT
-            <input type="date" id="book-start-date" required>
-          </label>
-          <label>
-            DATE DE RETOUR
-            <input type="date" id="book-end-date" required>
-          </label>
-        </div>
-
-        <button type="submit" class="button primary" id="submit-booking-btn">Valider la réservation</button>
-      </form>
-    </div>
-  </section>
-
-  <!-- MODAL : Auth (Connexion / Inscription) -->
-  <div class="modal-backdrop" id="auth-modal">
-    <div class="modal-content panel">
-      <div class="modal-header">
-        <h3 id="auth-modal-title">🔑 Connexion à votre compte</h3>
-        <button class="close-btn" id="close-auth-modal">&times;</button>
-      </div>
-
-      <div class="admin-tabs">
-        <button class="tab-btn active" id="btn-show-login">Connexion</button>
-        <button class="tab-btn" id="btn-show-signup">Créer un compte</button>
-      </div>
-
-      <!-- Formulaire Connexion -->
-      <form id="login-form" class="auth-form">
-        <label>
-          EMAIL
-          <input type="email" id="login-email" placeholder="votre@email.com" required>
-        </label>
-        <label>
-          MOT DE PASSE
-          <input type="password" id="login-password" placeholder="••••••••" required>
-        </label>
-        <button type="submit" class="button primary">Se connecter</button>
-      </form>
-
-      <!-- Formulaire Inscription -->
-      <form id="signup-form" class="auth-form" style="display: none;">
-        <label>
-          NOM COMPLET
-          <input type="text" id="signup-name" placeholder="Alex Dupont" required>
-        </label>
-        <label>
-          EMAIL
-          <input type="email" id="signup-email" placeholder="votre@email.com" required>
-        </label>
-        <label>
-          MOT DE PASSE
-          <input type="password" id="signup-password" placeholder="••••••••" required minlength="6">
-        </label>
-        <button type="submit" class="button primary">S'inscrire</button>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL : Fiche Jeu & Avis -->
-  <div class="modal-backdrop" id="game-modal">
-    <div class="modal-content panel">
-      <div class="modal-header">
-        <h3 id="modal-game-title">Titre du jeu</h3>
-        <button class="close-btn" id="close-game-modal">&times;</button>
-      </div>
-
-      <div class="game-modal-body">
-        <div class="game-modal-info">
-          <img id="modal-game-image" src="" alt="Jeu">
-          <div class="game-modal-meta">
-            <span id="modal-game-genre" class="badge">--</span>
-            <span id="modal-game-players">👥 --</span>
-            <span id="modal-game-duration">⏱️ --</span>
+          <div class="field-group">
+            <label class="field-label" for="dateStart">Du</label>
+            <input id="dateStart" name="date_start" type="date" required>
           </div>
-          <p id="modal-game-desc"></p>
+          <div class="field-group">
+            <label class="field-label" for="dateEnd">Au</label>
+            <input id="dateEnd" name="date_end" type="date" required>
+          </div>
         </div>
+        <div class="two">
+          <input name="first_name" maxlength="80" required placeholder="Prénom" aria-label="Prénom">
+          <input name="last_name" maxlength="80" required placeholder="Nom" aria-label="Nom">
+        </div>
+        <input name="promotion" maxlength="120" required placeholder="Promotion — ex. DFGSM2" aria-label="Promotion">
+        <button id="submitBookingBtn" class="button primary" type="submit">Envoyer la demande →</button>
+        <p id="formMessage" class="form-message"></p>
+      </form>
+    </section>
+  </main>
 
-        <hr style="border: 0; border-top: 1.5px solid var(--text); margin: 20px 0;">
-
-        <h4>💬 Avis des joueurs</h4>
-        <div class="admin-list" id="modal-game-reviews"></div>
-
-        <form id="add-game-review-form" style="margin-top: 15px; display: grid; gap: 10px;">
-          <input type="hidden" id="modal-game-id">
+  <!-- Modale Authentification -->
+  <div id="authModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="authModal">×</button>
+      <div class="auth-grid">
+        <form id="loginForm" class="panel">
+          <p class="eyebrow">SE CONNECTER</p>
+          <label>E-mail<input id="loginEmail" type="email" required></label>
+          <label>Mot de passe<input id="loginPassword" type="password" required></label>
+          <button class="button primary" type="submit">Connexion →</button>
+          <p id="loginMsg" class="form-message"></p>
+        </form>
+        <form id="signupForm" class="panel">
+          <p class="eyebrow">CRÉER UN COMPTE</p>
           <div class="two">
-            <input type="text" id="game-review-author" placeholder="Votre nom / pseudo" required>
-            <select id="game-review-rating" required>
-              <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
-              <option value="4">⭐⭐⭐⭐ (4/5)</option>
-              <option value="3">⭐⭐⭐ (3/5)</option>
-              <option value="2">⭐⭐ (2/5)</option>
-              <option value="1">⭐ (1/5)</option>
-            </select>
+            <label>Prénom<input id="signupFirst" required maxlength="80"></label>
+            <label>Nom<input id="signupLast" required maxlength="80"></label>
           </div>
-          <textarea id="game-review-comment" rows="2" placeholder="Qu'avez-vous pensé de ce jeu ?" required></textarea>
-          <button type="submit" class="button primary" style="justify-self: end;">Publier l'avis</button>
+          <label>Promotion<input id="signupPromo" required maxlength="120" placeholder="Ex. DFGSM2"></label>
+          <label>E-mail<input id="signupEmail" type="email" required></label>
+          <label>Mot de passe<input id="signupPassword" type="password" minlength="6" required></label>
+          <button class="button primary" type="submit">Créer mon compte →</button>
+          <p id="signupMsg" class="form-message"></p>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL / ESPACE ADMIN COMPLET -->
-  <div class="modal-backdrop" id="admin-modal">
-    <div class="modal-content panel admin-panel">
-      <div class="modal-header">
-        <h3>🔑 Dashboard Administration KBG</h3>
-        <button class="close-btn" id="close-admin-btn">&times;</button>
-      </div>
+  <!-- Modale Fiche Jeu -->
+  <div id="gameModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="gameModal">×</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
 
-      <div class="admin-tabs">
-        <button class="tab-btn active" data-tab="tab-event">📢 Événement</button>
-        <button class="tab-btn" data-tab="tab-add-game">➕ Créer un Jeu</button>
-        <button class="tab-btn" data-tab="tab-bookings">📅 Suivi Emprunts</button>
-      </div>
-
-      <div class="tab-content active" id="tab-event">
-        <form id="admin-event-form">
-          <label>
-            Titre de l'événement
-            <input type="text" id="input-title" required>
-          </label>
-          <label>
-            Date & Heure
-            <input type="text" id="input-date" required>
-          </label>
-          <label>
-            URL de l'image
-            <input type="url" id="input-image" required>
-          </label>
-          <label>
-            Description
-            <textarea id="input-desc" rows="3" required></textarea>
-          </label>
-          <div class="admin-actions">
-            <button type="submit" class="button primary">💾 Publier l'événement</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="tab-content" id="tab-add-game">
-        <form id="admin-add-game-form">
-          <label>
-            Nom du jeu
-            <input type="text" id="new-game-title" placeholder="Ex: Catan" required>
-          </label>
-          <div class="two">
-            <label>
-              Genre
-              <select id="new-game-genre" required>
-                <option value="Stratégie">Stratégie</option>
-                <option value="Ambiance">Ambiance</option>
-                <option value="Coopératif">Coopératif</option>
-                <option value="Gestion">Gestion</option>
-              </select>
-            </label>
-            <label>
-              Joueurs (ex: 2-4)
-              <input type="text" id="new-game-players" placeholder="Ex: 2-4" required>
-            </label>
-          </div>
-          <div class="two">
-            <label>
-              Durée (minutes)
-              <input type="number" id="new-game-duration" placeholder="Ex: 60" required>
-            </label>
-            <label>
-              URL de l'image
-              <input type="url" id="new-game-image" placeholder="https://..." required>
-            </label>
-          </div>
-          <label>
-            Description du jeu
-            <textarea id="new-game-desc" rows="3" placeholder="Présentation rapide du jeu..." required></textarea>
-          </label>
-          <div class="admin-actions">
-            <button type="submit" class="button primary">➕ Ajouter au Catalogue</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="tab-content" id="tab-bookings">
-        <div class="calendar-filter">
-          <label>Filtrer les emprunts actifs à cette date :
-            <input type="date" id="calendar-date-picker">
-          </label>
-        </div>
-        <div class="admin-list" id="admin-bookings-list"></div>
+  <!-- Modale Espace Admin -->
+  <div id="adminModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="adminModal">×</button>
+      <p class="eyebrow">ADMINISTRATION</p>
+      <h2>Gestion des Réservations</h2>
+      <div id="adminReservations" class="grid" style="margin-top:20px;">
+        <p class="loading">Chargement des demandes…</p>
       </div>
     </div>
   </div>
 
-  <footer>
-    <span>© 2026 KBG Ludothèque — Tous droits réservés</span>
-    <span>Powered by Supabase Realtime</span>
-  </footer>
+  <footer><span>KBG / Association ludique</span><span>Catalogue participatif</span></footer>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
