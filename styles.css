@@ -1,7 +1,7 @@
 :root {
   --bg: #070a0e;
-  --panel: #0d121a;
-  --panel-hover: #131b26;
+  --panel: #0b1016; /* Retour à la couleur d'origine */
+  --panel-hover: #121922;
   --line: #1c2635;
   --text: #ecefe6;
   --muted: #7e8b9b;
@@ -67,6 +67,21 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
+
+/* Formulaires d'ajout admin */
+.admin-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.admin-form-grid input, .admin-form-grid select, .admin-form-grid textarea {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 100%;
+}
 
 /* Cards Jeux */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
