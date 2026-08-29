@@ -1,56 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500;700&family=Manrope:wght@400;600;700;800&display=swap');
 
-/* ==========================================================================
-   KBG — Refonte Graphique Thème Clair, Solaire & Modernisé
-   - Couleur principale dominante : Jaune Pastel du Logo (#fce38a / #f7e199)
-   - Accent secondaire dynamique : Rose bonbon & Bleu pastel
-   - Composant Hero retravaillé : Carte 3D / Badge illustratif dynamique (Adieu le rond basique !)
-   ========================================================================== */
-
 :root {
-  /* Palette Principale */
-  --bg: #fdf6e2;              /* Fond général jaune crème très doux */
-  --bg-subtle: #f9eed0;       /* Nuance secondaire légèrement plus chaude */
-  
-  /* Panels & Cartes */
-  --panel: #fffbf0;           /* Surface principale clair */
-  --panel-card: #fdf3d6;      /* Fond de carte jeu jaune pastel structuré */
-  --panel-header: #fce38a;     /* Jaune pastel signature */
+  --bg: #fdf6e2;              
+  --bg-subtle: #f9eed0;       
+  --panel: #fffbf0;           
+  --panel-card: #fdf3d6;      
+  --panel-header: #fce38a;     
 
-  /* Texte & Contrastes (Violet profond / Encre sombre) */
-  --text: #1c0e3a;            /* Violet très sombre ultra lisible */
-  --text-muted: #534373;      /* Violet adouci */
+  --text: #1c0e3a;            
+  --text-muted: #534373;      
   
-  /* Lignes de séparation & Bordures */
   --line: rgba(28, 14, 58, 0.10);
   --line-strong: rgba(28, 14, 58, 0.20);
 
-  /* Couleurs d'Accents */
-  --accent-yellow: #fce38a;       /* Jaune pastel pur */
-  --accent-yellow-dark: #e8c65d;  /* Jaune pastel soutenu */
-  --accent-pink: #e752a1;         /* Rose bonbon (Actions principales) */
+  --accent-yellow: #fce38a;       
+  --accent-pink: #e752a1;         
   --accent-pink-hover: #d13d8c;   
-  --accent-blue: #4a72b8;         /* Bleu contrasté pour badges / liens */
+  --accent-blue: #4a72b8;         
   --accent-blue-light: #e3eeff;   
-  --accent-purple: #8b5cf6;
-  --accent-purple-light: #f3e8ff;
 
-  /* Ombres & Visual FX */
-  --shadow-sm: 0 4px 12px rgba(28, 14, 58, 0.04);
-  --shadow: 0 12px 32px rgba(28, 14, 58, 0.08);
-  --shadow-hover: 0 20px 40px rgba(28, 14, 58, 0.14);
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 8px;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  scroll-behavior: smooth;
-}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
@@ -63,22 +38,12 @@ body {
   line-height: 1.5;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
+a { color: inherit; text-decoration: none; transition: all 0.2s ease; }
 
-a:hover {
-  color: var(--accent-pink);
-}
-
-/* ==========================================================================
-   En-tête & Navigation
-   ========================================================================== */
-.topbar, header {
+/* Topbar */
+.topbar {
   height: 76px;
-  border-bottom: 1.5px solid var(--line-strong);
+  border-bottom: 2px solid var(--text);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -87,103 +52,72 @@ a:hover {
   top: 0;
   background: rgba(252, 227, 138, 0.95);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   z-index: 100;
-  box-shadow: var(--shadow-sm);
 }
 
 .brand {
   display: flex;
   gap: 12px;
   align-items: center;
-  font: 800 17px 'DM Mono', monospace;
+  font: 800 18px 'DM Mono', monospace;
   color: var(--text);
-  letter-spacing: -0.02em;
-}
-
-.brand-logo {
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-  border-radius: 50%;
-  border: 2px solid var(--text);
-  background: var(--panel);
 }
 
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   background: var(--text);
   color: var(--accent-yellow);
   font-weight: 800;
-  font-size: 17px;
+  font-size: 20px;
+  border: 2px solid var(--text);
 }
 
-nav {
-  display: flex;
-  gap: 24px;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 700;
-}
+nav { display: flex; gap: 20px; font-size: 14px; font-weight: 700; }
+nav a { padding: 8px 16px; border-radius: var(--radius-sm); }
+nav a:hover { background: rgba(28, 14, 58, 0.08); }
 
-nav a {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-}
-
-nav a:hover {
-  background: rgba(28, 14, 58, 0.08);
-}
-
-/* ==========================================================================
-   Section Hero (Nouveau composant visuel moderne)
-   ========================================================================== */
+/* Hero & Dynamic Event Panel */
 .hero {
-  min-height: 520px;
-  padding: 80px 8vw;
+  min-height: 540px;
+  padding: 70px 8vw;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 60px;
+  gap: 50px;
   background: linear-gradient(180deg, var(--accent-yellow) 0%, var(--bg) 100%);
-  border-bottom: 1.5px solid var(--line);
+  border-bottom: 2px solid var(--text);
   position: relative;
   overflow: hidden;
 }
 
-.hero-text {
-  max-width: 580px;
-  z-index: 2;
-}
+.hero-text { max-width: 560px; z-index: 2; }
 
 .eyebrow {
   font: 700 12px 'DM Mono', monospace;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   color: var(--text);
   text-transform: uppercase;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   background: #ffffff;
-  padding: 6px 16px;
+  padding: 6px 14px;
   border-radius: 30px;
   border: 1.5px solid var(--text);
   box-shadow: 0 2px 0 var(--text);
 }
 
 h1 {
-  font-size: clamp(38px, 5vw, 68px);
+  font-size: clamp(38px, 4.8vw, 64px);
   line-height: 1.08;
   margin: 12px 0 20px;
   letter-spacing: -0.04em;
   font-weight: 800;
-  color: var(--text);
 }
 
 h1 span {
@@ -191,80 +125,90 @@ h1 span {
   background: rgba(231, 82, 161, 0.12);
   padding: 2px 10px;
   border-radius: 12px;
-  display: inline-block;
 }
 
 .hero-copy {
   color: var(--text-muted);
   font-size: 16px;
   line-height: 1.7;
-  margin-bottom: 34px;
+  margin-bottom: 30px;
   font-weight: 500;
 }
 
-/* 
-   REMPLACEMENT DU ROND PAR UN COMPOSANT DE PRÉSENTATION 3D 
-   Bannière visuelle stylisée pour mettre en valeur les jeux KBG
-*/
-.hero-visual, .orb {
-  /* Si le HTML garde la classe .orb ou .hero-visual, le style s'applique ! */
+/* PANNEAU ÉVÉNEMENT */
+.hero-visual {
   position: relative;
-  width: 340px;
-  height: 380px;
+  width: 360px;
   background: var(--panel);
   border: 2.5px solid var(--text);
   border-radius: var(--radius-lg);
   box-shadow: 8px 8px 0 var(--text);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 24px;
-  transform: rotate(2.5deg);
+  gap: 14px;
+  padding: 20px;
+  transform: rotate(2deg);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   z-index: 2;
 }
 
-.hero-visual:hover, .orb:hover {
+.hero-visual:hover {
   transform: rotate(0deg) scale(1.02);
   box-shadow: 12px 12px 0 var(--text);
 }
 
-/* Désactive l'ancien sous-élément .orb div pour le réutiliser comme carte teaser */
-.orb div {
-  width: 100%;
-  height: 180px;
-  border: 2px solid var(--text);
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, var(--accent-yellow) 0%, #f7e199 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 54px;
-  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.5);
-}
-
-.orb::before {
-  content: "🎲 PROCHAIN ÉVÉNEMENT";
+.event-badge {
   font: 700 11px 'DM Mono', monospace;
   background: var(--accent-pink);
-  color: #fff;
-  padding: 6px 12px;
+  color: #ffffff;
+  padding: 6px 14px;
   border-radius: 20px;
   border: 1.5px solid var(--text);
   align-self: flex-start;
+  box-shadow: 0 2px 0 var(--text);
 }
 
-.orb::after {
-  content: "Soirée Jeux de Société • Rejoignez la communauté KBG !";
-  font-size: 13px;
-  font-weight: 700;
+.event-image-container {
+  width: 100%;
+  height: 190px;
+  border: 2px solid var(--text);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--panel-card);
+}
+
+.event-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.hero-visual:hover .event-image-container img {
+  transform: scale(1.05);
+}
+
+.event-details h3 {
+  margin: 6px 0 4px;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--text);
-  line-height: 1.4;
 }
 
-/* ==========================================================================
-   Boutons & Actions
-   ========================================================================== */
+#event-date {
+  font: 700 12.5px 'DM Mono', monospace;
+  color: var(--accent-pink);
+  margin: 2px 0 8px;
+}
+
+.event-details p {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Boutons */
 .button {
   display: inline-flex;
   align-items: center;
@@ -272,7 +216,7 @@ h1 span {
   gap: 8px;
   border-radius: var(--radius-md);
   border: 2px solid var(--text);
-  padding: 14px 28px;
+  padding: 12px 24px;
   font-weight: 700;
   font-size: 14px;
   background: var(--panel);
@@ -282,72 +226,18 @@ h1 span {
   box-shadow: 0 4px 0 var(--text);
 }
 
-.button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 0 var(--text);
-  background: var(--bg-subtle);
-}
+.button:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--text); }
+.button:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--text); }
+.button.primary { background: var(--accent-pink); color: #ffffff; }
+.button.primary:hover { background: var(--accent-pink-hover); }
 
-.button:active {
-  transform: translateY(2px);
-  box-shadow: 0 2px 0 var(--text);
-}
-
-/* Bouton principal mis en valeur en Rose Bonbon */
-.button.primary {
-  background: var(--accent-pink);
-  color: #ffffff;
-  border-color: var(--text);
-  font-weight: 800;
-}
-
-.button.primary:hover {
-  background: var(--accent-pink-hover);
-  color: #ffffff;
-}
-
-.text-button {
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--text);
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.text-button:hover {
-  color: var(--accent-pink);
-}
-
-/* ==========================================================================
-   Sections, Grilles & Filtres
-   ========================================================================== */
-.section {
-  padding: 80px 8vw;
-  border-top: 1.5px solid var(--line-strong);
-}
-
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 35px;
-}
-
-h2 {
-  font-size: 38px;
-  letter-spacing: -0.03em;
-  margin: 6px 0 0;
-  font-weight: 800;
-  color: var(--text);
-}
+/* Grid & Cards */
+.section { padding: 80px 8vw; border-top: 2px solid var(--text); }
+.section-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 35px; }
+h2 { font-size: 36px; letter-spacing: -0.03em; margin: 6px 0 0; font-weight: 800; }
 
 .counter {
   font: 700 13px 'DM Mono', monospace;
-  color: var(--text);
   background: var(--accent-yellow);
   padding: 6px 14px;
   border-radius: 20px;
@@ -355,53 +245,26 @@ h2 {
   box-shadow: 0 2px 0 var(--text);
 }
 
-.toolbar {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 36px;
-}
+.toolbar { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 14px; margin-bottom: 36px; }
 
-.toolbar input, 
-.toolbar select, 
-.panel input, 
-.panel select, 
-textarea {
+input, select, textarea {
   width: 100%;
   background: var(--panel);
   border: 2px solid var(--text);
   color: var(--text);
-  padding: 14px 18px;
+  padding: 12px 16px;
   border-radius: var(--radius-md);
   font: 600 14px 'Manrope', sans-serif;
-  transition: all 0.2s ease;
   box-shadow: 0 3px 0 rgba(28, 14, 58, 0.08);
 }
 
-.toolbar input::placeholder,
-.panel input::placeholder,
-textarea::placeholder {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
-input:focus, 
-select:focus, 
-textarea:focus {
+input:focus, select:focus, textarea:focus {
   outline: none;
-  border-color: var(--text);
   background: #ffffff;
   box-shadow: 0 0 0 3px rgba(231, 82, 161, 0.3), 0 4px 0 var(--text);
 }
 
-/* ==========================================================================
-   Cartes de Jeux (Catalogue)
-   ========================================================================== */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-  gap: 28px;
-}
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px; }
 
 .card {
   background: var(--panel);
@@ -414,199 +277,66 @@ textarea:focus {
   flex-direction: column;
 }
 
-.card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 0 var(--text);
-}
-
-.cover {
-  height: 210px;
-  background: var(--panel-card);
-  display: grid;
-  place-items: center;
-  border-bottom: 2px solid var(--text);
-  overflow: hidden;
-  position: relative;
-}
-
-.cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover span {
-  font-size: 52px;
-  color: var(--text);
-  transition: transform 0.3s ease;
-}
-
-.card:hover .cover span {
-  transform: scale(1.15) rotate(-4deg);
-}
-
-.card-body {
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-}
+.card:hover { transform: translateY(-6px); box-shadow: 0 12px 0 var(--text); }
+.cover { height: 180px; background: var(--panel-card); display: grid; place-items: center; border-bottom: 2px solid var(--text); font-size: 52px; }
+.card-body { padding: 20px; display: flex; flex-direction: column; flex: 1; }
 
 .tag {
   font: 700 11px 'DM Mono', monospace;
-  letter-spacing: 0.1em;
-  color: var(--text);
   background: var(--accent-yellow);
-  display: inline-block;
   padding: 4px 10px;
   border-radius: 6px;
   width: fit-content;
   text-transform: uppercase;
-  margin: 0 0 10px;
   border: 1.5px solid var(--text);
+  margin-bottom: 10px;
 }
 
-.card h3 {
-  font-size: 21px;
-  margin: 4px 0 6px;
-  font-weight: 800;
-  color: var(--text);
+.card h3 { font-size: 20px; margin: 4px 0 2px; font-weight: 800; }
+.publisher { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1.5px dashed var(--line-strong); border-bottom: 1.5px dashed var(--line-strong); padding: 10px 0; margin: 10px 0 14px; }
+.meta span { font: 700 11px 'DM Mono', monospace; background: var(--accent-blue-light); border: 1px solid var(--accent-blue); padding: 3px 8px; border-radius: 14px; }
+.desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.5; }
+
+/* Reservation */
+.reservation { display: grid; grid-template-columns: 1fr 1.1fr; gap: 5vw; background: var(--bg-subtle); border-radius: var(--radius-lg); }
+.panel { background: var(--panel); border: 2.5px solid var(--text); border-radius: var(--radius-lg); padding: 32px; display: grid; gap: 18px; box-shadow: 6px 6px 0 var(--text); }
+.panel label { display: grid; gap: 6px; font: 700 11px 'DM Mono', monospace; text-transform: uppercase; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.notice { margin-top: 20px; border-radius: var(--radius-md); padding: 16px; background: var(--accent-yellow); border: 2px solid var(--text); font-size: 13.5px; font-weight: 700; box-shadow: 0 4px 0 var(--text); }
+
+/* Modal Admin */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(28, 14, 58, 0.6);
+  backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
 }
 
-.publisher, .desc {
-  color: var(--text-muted);
-  font-size: 13.5px;
-  line-height: 1.6;
-}
+.modal-backdrop.active { opacity: 1; pointer-events: all; }
+.modal-content { width: 90%; max-width: 520px; transform: translateY(20px); transition: transform 0.3s ease; }
+.modal-backdrop.active .modal-content { transform: translateY(0); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { margin: 0; font-size: 20px; font-weight: 800; }
+.close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text); }
 
-.meta {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  border-top: 1.5px dashed var(--line-strong);
-  border-bottom: 1.5px dashed var(--line-strong);
-  padding: 12px 0;
-  margin: 18px 0;
-}
-
-.meta span {
-  font: 700 11.5px 'DM Mono', monospace;
-  color: var(--text);
-  background: var(--accent-blue-light);
-  border: 1px solid var(--accent-blue);
-  padding: 3px 10px;
-  border-radius: 20px;
-}
-
-/* ==========================================================================
-   Réservations & Formulaires
-   ========================================================================== */
-.reservation {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 6vw;
-  background: var(--bg-subtle);
-  border-radius: var(--radius-lg);
-}
-
-.reservation-copy p:not(.eyebrow) {
-  color: var(--text-muted);
-  line-height: 1.8;
-  font-size: 15.5px;
-}
-
-.panel {
-  background: var(--panel);
-  border: 2.5px solid var(--text);
-  border-radius: var(--radius-lg);
-  padding: 36px;
-  display: grid;
-  gap: 20px;
-  box-shadow: 6px 6px 0 var(--text);
-}
-
-.panel label {
-  display: grid;
-  gap: 8px;
-  font: 700 11px 'DM Mono', monospace;
-  color: var(--text);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.form-message {
-  font-size: 13px;
-  color: var(--accent-pink);
-  min-height: 18px;
-  font-weight: 700;
-}
-
-.empty, .loading {
-  border: 2px dashed var(--line-strong);
-  padding: 56px;
-  text-align: center;
-  color: var(--text-muted);
-  border-radius: var(--radius-md);
-  background: var(--panel);
-}
-
-/* ==========================================================================
-   Avis & Notifications
-   ========================================================================== */
-.stars {
-  color: #e6a100;
-  letter-spacing: 2px;
-}
-
-.notice {
-  border-radius: var(--radius-md);
-  padding: 16px;
-  background: var(--accent-yellow);
-  border: 2px solid var(--text);
-  color: var(--text);
-  font-size: 13.5px;
-  font-weight: 700;
-  box-shadow: 0 4px 0 var(--text);
-}
-
-/* ==========================================================================
-   Pied de page (Footer)
-   ========================================================================== */
+/* Footer */
 footer {
-  padding: 40px 8vw;
+  padding: 30px 8vw;
   border-top: 2.5px solid var(--text);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: var(--text);
+  display: flex; justify-content: space-between; align-items: center;
   font: 700 12.5px 'DM Mono', monospace;
   background: var(--accent-yellow);
 }
 
-/* ==========================================================================
-   Adaptabilité Mobile (Responsive)
-   ========================================================================== */
 @media (max-width: 900px) {
   nav { display: none; }
-  .hero { 
-    padding: 50px 6vw; 
-    flex-direction: column; 
-    align-items: flex-start;
-  }
-  .hero-visual, .orb { 
-    width: 100%; 
-    height: 320px; 
-    transform: none; 
-    margin-top: 20px;
-  }
-  .toolbar, .reservation { grid-template-columns: 1fr; }
-  .section { padding: 50px 6vw; }
-  .two { grid-template-columns: 1fr; }
-  h2 { font-size: 30px; }
+  .hero { flex-direction: column; align-items: flex-start; padding: 40px 6vw; }
+  .hero-visual { width: 100%; transform: none; }
+  .toolbar, .reservation, .two { grid-template-columns: 1fr; }
 }
