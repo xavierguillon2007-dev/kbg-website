@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>KBG — Le Club & Ludothèque des Jeux de Société</title>
+  <title>KBG — Emprunt & Ludothèque de Jeux de Société</title>
   <link rel="stylesheet" href="styles.css">
   <!-- SDK Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -19,7 +19,7 @@
     <nav>
       <a href="#catalogue">Catalogue</a>
       <a href="#evenement">Événement</a>
-      <a href="#reservation">Réservation</a>
+      <a href="#reservation">Emprunter un jeu</a>
     </nav>
     <button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>
   </header>
@@ -28,13 +28,13 @@
   <section class="hero" id="evenement">
     <div class="hero-text">
       <div class="eyebrow">✨ Club & Ludothèque KBG</div>
-      <h1>Jouez, découvrez & <span>partagez !</span></h1>
+      <h1>Jouez, découvrez & <span>emportez !</span></h1>
       <p class="hero-copy">
-        Rejoignez-nous chaque semaine pour découvrir de nouveaux jeux de société, participer à nos tournois conviviaux et réserver vos tables en ligne.
+        Rejoignez-nous chaque semaine pour découvrir de nouveaux jeux de société, participer à nos événements et réserver vos emprunts de jeux à emporter chez vous.
       </p>
       <div style="display: flex; gap: 14px; flex-wrap: wrap;">
         <a href="#catalogue" class="button primary">🎲 Voir le catalogue</a>
-        <a href="#reservation" class="button">📅 Réserver une table</a>
+        <a href="#reservation" class="button">📦 Réserver un emprunt</a>
       </div>
     </div>
 
@@ -91,15 +91,15 @@
     <div class="grid" id="games-grid"></div>
   </section>
 
-  <!-- Section Réservation -->
+  <!-- Section Emprunt / Réservation -->
   <section id="reservation" class="section reservation-section">
     <div class="reservation">
       <div class="reservation-copy">
-        <div class="eyebrow">📅 Réservez votre soirée</div>
-        <h2>Une table pour votre groupe ?</h2>
-        <p>Réservez gratuitement votre espace de jeu et pré-commandez vos consommations auprès de l'équipe KBG.</p>
+        <div class="eyebrow">📦 Emporter un jeu chez vous</div>
+        <h2>Réservez vos dates d'emprunt</h2>
+        <p>Sélectionnez les dates où vous souhaitez emprunter un ou plusieurs jeux. Le retrait et le retour s'effectuent aux horaires d'ouverture du club.</p>
         <div class="notice">
-          ⚡ Les tables sont réservées pendant 30 min à compter de votre heure d'arrivée prévisionnelle.
+          ⚡ Les emprunts s'effectuent pour une durée maximale de 14 jours consécutifs.
         </div>
       </div>
 
@@ -109,28 +109,25 @@
           <input type="text" id="book-name" placeholder="Ex: Alex Dupont" required>
         </label>
 
-        <div class="two">
-          <label>
-            DATE
-            <input type="date" id="book-date" required>
-          </label>
-          <label>
-            HEURE
-            <input type="time" id="book-time" required>
-          </label>
-        </div>
-
         <label>
-          NOMBRE DE JOUEURS
-          <select id="book-players" required>
-            <option value="2">2 Joueurs</option>
-            <option value="4">4 Joueurs</option>
-            <option value="6">6 Joueurs</option>
-            <option value="8+">8+ Joueurs (Grand groupe)</option>
+          JEU À EMPRUNTER
+          <select id="book-game" required>
+            <option value="">-- Sélectionnez un jeu --</option>
           </select>
         </label>
 
-        <button type="submit" class="button primary">Valider ma réservation</button>
+        <div class="two">
+          <label>
+            DATE DE DÉBUT
+            <input type="date" id="book-start-date" required>
+          </label>
+          <label>
+            DATE DE RETOUR
+            <input type="date" id="book-end-date" required>
+          </label>
+        </div>
+
+        <button type="submit" class="button primary">Valider la réservation</button>
       </form>
     </div>
   </section>
@@ -190,7 +187,7 @@
       <div class="admin-tabs">
         <button class="tab-btn active" data-tab="tab-event">📢 Événement</button>
         <button class="tab-btn" data-tab="tab-add-game">➕ Créer un Jeu</button>
-        <button class="tab-btn" data-tab="tab-bookings">📅 Calendrier Réservations</button>
+        <button class="tab-btn" data-tab="tab-bookings">📅 Suivi Emprunts</button>
       </div>
 
       <!-- Onglet 1 : Modifier le Panneau Événement -->
@@ -260,10 +257,10 @@
         </form>
       </div>
 
-      <!-- Onglet 3 : Calendrier des Réservations -->
+      <!-- Onglet 3 : Calendrier des Emprunts -->
       <div class="tab-content" id="tab-bookings">
         <div class="calendar-filter">
-          <label>Filtrer par date :
+          <label>Filtrer les emprunts actifs à cette date :
             <input type="date" id="calendar-date-picker">
           </label>
         </div>
