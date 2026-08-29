@@ -21,7 +21,11 @@
       <a href="#evenement">Événement</a>
       <a href="#reservation">Emprunter un jeu</a>
     </nav>
-    <button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>
+    <div class="user-nav">
+      <!-- Zone dynamic remplie en JS (Boutons Connexion ou Profil / Déconnexion) -->
+      <button class="button" id="open-auth-btn">👤 Se connecter</button>
+      <button class="button primary" id="open-admin-btn" style="display: none;">🔑 Espace Admin</button>
+    </div>
   </header>
 
   <!-- Hero & Panneau d'Événement -->
@@ -49,7 +53,7 @@
       <div class="event-details">
         <h3 id="event-title">Chargement de l'événement...</h3>
         <p id="event-date">📅 --/--/----</p>
-        <p id="event-desc">Connexion en cours aux données temps réel...</p>
+        <p id="event-desc">Connexion en cours...</p>
       </div>
     </div>
   </section>
@@ -87,7 +91,6 @@
       </select>
     </div>
 
-    <!-- Grille dynamique des jeux -->
     <div class="grid" id="games-grid"></div>
   </section>
 
@@ -104,6 +107,10 @@
       </div>
 
       <form class="panel" id="booking-form">
+        <div id="auth-warning" class="notice" style="background: #fee2e2; border-color: #ef4444; margin-top:0; display:none;">
+          🔒 Vous devez être connecté à votre compte pour effectuer une réservation.
+        </div>
+
         <label>
           NOM & PRÉNOM
           <input type="text" id="book-name" placeholder="Ex: Alex Dupont" required>
@@ -127,12 +134,57 @@
           </label>
         </div>
 
-        <button type="submit" class="button primary">Valider la réservation</button>
+        <button type="submit" class="button primary" id="submit-booking-btn">Valider la réservation</button>
       </form>
     </div>
   </section>
 
-  <!-- MODAL : Fiche Jeu & Avis Spécifiques -->
+  <!-- MODAL : Auth (Connexion / Inscription) -->
+  <div class="modal-backdrop" id="auth-modal">
+    <div class="modal-content panel">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">🔑 Connexion à votre compte</h3>
+        <button class="close-btn" id="close-auth-modal">&times;</button>
+      </div>
+
+      <div class="admin-tabs">
+        <button class="tab-btn active" id="btn-show-login">Connexion</button>
+        <button class="tab-btn" id="btn-show-signup">Créer un compte</button>
+      </div>
+
+      <!-- Formulaire Connexion -->
+      <form id="login-form" class="auth-form">
+        <label>
+          EMAIL
+          <input type="email" id="login-email" placeholder="votre@email.com" required>
+        </label>
+        <label>
+          MOT DE PASSE
+          <input type="password" id="login-password" placeholder="••••••••" required>
+        </label>
+        <button type="submit" class="button primary">Se connecter</button>
+      </form>
+
+      <!-- Formulaire Inscription -->
+      <form id="signup-form" class="auth-form" style="display: none;">
+        <label>
+          NOM COMPLET
+          <input type="text" id="signup-name" placeholder="Alex Dupont" required>
+        </label>
+        <label>
+          EMAIL
+          <input type="email" id="signup-email" placeholder="votre@email.com" required>
+        </label>
+        <label>
+          MOT DE PASSE
+          <input type="password" id="signup-password" placeholder="••••••••" required minlength="6">
+        </label>
+        <button type="submit" class="button primary">S'inscrire</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL : Fiche Jeu & Avis -->
   <div class="modal-backdrop" id="game-modal">
     <div class="modal-content panel">
       <div class="modal-header">
@@ -153,7 +205,7 @@
 
         <hr style="border: 0; border-top: 1.5px solid var(--text); margin: 20px 0;">
 
-        <h4>💬 Avis des joueurs pour ce jeu</h4>
+        <h4>💬 Avis des joueurs</h4>
         <div class="admin-list" id="modal-game-reviews"></div>
 
         <form id="add-game-review-form" style="margin-top: 15px; display: grid; gap: 10px;">
@@ -183,14 +235,12 @@
         <button class="close-btn" id="close-admin-btn">&times;</button>
       </div>
 
-      <!-- Onglets Admin -->
       <div class="admin-tabs">
         <button class="tab-btn active" data-tab="tab-event">📢 Événement</button>
         <button class="tab-btn" data-tab="tab-add-game">➕ Créer un Jeu</button>
         <button class="tab-btn" data-tab="tab-bookings">📅 Suivi Emprunts</button>
       </div>
 
-      <!-- Onglet 1 : Modifier le Panneau Événement -->
       <div class="tab-content active" id="tab-event">
         <form id="admin-event-form">
           <label>
@@ -215,7 +265,6 @@
         </form>
       </div>
 
-      <!-- Onglet 2 : Créer un Nouveau Jeu -->
       <div class="tab-content" id="tab-add-game">
         <form id="admin-add-game-form">
           <label>
@@ -257,7 +306,6 @@
         </form>
       </div>
 
-      <!-- Onglet 3 : Calendrier des Emprunts -->
       <div class="tab-content" id="tab-bookings">
         <div class="calendar-filter">
           <label>Filtrer les emprunts actifs à cette date :
