@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KBG — Le Club & Ludothèque des Jeux de Société</title>
   <link rel="stylesheet" href="styles.css">
-  <!-- Supabase JS Client (v2 CDN) -->
+  <!-- Client SDK Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -20,12 +20,13 @@
       <a href="#catalogue">Catalogue</a>
       <a href="#evenement">Événement</a>
       <a href="#reservation">Réservation</a>
+      <a href="#avis">Avis</a>
     </nav>
     <button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>
   </header>
 
-  <!-- Section Hero -->
-  <section class="hero">
+  <!-- Section Hero & Panneau d'Événement Temps Réel -->
+  <section class="hero" id="evenement">
     <div class="hero-text">
       <div class="eyebrow">✨ Club & Ludothèque KBG</div>
       <h1>Jouez, découvrez & <span>partagez !</span></h1>
@@ -49,88 +50,49 @@
       <div class="event-details">
         <h3 id="event-title">Chargement de l'événement...</h3>
         <p id="event-date">📅 --/--/----</p>
-        <p id="event-desc">Connexion en cours aux données en temps réel...</p>
+        <p id="event-desc">Connexion en cours aux données temps réel...</p>
       </div>
     </div>
   </section>
 
-  <!-- Section Catalogue -->
+  <!-- Section Catalogue de Jeux (Vide, prête à accueillir vos jeux) -->
   <section id="catalogue" class="section">
     <div class="section-head">
       <div>
         <div class="eyebrow">📚 Collection KBG</div>
         <h2>Catalogue des Jeux</h2>
       </div>
-      <span class="counter">240+ Jeux Disponibles</span>
+      <span class="counter" id="games-counter">0 Jeu Disponible</span>
     </div>
 
     <div class="toolbar">
-      <input type="text" placeholder="🔍 Rechercher un jeu...">
-      <select>
+      <input type="text" id="search-input" placeholder="🔍 Rechercher un jeu...">
+      <select id="genre-select">
         <option value="">Tous les genres</option>
         <option value="strategie">Stratégie</option>
         <option value="ambiance">Ambiance</option>
         <option value="coop">Coopératif</option>
+        <option value="gestion">Gestion</option>
       </select>
-      <select>
-        <option value="">Joueurs</option>
+      <select id="players-select">
+        <option value="">Nombre de joueurs</option>
         <option value="2">2 Joueurs</option>
         <option value="3-5">3 à 5 Joueurs</option>
         <option value="6+">6+ Joueurs</option>
       </select>
-      <select>
-        <option value="">Durée</option>
+      <select id="duration-select">
+        <option value="">Durée de jeu</option>
         <option value="30">&lt; 30 min</option>
         <option value="60">30 - 60 min</option>
         <option value="90">+ 60 min</option>
       </select>
     </div>
 
-    <div class="grid">
-      <article class="card">
-        <div class="cover"><span>🎲</span></div>
-        <div class="card-body">
-          <span class="tag">Stratégie</span>
-          <h3>Les Ruines d'Arnak</h3>
-          <p class="publisher">Édité par IELLO</p>
-          <div class="meta">
-            <span>⏱️ 30 min/joueur</span>
-            <span>👥 1-4 Joueurs</span>
-            <span>⭐ 4.9/5</span>
-          </div>
-          <p class="desc">Menez votre expédition pour explorer une île inconnue et découvrir ses secrets enfouis.</p>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="cover"><span>🏰</span></div>
-        <div class="card-body">
-          <span class="tag">Gestion</span>
-          <h3>Carcassonne</h3>
-          <p class="publisher">Édité par Z-Man Games</p>
-          <div class="meta">
-            <span>⏱️ 45 min</span>
-            <span>👥 2-5 Joueurs</span>
-            <span>⭐ 4.8/5</span>
-          </div>
-          <p class="desc">Développez le paysage médiéval autour de la cité fortifiée de Carcassonne.</p>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="cover"><span>🚀</span></div>
-        <div class="card-body">
-          <span class="tag">Coopératif</span>
-          <h3>The Crew</h3>
-          <p class="publisher">Édité par IELLO</p>
-          <div class="meta">
-            <span>⏱️ 20 min</span>
-            <span>👥 2-5 Joueurs</span>
-            <span>⭐ 4.9/5</span>
-          </div>
-          <p class="desc">Embarquez pour une sous-mission spatiale passionnante dans ce jeu de plis coopératif.</p>
-        </div>
-      </article>
+    <!-- Grille de jeux sans données codées en dur -->
+    <div class="grid" id="games-grid">
+      <div class="empty-state" id="empty-games">
+        <p>🎲 Aucun jeu sélectionné pour le moment. Ajoutez vos propres jeux via la base de données ou le script.</p>
+      </div>
     </div>
   </section>
 
@@ -140,32 +102,32 @@
       <div class="reservation-copy">
         <div class="eyebrow">📅 Réservez votre soirée</div>
         <h2>Une table pour votre groupe ?</h2>
-        <p>Réservez gratuitement votre espace de jeu et pré-commandez vos consommations ou vos jeux préférés auprès de l'équipe KBG.</p>
+        <p>Réservez gratuitement votre espace de jeu et pré-commandez vos consommations auprès de l'équipe KBG.</p>
         <div class="notice">
           ⚡ Les tables sont réservées pendant 30 min à compter de votre heure d'arrivée prévisionnelle.
         </div>
       </div>
 
-      <form class="panel">
+      <form class="panel" id="booking-form">
         <label>
           NOM & PRÉNOM
-          <input type="text" placeholder="Ex: Alex Dupont" required>
+          <input type="text" id="book-name" placeholder="Ex: Alex Dupont" required>
         </label>
 
         <div class="two">
           <label>
             DATE
-            <input type="date" required>
+            <input type="date" id="book-date" required>
           </label>
           <label>
             HEURE
-            <input type="time" required>
+            <input type="time" id="book-time" required>
           </label>
         </div>
 
         <label>
           NOMBRE DE JOUEURS
-          <select required>
+          <select id="book-players" required>
             <option value="2">2 Joueurs</option>
             <option value="4">4 Joueurs</option>
             <option value="6">6 Joueurs</option>
@@ -178,39 +140,118 @@
     </div>
   </section>
 
-  <!-- MODAL ADMIN TEMPS RÉEL -->
+  <!-- Section Avis & Témoignages (Rétablie) -->
+  <section id="avis" class="section">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">💬 La communauté s'exprime</div>
+        <h2>Avis & Témoignages</h2>
+      </div>
+      <button class="button primary" id="open-review-btn">✍️ Laisser un avis</button>
+    </div>
+
+    <!-- Liste des avis dynamiques -->
+    <div class="grid" id="reviews-grid">
+      <!-- Les avis des visiteurs/membres s'afficheront ici -->
+    </div>
+  </section>
+
+  <!-- MODAL / ESPACE ADMIN COMPLET -->
   <div class="modal-backdrop" id="admin-modal">
-    <div class="modal-content panel">
+    <div class="modal-content panel admin-panel">
       <div class="modal-header">
-        <h3>🔑 Admin — Gérer l'Événement Temps Réel</h3>
+        <h3>🔑 Dashboard Administration KBG</h3>
         <button class="close-btn" id="close-admin-btn">&times;</button>
       </div>
-      <p class="desc">Les modifications apportées ici seront mises à jour <strong>immédiatement</strong> sur le panneau sans recharger la page.</p>
 
-      <form id="admin-event-form">
+      <!-- Onglets Admin -->
+      <div class="admin-tabs">
+        <button class="tab-btn active" data-tab="tab-event">📢 Panneau Événement</button>
+        <button class="tab-btn" data-tab="tab-reviews">💬 Gestion des Avis</button>
+        <button class="tab-btn" data-tab="tab-bookings">📅 Réservations</button>
+      </div>
+
+      <!-- Onglet 1 : Modifier le Panneau Événement -->
+      <div class="tab-content active" id="tab-event">
+        <form id="admin-event-form">
+          <label>
+            Titre de l'événement
+            <input type="text" id="input-title" placeholder="Ex: Tournoi Catan" required>
+          </label>
+
+          <label>
+            Date & Heure
+            <input type="text" id="input-date" placeholder="Ex: Vendredi 12 Septembre • 19h00" required>
+          </label>
+
+          <label>
+            URL de l'image / Affiche
+            <input type="url" id="input-image" placeholder="Ex: https://images.unsplash.com/..." required>
+          </label>
+
+          <label>
+            Description
+            <textarea id="input-desc" rows="3" placeholder="Description de l'événement..." required></textarea>
+          </label>
+
+          <div class="admin-actions">
+            <button type="button" class="button" class="cancel-admin-btn">Annuler</button>
+            <button type="submit" class="button primary">💾 Publier en temps réel</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Onglet 2 : Modération des Avis -->
+      <div class="tab-content" id="tab-reviews">
+        <p class="desc">Consultez et modérez la liste des avis soumis par les joueurs :</p>
+        <div class="admin-list" id="admin-reviews-list">
+          <!-- Chargement dynamique des avis pour suppression/modération -->
+        </div>
+      </div>
+
+      <!-- Onglet 3 : Liste des Réservations -->
+      <div class="tab-content" id="tab-bookings">
+        <p class="desc">Dernières demandes de réservation de tables :</p>
+        <div class="admin-list" id="admin-bookings-list">
+          <!-- Chargement dynamique des réservations -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Soumettre un Avis -->
+  <div class="modal-backdrop" id="review-modal">
+    <div class="modal-content panel">
+      <div class="modal-header">
+        <h3>✍️ Donner votre avis sur KBG</h3>
+        <button class="close-btn" id="close-review-btn">&times;</button>
+      </div>
+
+      <form id="add-review-form">
         <label>
-          Titre de l'événement
-          <input type="text" id="input-title" placeholder="Ex: Tournoi Catan" required>
+          Votre Nom / Pseudo
+          <input type="text" id="review-author" placeholder="Ex: Camille" required>
         </label>
 
         <label>
-          Date & Heure (texte libre)
-          <input type="text" id="input-date" placeholder="Ex: Vendredi 12 Septembre • 19h00" required>
+          Note sur 5 étoiles
+          <select id="review-rating" required>
+            <option value="5">⭐⭐⭐⭐⭐ (5/5)</option>
+            <option value="4">⭐⭐⭐⭐ (4/5)</option>
+            <option value="3">⭐⭐⭐ (3/5)</option>
+            <option value="2">⭐⭐ (2/5)</option>
+            <option value="1">⭐ (1/5)</option>
+          </select>
         </label>
 
         <label>
-          URL de l'image (Image / Affiche)
-          <input type="url" id="input-image" placeholder="Ex: https://images.unsplash.com/..." required>
+          Votre commentaire
+          <textarea id="review-comment" rows="3" placeholder="Qu'avez-vous pensé de l'ambiance, de la ludothèque... ?" required></textarea>
         </label>
 
-        <label>
-          Description
-          <textarea id="input-desc" rows="3" placeholder="Description courte de l'événement..." required></textarea>
-        </label>
-
-        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px;">
-          <button type="button" class="button" id="cancel-admin-btn">Annuler</button>
-          <button type="submit" class="button primary" id="save-event-btn">💾 Publier en temps réel</button>
+        <div class="admin-actions">
+          <button type="button" class="button" id="cancel-review-btn">Annuler</button>
+          <button type="submit" class="button primary">Envoyer mon avis</button>
         </div>
       </form>
     </div>
