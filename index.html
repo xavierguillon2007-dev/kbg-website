@@ -64,7 +64,7 @@
         <p>Choisissez un jeu et une période. Votre demande restera <strong>en attente</strong> jusqu'à sa validation par un administrateur.</p>
         <ol class="reservation-steps">
           <li><span>1</span>Sélectionnez un jeu et vos dates</li>
-          <li><span>2</span>Indiquez vos informations</li>
+          <li><span>2</span>Envoyez la demande</li>
           <li><span>3</span>Recevez la validation d'un administrateur</li>
         </ol>
       </div>
@@ -84,11 +84,6 @@
             <input id="dateEnd" name="date_end" type="date" required>
           </div>
         </div>
-        <div class="two">
-          <input name="first_name" maxlength="80" required placeholder="Prénom" aria-label="Prénom">
-          <input name="last_name" maxlength="80" required placeholder="Nom" aria-label="Nom">
-        </div>
-        <input name="promotion" maxlength="120" required placeholder="Promotion — ex. DFGSM2" aria-label="Promotion">
         <button class="button primary" type="submit">Envoyer la demande →</button>
         <p id="formMessage" class="form-message"></p>
       </form>
@@ -194,9 +189,22 @@
         if (!user) { msg.textContent = 'Connectez-vous dans votre espace membre avant de réserver.'; document.querySelector('#account').scrollIntoView({behavior:'smooth'}); return; }
         if (!f.get('game_id')) { msg.textContent = 'Sélectionnez un jeu.'; return; }
         if (f.get('date_end') < f.get('date_start')) { msg.textContent = 'La date de fin doit être postérieure ou égale à la date de début.'; return; }
+        
         msg.textContent = 'Envoi…';
         submitBtn.disabled = true;
-        const { error } = await supabase.from('reservations').insert({ id: crypto.randomUUID(), game_id: f.get('game_id'), first_name: f.get('first_name').trim(), last_name: f.get('last_name').trim(), promotion: f.get('promotion').trim(), date_start: f.get('date_start'), date_end: f.get('date_end'), status: 'pending', user_id: user.id });
+
+        const { error } = await supabase.from('reservations').insert({
+          id: crypto.randomUUID(),
+          game_id: f.get('game_id'),
+          first_name: currentProfile?.first_name || '',
+          last_name: currentProfile?.last_name || '',
+          promotion: currentProfile?.promotion || '',
+          date_start: f.get('date_start'),
+          date_end: f.get('date_end'),
+          status: 'pending',
+          user_id: user.id
+        });
+
         if (error) { console.error('Erreur création réservation :', error); msg.textContent = 'La demande n’a pas pu être envoyée : ' + error.message; return; }
         form.reset(); msg.textContent = '✓ Demande envoyée. Elle sera examinée par un administrateur.';
       } catch (err) {
@@ -236,9 +244,6 @@
       $('reservationLoginNotice').classList.add('hidden');
       $('reservationForm').classList.remove('reservation-locked');
       $('reservationForm').querySelectorAll('input,select,button').forEach(el=>el.disabled=false);
-      $('reservationForm').querySelector('[name=first_name]').placeholder=p?.first_name||'Prénom';
-      $('reservationForm').querySelector('[name=last_name]').placeholder=p?.last_name||'Nom';
-      $('reservationForm').querySelector('[name=promotion]').placeholder=p?.promotion||'Promotion — ex. DFGSM2';
     }
 
     $('loginForm').addEventListener('submit',async e=>{e.preventDefault();$('loginMsg').textContent='Connexion…';const {data,error}=await supabase.auth.signInWithPassword({email:$('loginEmail').value,password:$('loginPassword').value});if(error){console.error('Erreur connexion :',error);$('loginMsg').textContent='E-mail ou mot de passe incorrect.';return;}$('loginMsg').textContent='✓ Connexion réussie.';if(data.user)loadProfile(data.user);});
