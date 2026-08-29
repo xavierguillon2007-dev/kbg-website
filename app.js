@@ -1,15 +1,13 @@
 // CONFIGURATION SUPABASE
-// Remplacez ces 2 clés par vos identifiants réels issus de votre projet Supabase (https://supabase.com)
-const SUPABASE_URL = "https://supabase.com/dashboard/project/qqelmmygalllmxinaxrf";
-const SUPABASE_ANON_KEY = "VeyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxZWxtbXlnYWxsbG14aW5heHJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MTYzMjMsImV4cCI6MjEwMzQ5MjMyM30.4aNKVUl0xJ1ffiVlx4vyniq9R6J_By9-6mUiLi-zC_U";
+const SUPABASE_URL = "https://VOTRE_PROJET.supabase.co";
+const SUPABASE_ANON_KEY = "VOTRE_CLE_ANON_SUPABASE";
 
-// Initialisation du client Supabase
 let supabaseClient = null;
 if (typeof supabase !== 'undefined' && !SUPABASE_URL.includes("VOTRE_PROJET")) {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// Données par défaut (Mode Démo / Fallback)
+// État initial local
 let currentEvent = {
   id: 1,
   title: "Soirée Jeux de Société & Découvertes",
@@ -18,116 +16,219 @@ let currentEvent = {
   description: "Rejoignez la communauté KBG pour tester les dernières nouveautés et affronter les membres du club !"
 };
 
-// Éléments du DOM
+let reviewsList = [
+  { id: 1, author: "Marc D.", rating: 5, comment: "Super club ! Très bonne ambiance et une sélection de jeux fantastique." },
+  { id: 2, author: "Sophie L.", rating: 5, comment: "L'équipe KBG est super accueillante pour expliquer les règles." }
+];
+
+let bookingsList = [];
+
+// Sélection Éléments DOM Panneau
 const eventBanner = document.getElementById('event-banner');
 const eventTitle = document.getElementById('event-title');
 const eventDate = document.getElementById('event-date');
 const eventDesc = document.getElementById('event-desc');
 const eventImage = document.getElementById('event-image');
 
+// Formulaires et Modales
 const adminModal = document.getElementById('admin-modal');
+const reviewModal = document.getElementById('review-modal');
+
 const openAdminBtn = document.getElementById('open-admin-btn');
 const closeAdminBtn = document.getElementById('close-admin-btn');
-const cancelAdminBtn = document.getElementById('cancel-admin-btn');
+const openReviewBtn = document.getElementById('open-review-btn');
+const closeReviewBtn = document.getElementById('close-review-btn');
+const cancelReviewBtn = document.getElementById('cancel-review-btn');
+
 const adminForm = document.getElementById('admin-event-form');
+const addReviewForm = document.getElementById('add-review-form');
+const bookingForm = document.getElementById('booking-form');
 
-const inputTitle = document.getElementById('input-title');
-const inputDate = document.getElementById('input-date');
-const inputImage = document.getElementById('input-image');
-const inputDesc = document.getElementById('input-desc');
+const reviewsGrid = document.getElementById('reviews-grid');
+const adminReviewsList = document.getElementById('admin-reviews-list');
+const adminBookingsList = document.getElementById('admin-bookings-list');
 
-// Render
+// 1. Affichage de l'Événement
 function renderEvent(data) {
   eventTitle.textContent = data.title;
   eventDate.textContent = `📅 ${data.date}`;
   eventDesc.textContent = data.description;
   eventImage.src = data.image_url;
 
-  // Animation d'actualisation en temps réel
   eventBanner.style.transform = "scale(1.04) rotate(0deg)";
-  setTimeout(() => {
-    eventBanner.style.transform = "rotate(2deg)";
-  }, 300);
+  setTimeout(() => { eventBanner.style.transform = "rotate(2deg)"; }, 300);
 }
 
-// Écoute des mises à jour Supabase Realtime
-async function initRealtimeEvent() {
+// 2. Affichage des Avis
+function renderReviews() {
+  reviewsGrid.innerHTML = "";
+  adminReviewsList.innerHTML = "";
+
+  if (reviewsList.length === 0) {
+    reviewsGrid.innerHTML = `<div class="empty-state"><p>💬 Aucun avis publié pour le moment. Soyez le premier !</p></div>`;
+    adminReviewsList.innerHTML = `<p class="desc">Aucun avis à modérer.</p>`;
+    return;
+  }
+
+  reviewsList.forEach(rev => {
+    // Carte sur le site
+    const stars = "⭐".repeat(rev.rating);
+    const card = document.createElement('div');
+    card.className = "review-card";
+    card.innerHTML = `
+      <div class="review-author">
+        <span>${rev.author}</span>
+        <span class="review-stars">${stars}</span>
+      </div>
+      <p class="review-text">"${rev.comment}"</p>
+    `;
+    reviewsGrid.appendChild(card);
+
+    // Item dans l'Espace Admin
+    const adminItem = document.createElement('div');
+    adminItem.className = "admin-item";
+    adminItem.innerHTML = `
+      <span><strong>${rev.author}</strong> (${rev.rating}/5) : "${rev.comment.substring(0, 30)}..."</span>
+      <button class="admin-item-delete" onclick="deleteReview(${rev.id})">Supprimer</button>
+    `;
+    adminReviewsList.appendChild(adminItem);
+  });
+}
+
+function deleteReview(id) {
+  reviewsList = reviewsList.filter(r => r.id !== id);
+  renderReviews();
+}
+
+// 3. Affichage des Réservations dans l'Admin
+function renderBookings() {
+  adminBookingsList.innerHTML = "";
+  if (bookingsList.length === 0) {
+    adminBookingsList.innerHTML = `<p class="desc">Aucune réservation pour le moment.</p>`;
+    return;
+  }
+
+  bookingsList.forEach((b, idx) => {
+    const item = document.createElement('div');
+    item.className = "admin-item";
+    item.innerHTML = `
+      <span><strong>${b.name}</strong> — ${b.date} à ${b.time} (${b.players} joueurs)</span>
+      <button class="admin-item-delete" onclick="deleteBooking(${idx})">Annuler</button>
+    `;
+    adminBookingsList.appendChild(item);
+  });
+}
+
+function deleteBooking(index) {
+  bookingsList.splice(index, 1);
+  renderBookings();
+}
+
+// 4. Gestion de la Soumission des Avis
+addReviewForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const newReview = {
+    id: Date.now(),
+    author: document.getElementById('review-author').value,
+    rating: parseInt(document.getElementById('review-rating').value),
+    comment: document.getElementById('review-comment').value
+  };
+
+  reviewsList.unshift(newReview);
+  renderReviews();
+  addReviewForm.reset();
+  reviewModal.classList.remove('active');
+});
+
+// 5. Gestion de la Réservation
+bookingForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const booking = {
+    name: document.getElementById('book-name').value,
+    date: document.getElementById('book-date').value,
+    time: document.getElementById('book-time').value,
+    players: document.getElementById('book-players').value
+  };
+
+  bookingsList.unshift(booking);
+  renderBookings();
+  alert("✨ Merci ! Votre demande de réservation a été enregistrée.");
+  bookingForm.reset();
+});
+
+// 6. Gestion des Onglets Admin
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// 7. Synchronisation Temps Réel Supabase (Panneau d'Événement)
+async function initRealtime() {
+  renderReviews();
+  renderBookings();
+
   if (!supabaseClient) {
-    console.log("⚡ Mode Démo : Supabase non configuré. Chargement des données locales.");
     renderEvent(currentEvent);
     return;
   }
 
   try {
     const { data } = await supabaseClient.from('events').select('*').eq('id', 1).single();
-
     if (data) {
       currentEvent = data;
       renderEvent(currentEvent);
     }
 
-    // Écoute en temps réel de la table 'events'
     supabaseClient
       .channel('public:events')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' }, (payload) => {
-        console.log("⚡ Modification temps réel reçue :", payload.new);
         currentEvent = payload.new;
         renderEvent(currentEvent);
       })
       .subscribe();
-
   } catch (err) {
-    console.warn("Erreur Supabase:", err);
     renderEvent(currentEvent);
   }
 }
 
-// Validation du formulaire Admin
+// Validation Formulaire Admin Événement
 adminForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-
-  const updatedData = {
-    title: inputTitle.value,
-    date: inputDate.value,
-    image_url: inputImage.value,
-    description: inputDesc.value
+  const updated = {
+    title: document.getElementById('input-title').value,
+    date: document.getElementById('input-date').value,
+    image_url: document.getElementById('input-image').value,
+    description: document.getElementById('input-desc').value
   };
 
   if (supabaseClient) {
-    const { error } = await supabaseClient
-      .from('events')
-      .update(updatedData)
-      .eq('id', 1);
-
-    if (error) {
-      alert("Erreur lors de la mise à jour : " + error.message);
-      return;
-    }
+    await supabaseClient.from('events').update(updated).eq('id', 1);
   } else {
-    // Mode démo direct si Supabase n'est pas lié
-    currentEvent = { ...currentEvent, ...updatedData };
+    currentEvent = { ...currentEvent, ...updated };
     renderEvent(currentEvent);
   }
 
-  closeModal();
+  adminModal.classList.remove('active');
 });
 
-// Modal Controls
-function openModal() {
-  inputTitle.value = currentEvent.title;
-  inputDate.value = currentEvent.date;
-  inputImage.value = currentEvent.image_url;
-  inputDesc.value = currentEvent.description;
+// Modales Toggle
+openAdminBtn.addEventListener('click', () => {
+  document.getElementById('input-title').value = currentEvent.title;
+  document.getElementById('input-date').value = currentEvent.date;
+  document.getElementById('input-image').value = currentEvent.image_url;
+  document.getElementById('input-desc').value = currentEvent.description;
   adminModal.classList.add('active');
-}
+});
 
-function closeModal() {
-  adminModal.classList.remove('active');
-}
+closeAdminBtn.addEventListener('click', () => adminModal.classList.remove('active'));
+document.querySelectorAll('.cancel-admin-btn').forEach(b => b.addEventListener('click', () => adminModal.classList.remove('active')));
 
-openAdminBtn.addEventListener('click', openModal);
-closeAdminBtn.addEventListener('click', closeModal);
-cancelAdminBtn.addEventListener('click', closeModal);
-adminModal.addEventListener('click', (e) => { if (e.target === adminModal) closeModal(); });
+openReviewBtn.addEventListener('click', () => reviewModal.classList.add('active'));
+closeReviewBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
+cancelReviewBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
 
-document.addEventListener('DOMContentLoaded', initRealtimeEvent);
+document.addEventListener('DOMContentLoaded', initRealtime);
