@@ -7,140 +7,215 @@ if (typeof supabase !== 'undefined' && !SUPABASE_URL.includes("VOTRE_PROJET")) {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// État initial local
+// Données initiales locales (Fallback)
 let currentEvent = {
   id: 1,
   title: "Soirée Jeux de Société & Découvertes",
   date: "Vendredi 12 Septembre • 19h00",
   image_url: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=600&q=80",
-  description: "Rejoignez la communauté KBG pour tester les dernières nouveautés et affronter les membres du club !"
+  description: "Rejoignez la communauté KBG pour tester les dernières nouveautés !"
 };
 
-let reviewsList = [
-  { id: 1, author: "Marc D.", rating: 5, comment: "Super club ! Très bonne ambiance et une sélection de jeux fantastique." },
-  { id: 2, author: "Sophie L.", rating: 5, comment: "L'équipe KBG est super accueillante pour expliquer les règles." }
-];
-
+let gamesList = [];
+let gameReviewsList = [];
 let bookingsList = [];
 
-// Sélection Éléments DOM Panneau
+// Sélection DOM
 const eventBanner = document.getElementById('event-banner');
 const eventTitle = document.getElementById('event-title');
 const eventDate = document.getElementById('event-date');
 const eventDesc = document.getElementById('event-desc');
 const eventImage = document.getElementById('event-image');
 
-// Formulaires et Modales
+const gamesGrid = document.getElementById('games-grid');
+const gamesCounter = document.getElementById('games-counter');
+
+// Modales
 const adminModal = document.getElementById('admin-modal');
-const reviewModal = document.getElementById('review-modal');
+const gameModal = document.getElementById('game-modal');
 
 const openAdminBtn = document.getElementById('open-admin-btn');
 const closeAdminBtn = document.getElementById('close-admin-btn');
-const openReviewBtn = document.getElementById('open-review-btn');
-const closeReviewBtn = document.getElementById('close-review-btn');
-const cancelReviewBtn = document.getElementById('cancel-review-btn');
+const closeGameModal = document.getElementById('close-game-modal');
 
 const adminForm = document.getElementById('admin-event-form');
-const addReviewForm = document.getElementById('add-review-form');
+const adminAddGameForm = document.getElementById('admin-add-game-form');
+const addGameReviewForm = document.getElementById('add-game-review-form');
 const bookingForm = document.getElementById('booking-form');
 
-const reviewsGrid = document.getElementById('reviews-grid');
-const adminReviewsList = document.getElementById('admin-reviews-list');
 const adminBookingsList = document.getElementById('admin-bookings-list');
+const calendarDatePicker = document.getElementById('calendar-date-picker');
 
-// 1. Affichage de l'Événement
+// 1. Rendu Événement
 function renderEvent(data) {
   eventTitle.textContent = data.title;
   eventDate.textContent = `📅 ${data.date}`;
   eventDesc.textContent = data.description;
   eventImage.src = data.image_url;
-
-  eventBanner.style.transform = "scale(1.04) rotate(0deg)";
-  setTimeout(() => { eventBanner.style.transform = "rotate(2deg)"; }, 300);
 }
 
-// 2. Affichage des Avis
-function renderReviews() {
-  reviewsGrid.innerHTML = "";
-  adminReviewsList.innerHTML = "";
+// 2. Rendu Catalogue Jeux
+function renderGames() {
+  gamesGrid.innerHTML = "";
+  const filtered = filterGamesList();
 
-  if (reviewsList.length === 0) {
-    reviewsGrid.innerHTML = `<div class="empty-state"><p>💬 Aucun avis publié pour le moment. Soyez le premier !</p></div>`;
-    adminReviewsList.innerHTML = `<p class="desc">Aucun avis à modérer.</p>`;
+  gamesCounter.textContent = `${filtered.length} Jeu${filtered.length > 1 ? 'x' : ''} Disponible${filtered.length > 1 ? 's' : ''}`;
+
+  if (filtered.length === 0) {
+    gamesGrid.innerHTML = `<div class="empty-state"><p>🎲 Aucun jeu trouvé. Ajoutez votre premier jeu depuis l'Espace Admin !</p></div>`;
     return;
   }
 
-  reviewsList.forEach(rev => {
-    // Carte sur le site
-    const stars = "⭐".repeat(rev.rating);
+  filtered.forEach(game => {
     const card = document.createElement('div');
-    card.className = "review-card";
+    card.className = "game-card";
     card.innerHTML = `
-      <div class="review-author">
-        <span>${rev.author}</span>
-        <span class="review-stars">${stars}</span>
+      <img src="${game.image_url}" class="game-card-img" alt="${game.title}">
+      <div class="game-card-body">
+        <span class="badge">${game.genre}</span>
+        <h3 class="game-card-title">${game.title}</h3>
+        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">👥 ${game.players} joueurs • ⏱️ ${game.duration} min</p>
+        <button class="button" style="margin-top: auto;" onclick="openGameDetails(${game.id})">💬 Fiche & Avis</button>
       </div>
-      <p class="review-text">"${rev.comment}"</p>
     `;
-    reviewsGrid.appendChild(card);
-
-    // Item dans l'Espace Admin
-    const adminItem = document.createElement('div');
-    adminItem.className = "admin-item";
-    adminItem.innerHTML = `
-      <span><strong>${rev.author}</strong> (${rev.rating}/5) : "${rev.comment.substring(0, 30)}..."</span>
-      <button class="admin-item-delete" onclick="deleteReview(${rev.id})">Supprimer</button>
-    `;
-    adminReviewsList.appendChild(adminItem);
+    gamesGrid.appendChild(card);
   });
 }
 
-function deleteReview(id) {
-  reviewsList = reviewsList.filter(r => r.id !== id);
-  renderReviews();
+// Filtres du Catalogue
+function filterGamesList() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const genre = document.getElementById('genre-select').value;
+  const players = document.getElementById('players-select').value;
+  const duration = document.getElementById('duration-select').value;
+
+  return gamesList.filter(g => {
+    const matchSearch = g.title.toLowerCase().includes(search);
+    const matchGenre = !genre || g.genre === genre;
+    const matchPlayers = !players || (
+      players === '2' ? g.players.includes('2') :
+      players === '3-5' ? (g.players.includes('3') || g.players.includes('4') || g.players.includes('5')) : true
+    );
+    const matchDuration = !duration || (
+      duration === '30' ? g.duration <= 30 :
+      duration === '60' ? (g.duration > 30 && g.duration <= 60) : g.duration > 60
+    );
+    return matchSearch && matchGenre && matchPlayers && matchDuration;
+  });
 }
 
-// 3. Affichage des Réservations dans l'Admin
-function renderBookings() {
-  adminBookingsList.innerHTML = "";
-  if (bookingsList.length === 0) {
-    adminBookingsList.innerHTML = `<p class="desc">Aucune réservation pour le moment.</p>`;
+['search-input', 'genre-select', 'players-select', 'duration-select'].forEach(id => {
+  document.getElementById(id).addEventListener('change', renderGames);
+  document.getElementById(id).addEventListener('input', renderGames);
+});
+
+// 3. Modale Fiche Jeu & Avis
+function openGameDetails(gameId) {
+  const game = gamesList.find(g => g.id === gameId);
+  if (!game) return;
+
+  document.getElementById('modal-game-id').value = game.id;
+  document.getElementById('modal-game-title').textContent = game.title;
+  document.getElementById('modal-game-image').src = game.image_url;
+  document.getElementById('modal-game-genre').textContent = game.genre;
+  document.getElementById('modal-game-players').textContent = `👥 ${game.players} joueurs`;
+  document.getElementById('modal-game-duration').textContent = `⏱️ ${game.duration} min`;
+  document.getElementById('modal-game-desc').textContent = game.description;
+
+  renderGameReviews(game.id);
+  gameModal.classList.add('active');
+}
+
+function renderGameReviews(gameId) {
+  const container = document.getElementById('modal-game-reviews');
+  container.innerHTML = "";
+  
+  const reviews = gameReviewsList.filter(r => r.game_id === gameId);
+
+  if (reviews.length === 0) {
+    container.innerHTML = `<p class="desc">Aucun avis pour ce jeu pour le moment. Soyez le premier !</p>`;
     return;
   }
 
-  bookingsList.forEach((b, idx) => {
+  reviews.forEach(r => {
+    const stars = "⭐".repeat(r.rating);
+    const div = document.createElement('div');
+    div.className = "admin-item";
+    div.innerHTML = `<span><strong>${r.author}</strong> (${stars}) : "${r.comment}"</span>`;
+    container.appendChild(div);
+  });
+}
+
+// Publication Avis Jeu
+addGameReviewForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const gameId = parseInt(document.getElementById('modal-game-id').value);
+  const newRev = {
+    id: Date.now(),
+    game_id: gameId,
+    author: document.getElementById('game-review-author').value,
+    rating: parseInt(document.getElementById('game-review-rating').value),
+    comment: document.getElementById('game-review-comment').value
+  };
+
+  gameReviewsList.unshift(newRev);
+  renderGameReviews(gameId);
+  addGameReviewForm.reset();
+});
+
+// 4. Administration - Création d'un Jeu
+adminAddGameForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const newGame = {
+    id: Date.now(),
+    title: document.getElementById('new-game-title').value,
+    genre: document.getElementById('new-game-genre').value,
+    players: document.getElementById('new-game-players').value,
+    duration: parseInt(document.getElementById('new-game-duration').value),
+    image_url: document.getElementById('new-game-image').value,
+    description: document.getElementById('new-game-desc').value
+  };
+
+  gamesList.unshift(newGame);
+  renderGames();
+  adminAddGameForm.reset();
+  alert("✨ Jeu ajouté avec succès au catalogue !");
+  adminModal.classList.remove('active');
+});
+
+// 5. Calendrier des Réservations dans l'Admin
+function renderBookingsCalendar() {
+  adminBookingsList.innerHTML = "";
+  const filterDate = calendarDatePicker.value;
+
+  const filtered = filterDate 
+    ? bookingsList.filter(b => b.date === filterDate)
+    : bookingsList;
+
+  if (filtered.length === 0) {
+    adminBookingsList.innerHTML = `<p class="desc">Aucune réservation pour cette date.</p>`;
+    return;
+  }
+
+  filtered.forEach((b, idx) => {
     const item = document.createElement('div');
     item.className = "admin-item";
     item.innerHTML = `
-      <span><strong>${b.name}</strong> — ${b.date} à ${b.time} (${b.players} joueurs)</span>
+      <span>📅 <strong>${b.date}</strong> à <strong>${b.time}</strong> — ${b.name} (${b.players} pers.)</span>
       <button class="admin-item-delete" onclick="deleteBooking(${idx})">Annuler</button>
     `;
     adminBookingsList.appendChild(item);
   });
 }
 
+calendarDatePicker.addEventListener('change', renderBookingsCalendar);
+
 function deleteBooking(index) {
   bookingsList.splice(index, 1);
-  renderBookings();
+  renderBookingsCalendar();
 }
 
-// 4. Gestion de la Soumission des Avis
-addReviewForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  const newReview = {
-    id: Date.now(),
-    author: document.getElementById('review-author').value,
-    rating: parseInt(document.getElementById('review-rating').value),
-    comment: document.getElementById('review-comment').value
-  };
-
-  reviewsList.unshift(newReview);
-  renderReviews();
-  addReviewForm.reset();
-  reviewModal.classList.remove('active');
-});
-
-// 5. Gestion de la Réservation
+// Formulaire Réservation Utilisateur
 bookingForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const booking = {
@@ -151,12 +226,12 @@ bookingForm.addEventListener('submit', (e) => {
   };
 
   bookingsList.unshift(booking);
-  renderBookings();
-  alert("✨ Merci ! Votre demande de réservation a été enregistrée.");
+  renderBookingsCalendar();
+  alert("✨ Votre réservation a bien été enregistrée !");
   bookingForm.reset();
 });
 
-// 6. Gestion des Onglets Admin
+// 6. Navigation Onglets Admin
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -166,54 +241,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// 7. Synchronisation Temps Réel Supabase (Panneau d'Événement)
-async function initRealtime() {
-  renderReviews();
-  renderBookings();
-
-  if (!supabaseClient) {
-    renderEvent(currentEvent);
-    return;
-  }
-
-  try {
-    const { data } = await supabaseClient.from('events').select('*').eq('id', 1).single();
-    if (data) {
-      currentEvent = data;
-      renderEvent(currentEvent);
-    }
-
-    supabaseClient
-      .channel('public:events')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' }, (payload) => {
-        currentEvent = payload.new;
-        renderEvent(currentEvent);
-      })
-      .subscribe();
-  } catch (err) {
-    renderEvent(currentEvent);
-  }
+// 7. Initialisation
+async function init() {
+  renderEvent(currentEvent);
+  renderGames();
+  renderBookingsCalendar();
 }
-
-// Validation Formulaire Admin Événement
-adminForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const updated = {
-    title: document.getElementById('input-title').value,
-    date: document.getElementById('input-date').value,
-    image_url: document.getElementById('input-image').value,
-    description: document.getElementById('input-desc').value
-  };
-
-  if (supabaseClient) {
-    await supabaseClient.from('events').update(updated).eq('id', 1);
-  } else {
-    currentEvent = { ...currentEvent, ...updated };
-    renderEvent(currentEvent);
-  }
-
-  adminModal.classList.remove('active');
-});
 
 // Modales Toggle
 openAdminBtn.addEventListener('click', () => {
@@ -225,10 +258,6 @@ openAdminBtn.addEventListener('click', () => {
 });
 
 closeAdminBtn.addEventListener('click', () => adminModal.classList.remove('active'));
-document.querySelectorAll('.cancel-admin-btn').forEach(b => b.addEventListener('click', () => adminModal.classList.remove('active')));
+closeGameModal.addEventListener('click', () => gameModal.classList.remove('active'));
 
-openReviewBtn.addEventListener('click', () => reviewModal.classList.add('active'));
-closeReviewBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
-cancelReviewBtn.addEventListener('click', () => reviewModal.classList.remove('active'));
-
-document.addEventListener('DOMContentLoaded', initRealtime);
+document.addEventListener('DOMContentLoaded', init);
