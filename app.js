@@ -7,7 +7,7 @@ if (typeof supabase !== 'undefined' && !SUPABASE_URL.includes("VOTRE_PROJET")) {
   supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// Données initiales locales (Fallback)
+// Données initiales locales
 let currentEvent = {
   id: 1,
   title: "Soirée Jeux de Société & Découvertes",
@@ -16,12 +16,21 @@ let currentEvent = {
   description: "Rejoignez la communauté KBG pour tester les dernières nouveautés !"
 };
 
-let gamesList = [];
+let gamesList = [
+  {
+    id: 1,
+    title: "Catan",
+    genre: "Gestion",
+    players: "3-4",
+    duration: 75,
+    image_url: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=600&q=80",
+    description: "Bâtissez vos colonies et devenez le maître de l'île de Catan."
+  }
+];
 let gameReviewsList = [];
 let bookingsList = [];
 
 // Sélection DOM
-const eventBanner = document.getElementById('event-banner');
 const eventTitle = document.getElementById('event-title');
 const eventDate = document.getElementById('event-date');
 const eventDesc = document.getElementById('event-desc');
@@ -29,6 +38,7 @@ const eventImage = document.getElementById('event-image');
 
 const gamesGrid = document.getElementById('games-grid');
 const gamesCounter = document.getElementById('games-counter');
+const bookGameSelect = document.getElementById('book-game');
 
 // Modales
 const adminModal = document.getElementById('admin-modal');
@@ -38,7 +48,6 @@ const openAdminBtn = document.getElementById('open-admin-btn');
 const closeAdminBtn = document.getElementById('close-admin-btn');
 const closeGameModal = document.getElementById('close-game-modal');
 
-const adminForm = document.getElementById('admin-event-form');
 const adminAddGameForm = document.getElementById('admin-add-game-form');
 const addGameReviewForm = document.getElementById('add-game-review-form');
 const bookingForm = document.getElementById('booking-form');
@@ -54,7 +63,7 @@ function renderEvent(data) {
   eventImage.src = data.image_url;
 }
 
-// 2. Rendu Catalogue Jeux
+// 2. Rendu Catalogue Jeux & Sélecteur du Formulaire
 function renderGames() {
   gamesGrid.innerHTML = "";
   const filtered = filterGamesList();
@@ -62,23 +71,31 @@ function renderGames() {
   gamesCounter.textContent = `${filtered.length} Jeu${filtered.length > 1 ? 'x' : ''} Disponible${filtered.length > 1 ? 's' : ''}`;
 
   if (filtered.length === 0) {
-    gamesGrid.innerHTML = `<div class="empty-state"><p>🎲 Aucun jeu trouvé. Ajoutez votre premier jeu depuis l'Espace Admin !</p></div>`;
-    return;
+    gamesGrid.innerHTML = `<div class="empty-state"><p>🎲 Aucun jeu trouvé.</p></div>`;
+  } else {
+    filtered.forEach(game => {
+      const card = document.createElement('div');
+      card.className = "game-card";
+      card.innerHTML = `
+        <img src="${game.image_url}" class="game-card-img" alt="${game.title}">
+        <div class="game-card-body">
+          <span class="badge">${game.genre}</span>
+          <h3 class="game-card-title">${game.title}</h3>
+          <p style="font-size: 13px; color: var(--text-muted); margin: 0;">👥 ${game.players} joueurs • ⏱️ ${game.duration} min</p>
+          <button class="button" style="margin-top: auto;" onclick="openGameDetails(${game.id})">💬 Fiche & Avis</button>
+        </div>
+      `;
+      gamesGrid.appendChild(card);
+    });
   }
 
-  filtered.forEach(game => {
-    const card = document.createElement('div');
-    card.className = "game-card";
-    card.innerHTML = `
-      <img src="${game.image_url}" class="game-card-img" alt="${game.title}">
-      <div class="game-card-body">
-        <span class="badge">${game.genre}</span>
-        <h3 class="game-card-title">${game.title}</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">👥 ${game.players} joueurs • ⏱️ ${game.duration} min</p>
-        <button class="button" style="margin-top: auto;" onclick="openGameDetails(${game.id})">💬 Fiche & Avis</button>
-      </div>
-    `;
-    gamesGrid.appendChild(card);
+  // Mettre à jour la liste déroulante des jeux dans le formulaire d'emprunt
+  bookGameSelect.innerHTML = `<option value="">-- Sélectionnez un jeu --</option>`;
+  gamesList.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.title;
+    opt.textContent = g.title;
+    bookGameSelect.appendChild(opt);
   });
 }
 
@@ -133,7 +150,7 @@ function renderGameReviews(gameId) {
   const reviews = gameReviewsList.filter(r => r.game_id === gameId);
 
   if (reviews.length === 0) {
-    container.innerHTML = `<p class="desc">Aucun avis pour ce jeu pour le moment. Soyez le premier !</p>`;
+    container.innerHTML = `<p class="desc" style="font-size:13px;">Aucun avis pour ce jeu pour le moment. Soyez le premier !</p>`;
     return;
   }
 
@@ -146,7 +163,6 @@ function renderGameReviews(gameId) {
   });
 }
 
-// Publication Avis Jeu
 addGameReviewForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const gameId = parseInt(document.getElementById('modal-game-id').value);
@@ -183,17 +199,18 @@ adminAddGameForm.addEventListener('submit', (e) => {
   adminModal.classList.remove('active');
 });
 
-// 5. Calendrier des Réservations dans l'Admin
+// 5. Calendrier des Emprunts (sur plusieurs jours)
 function renderBookingsCalendar() {
   adminBookingsList.innerHTML = "";
   const filterDate = calendarDatePicker.value;
 
+  // Filtrer les emprunts qui couvrent la date sélectionnée (si une date est choisie)
   const filtered = filterDate 
-    ? bookingsList.filter(b => b.date === filterDate)
+    ? bookingsList.filter(b => b.startDate <= filterDate && b.endDate >= filterDate)
     : bookingsList;
 
   if (filtered.length === 0) {
-    adminBookingsList.innerHTML = `<p class="desc">Aucune réservation pour cette date.</p>`;
+    adminBookingsList.innerHTML = `<p class="desc" style="font-size:13px;">Aucun emprunt trouvé pour cette période.</p>`;
     return;
   }
 
@@ -201,7 +218,7 @@ function renderBookingsCalendar() {
     const item = document.createElement('div');
     item.className = "admin-item";
     item.innerHTML = `
-      <span>📅 <strong>${b.date}</strong> à <strong>${b.time}</strong> — ${b.name} (${b.players} pers.)</span>
+      <span>📦 <strong>${b.game}</strong> — Emprunté par ${b.name}<br><small>Du ${b.startDate} au ${b.endDate}</small></span>
       <button class="admin-item-delete" onclick="deleteBooking(${idx})">Annuler</button>
     `;
     adminBookingsList.appendChild(item);
@@ -215,23 +232,31 @@ function deleteBooking(index) {
   renderBookingsCalendar();
 }
 
-// Formulaire Réservation Utilisateur
+// Formulaire Emprunt Utilisateur
 bookingForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  const startDate = document.getElementById('book-start-date').value;
+  const endDate = document.getElementById('book-end-date').value;
+
+  if (endDate < startDate) {
+    alert("La date de retour doit être supérieure ou égale à la date de début.");
+    return;
+  }
+
   const booking = {
     name: document.getElementById('book-name').value,
-    date: document.getElementById('book-date').value,
-    time: document.getElementById('book-time').value,
-    players: document.getElementById('book-players').value
+    game: document.getElementById('book-game').value,
+    startDate: startDate,
+    endDate: endDate
   };
 
   bookingsList.unshift(booking);
   renderBookingsCalendar();
-  alert("✨ Votre réservation a bien été enregistrée !");
+  alert("✨ Votre réservation d'emprunt a été validée !");
   bookingForm.reset();
 });
 
-// 6. Navigation Onglets Admin
+// 6. Onglets Admin
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -242,13 +267,12 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 // 7. Initialisation
-async function init() {
+function init() {
   renderEvent(currentEvent);
   renderGames();
   renderBookingsCalendar();
 }
 
-// Modales Toggle
 openAdminBtn.addEventListener('click', () => {
   document.getElementById('input-title').value = currentEvent.title;
   document.getElementById('input-date').value = currentEvent.date;
