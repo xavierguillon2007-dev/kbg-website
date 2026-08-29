@@ -8,17 +8,14 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 
 let currentReservations = [];
+let currentGames = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
-    $('adminReservationsList').innerHTML = `
-      <div class="empty panel">
-        <h3>Accès restreint</h3>
-        <p>Vous devez être connecté avec un compte administrateur pour accéder à cette page.</p>
-        <a href="index.html#account" class="button primary" style="margin-top:12px; display:inline-block;">Se connecter</a>
-      </div>`;
+    $('adminReservationsList').innerHTML = `<div class="empty panel">Accès restreint. Connectez-vous d'abord.</div>`;
+    $('adminGamesList').innerHTML = '';
     return;
   }
 
@@ -32,24 +29,87 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('filterStatus').addEventListener('change', renderReservations);
+  $('addGameForm').addEventListener('submit', handleAddGame);
+
+  loadAdminGames();
   loadAdminReservations();
 });
 
+// --- GESTION DU CATALOGUE ---
+async function loadAdminGames() {
+  const container = $('adminGamesList');
+  const { data, error } = await supabase.from('games').select('*').order('name');
+
+  if (error) {
+    container.innerHTML = `<div class="empty panel">Erreur : ${esc(error.message)}</div>`;
+    return;
+  }
+
+  currentGames = data || [];
+  container.innerHTML = currentGames.map(g => `
+    <article class="panel admin-card">
+      <div>
+        <p class="tag">${esc(g.category || 'Jeu')}</p>
+        <h3>${esc(g.name)}</h3>
+        <p class="publisher">${esc(g.publisher)}</p>
+        <small style="color:var(--muted);">${g.is_active ? '✓ Actif' : '✕ Masqué'}</small>
+      </div>
+      <div class="admin-card-actions">
+        <button class="button danger" data-delete-game="${g.id}">Supprimer</button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-delete-game]').forEach(btn => {
+    btn.onclick = async () => {
+      if (confirm('Voulez-vous vraiment supprimer ce jeu du catalogue ?')) {
+        await supabase.from('games').delete().eq('id', btn.dataset.deleteGame);
+        loadAdminGames();
+      }
+    };
+  });
+}
+
+async function handleAddGame(e) {
+  e.preventDefault();
+  const msg = $('addGameMsg');
+  msg.textContent = 'Ajout en cours…';
+
+  const f = new FormData(e.currentTarget);
+  const newGame = {
+    id: crypto.randomUUID(),
+    name: f.get('name').trim(),
+    publisher: f.get('publisher').trim(),
+    category: f.get('category').trim() || null,
+    cover_image: f.get('cover_image').trim() || null,
+    players_min: Number(f.get('players_min')) || null,
+    players_max: Number(f.get('players_max')) || null,
+    duration: Number(f.get('duration')) || null,
+    description: f.get('description').trim() || null,
+    is_active: true
+  };
+
+  const { error } = await supabase.from('games').insert(newGame);
+
+  if (error) {
+    msg.textContent = 'Erreur : ' + error.message;
+  } else {
+    msg.textContent = '✓ Jeu ajouté avec succès.';
+    e.currentTarget.reset();
+    loadAdminGames();
+  }
+}
+
+// --- GESTION DES RÉSERVATIONS ---
 async function loadAdminReservations() {
   const container = $('adminReservationsList');
-
   const { data, error } = await supabase
     .from('reservations')
-    .select('*, games(name, publisher, cover_image)')
+    .select('*, games(name, publisher)')
     .order('created_at', { ascending: false });
 
   if (error) {
-    container.innerHTML = `
-      <div class="empty panel">
-        <h3>Erreur de chargement</h3>
-        <p>${esc(error.message)}</p>
-        <small style="color:var(--muted); margin-top:8px; display:block;">Si cette erreur persiste, vérifiez vos règles de sécurité RLS dans Supabase.</small>
-      </div>`;
+    container.innerHTML = `<div class="empty panel">Erreur : ${esc(error.message)}</div>`;
     return;
   }
 
@@ -60,59 +120,36 @@ async function loadAdminReservations() {
 function renderReservations() {
   const container = $('adminReservationsList');
   const filter = $('filterStatus').value;
-  
   const list = currentReservations.filter(r => !filter || r.status === filter);
 
   if (!list.length) {
-    container.innerHTML = `<div class="empty panel">Aucune demande trouvée pour ce critère.</div>`;
+    container.innerHTML = `<div class="empty panel">Aucune demande trouvée.</div>`;
     return;
   }
 
-  container.innerHTML = list.map(r => {
-    const statusBadge = r.status === 'approved' 
-      ? '<span class="badge badge-success">Validée</span>'
-      : r.status === 'rejected'
-      ? '<span class="badge badge-danger">Refusée</span>'
-      : '<span class="badge badge-warning">En attente</span>';
-
-    return `
-      <article class="panel admin-card">
-        <div class="admin-card-header">
-          <div>
-            ${statusBadge}
-            <h3 style="margin-top:8px;">${esc(r.games?.name || 'Jeu inconnu')}</h3>
-            <p class="publisher">${esc(r.games?.publisher || '')}</p>
-          </div>
-        </div>
-        
-        <div class="admin-card-body">
-          <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)}</p>
-          <p><strong>Promotion :</strong> ${esc(r.promotion)}</p>
-          <p><strong>Période :</strong> du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
-        </div>
-
-        <div class="admin-card-actions">
-          ${r.status !== 'approved' ? `<button class="button primary" data-action="approve" data-id="${r.id}">✓ Valider</button>` : ''}
-          ${r.status !== 'rejected' ? `<button class="button danger" data-action="reject" data-id="${r.id}">✕ Refuser</button>` : ''}
-        </div>
-      </article>
-    `;
-  }).join('');
+  container.innerHTML = list.map(r => `
+    <article class="panel admin-card">
+      <div class="admin-card-header">
+        <span class="badge badge-${r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'danger' : 'warning'}">
+          ${r.status}
+        </span>
+        <h3 style="margin-top:8px;">${esc(r.games?.name || 'Jeu inconnu')}</h3>
+      </div>
+      <div class="admin-card-body">
+        <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)} (${esc(r.promotion)})</p>
+        <p><strong>Période :</strong> du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
+      </div>
+      <div class="admin-card-actions">
+        ${r.status !== 'approved' ? `<button class="button primary" data-action="approved" data-id="${r.id}">✓ Valider</button>` : ''}
+        ${r.status !== 'rejected' ? `<button class="button danger" data-action="rejected" data-id="${r.id}">✕ Refuser</button>` : ''}
+      </div>
+    </article>
+  `).join('');
 
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.onclick = async () => {
-      const id = btn.dataset.id;
-      const newStatus = btn.dataset.action === 'approve' ? 'approved' : 'rejected';
-      
-      btn.disabled = true;
-      const { error } = await supabase.from('reservations').update({ status: newStatus }).eq('id', id);
-      
-      if (!error) {
-        loadAdminReservations();
-      } else {
-        alert('Erreur lors de la mise à jour : ' + error.message);
-        btn.disabled = false;
-      }
+      await supabase.from('reservations').update({ status: btn.dataset.action }).eq('id', btn.dataset.id);
+      loadAdminReservations();
     };
   });
 }
