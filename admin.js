@@ -8,13 +8,12 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
 
 let currentReservations = [];
-let currentGames = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
-    $('adminReservationsList').innerHTML = `<div class="empty panel">Accès restreint. Connectez-vous d'abord.</div>`;
+    $('adminReservationsList').innerHTML = `<div class="empty panel">Accès restreint. Connectez-vous d'abord sur la page d'accueil.</div>`;
     $('adminGamesList').innerHTML = '';
     return;
   }
@@ -35,27 +34,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadAdminReservations();
 });
 
-// --- GESTION DU CATALOGUE ---
+// --- GESTION DU CATALOGUE (AJOUT / SUPPRESSION) ---
 async function loadAdminGames() {
   const container = $('adminGamesList');
-  const { data, error } = await supabase.from('games').select('*').order('name');
+  const { data: games, error } = await supabase.from('games').select('*').order('name');
 
   if (error) {
     container.innerHTML = `<div class="empty panel">Erreur : ${esc(error.message)}</div>`;
     return;
   }
 
-  currentGames = data || [];
-  container.innerHTML = currentGames.map(g => `
+  container.innerHTML = (games || []).map(g => `
     <article class="panel admin-card">
       <div>
         <p class="tag">${esc(g.category || 'Jeu')}</p>
         <h3>${esc(g.name)}</h3>
-        <p class="publisher">${esc(g.publisher)}</p>
-        <small style="color:var(--muted);">${g.is_active ? '✓ Actif' : '✕ Masqué'}</small>
+        <p class="publisher">${esc(g.publisher || '')}</p>
       </div>
       <div class="admin-card-actions">
-        <button class="button danger" data-delete-game="${g.id}">Supprimer</button>
+        <button class="button danger" data-delete-game="${g.id}">🗑 Supprimer</button>
       </div>
     </article>
   `).join('');
@@ -73,7 +70,7 @@ async function loadAdminGames() {
 async function handleAddGame(e) {
   e.preventDefault();
   const msg = $('addGameMsg');
-  msg.textContent = 'Ajout en cours…';
+  msg.textContent = 'Enregistrement…';
 
   const f = new FormData(e.currentTarget);
   const newGame = {
@@ -94,7 +91,7 @@ async function handleAddGame(e) {
   if (error) {
     msg.textContent = 'Erreur : ' + error.message;
   } else {
-    msg.textContent = '✓ Jeu ajouté avec succès.';
+    msg.textContent = '✓ Jeu ajouté au catalogue !';
     e.currentTarget.reset();
     loadAdminGames();
   }
@@ -129,7 +126,7 @@ function renderReservations() {
 
   container.innerHTML = list.map(r => `
     <article class="panel admin-card">
-      <div class="admin-card-header">
+      <div>
         <span class="badge badge-${r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'danger' : 'warning'}">
           ${r.status}
         </span>
