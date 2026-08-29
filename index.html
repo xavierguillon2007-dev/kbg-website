@@ -179,13 +179,17 @@
 
     ['search','category','players','sort'].forEach(id => document.querySelector('#'+id).addEventListener('input', render));
     document.querySelector('#reservationForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const submitBtn = e.currentTarget.querySelector('button[type=submit]');
-      const msg = document.querySelector('#formMessage');
-      try {
-        const {data:{user}, error:userError} = await supabase.auth.getUser();
-        if (userError) console.error('Erreur récupération utilisateur :', userError);
-        const f = new FormData(e.currentTarget);
+  e.preventDefault();
+
+  const form = e.currentTarget;
+  const submitBtn = form.querySelector('button[type=submit]');
+  const msg = document.querySelector('#formMessage');
+
+  try {
+    const {data:{user}, error:userError} = await supabase.auth.getUser();
+    if (userError) console.error('Erreur récupération utilisateur :', userError);
+
+    const f = new FormData(form);
         if (!user) { msg.textContent = 'Connectez-vous dans votre espace membre avant de réserver.'; document.querySelector('#account').scrollIntoView({behavior:'smooth'}); return; }
         if (!f.get('game_id')) { msg.textContent = 'Sélectionnez un jeu.'; return; }
         if (f.get('date_end') < f.get('date_start')) { msg.textContent = 'La date de fin doit être postérieure ou égale à la date de début.'; return; }
