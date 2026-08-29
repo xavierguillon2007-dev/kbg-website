@@ -17,6 +17,7 @@
   </header>
 
   <main>
+    <!-- HERO SECTION -->
     <section class="hero">
       <div class="orb"></div>
       <div>
@@ -27,15 +28,22 @@
       </div>
     </section>
 
+    <!-- CATALOGUE -->
     <section id="catalogue" class="section">
       <div class="section-head">
-        <div><p class="eyebrow">CATALOGUE</p><h2>Les jeux disponibles</h2></div>
+        <div>
+          <p class="eyebrow">CATALOGUE</p>
+          <h2>Les jeux disponibles</h2>
+        </div>
         <span id="count" class="counter">Chargement…</span>
       </div>
 
+      <!-- Barre d'outils / Filtres -->
       <div class="toolbar">
         <input id="search" type="search" placeholder="Rechercher un jeu…" autocomplete="off">
-        <select id="category"><option value="">Toutes les catégories</option></select>
+        <select id="category">
+          <option value="">Toutes les catégories</option>
+        </select>
         <select id="players">
           <option value="">Joueurs</option>
           <option value="2">2+</option>
@@ -51,24 +59,35 @@
         </select>
       </div>
 
-      <div id="games" class="grid"><div class="loading">Connexion au catalogue…</div></div>
+      <!-- Grille d'affichage des jeux -->
+      <div id="games" class="grid">
+        <div class="loading">Connexion au catalogue…</div>
+      </div>
     </section>
 
+    <!-- FORMULAIRE DE RÉSERVATION -->
     <section id="reservation" class="section">
       <div class="section-head">
-        <div><p class="eyebrow">RÉSERVATION · 02</p><h2>Demander un jeu</h2></div>
+        <div>
+          <p class="eyebrow">RÉSERVATION · 02</p>
+          <h2>Demander un jeu</h2>
+        </div>
       </div>
       
+      <!-- Avertissement si déconnecté -->
       <div id="authWarning" class="panel hidden">
         <p class="eyebrow">CONNEXION REQUISE</p>
         <p>Vous devez être connecté pour réserver un jeu.</p>
         <button class="button primary" id="noticeAuthBtn" style="margin-top:10px;">Se connecter →</button>
       </div>
 
+      <!-- Formulaire principal -->
       <form id="reservationForm" class="panel">
         <div style="display:grid; gap:12px;">
           <label>Jeu
-            <select id="gameSelect" name="game_id" required><option value="">Sélectionnez un jeu…</option></select>
+            <select id="gameSelect" name="game_id" required>
+              <option value="">Sélectionnez un jeu…</option>
+            </select>
           </label>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <label>Du <input id="dateStart" name="date_start" type="date" required></label>
@@ -80,25 +99,20 @@
           </div>
           <input name="promotion" required placeholder="Promotion (ex. DFGSM2)">
           <button id="submitBookingBtn" class="button primary" type="submit">Envoyer la demande →</button>
-          <p id="formMessage" class="form-message"></p>
+          <p id="formMessage" class="form-message" style="margin-top:6px;"></p>
         </div>
       </form>
     </section>
   </main>
 
-  <!-- MODALE ADMINISTRATION (Catalogue + Réservations) -->
-  <!-- Liste des Réservations -->
-      <div style="margin-top:30px;">
-        <p class="eyebrow" style="color:var(--warning);">⏳ DEMANDES EN COURS</p>
-        <div id="adminPendingReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
-      </div>
+  <!-- MODALE ADMINISTRATION -->
+  <div id="adminModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="adminModal">×</button>
+      <p class="eyebrow">ESPACE ADMIN</p>
+      <h2>Panneau de gestion</h2>
 
-      <div style="margin-top:30px;">
-        <p class="eyebrow" style="color:var(--muted);">📁 DEMANDES DÉJÀ TRAITÉES (MODIFIABLES)</p>
-        <div id="adminProcessedReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
-      </div>
-
-      <!-- Formulaire Ajout de Jeu -->
+      <!-- Formulaire d'ajout de jeu -->
       <form id="addGameForm" style="margin-top:20px; border-bottom:1px solid var(--line); padding-bottom:20px;">
         <p class="eyebrow">+ AJOUTER UN JEU</p>
         <div class="admin-form-grid">
@@ -111,38 +125,48 @@
           <input name="players_max" type="number" placeholder="Joueurs max">
           <input name="duration" type="number" placeholder="Durée (min)">
         </div>
-        <input name="cover_image" placeholder="URL de l'image" style="width:100%; margin-bottom:8px; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:4px;">
-        <textarea name="description" class="admin-textarea" placeholder="Description..." style="height:60px; margin-bottom:12px;"></textarea>
+        <input name="cover_image" placeholder="URL de l'image de couverture" style="width:100%; margin-bottom:8px; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:4px;">
+        <textarea name="description" class="admin-textarea" placeholder="Description du jeu..." style="height:60px; margin-bottom:12px;"></textarea>
         <button type="submit" class="button primary">+ Ajouter au catalogue</button>
-        <p id="addGameMsg" class="form-message"></p>
+        <p id="addGameMsg" class="form-message" style="margin-top:6px;"></p>
       </form>
 
-      <!-- Liste des Jeux pour suppression -->
+      <!-- Section Suppression / Gestion du catalogue -->
       <div style="margin-top:20px;">
         <p class="eyebrow">GESTION DU CATALOGUE</p>
         <div id="adminGamesList" class="grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"></div>
       </div>
 
-      <!-- Liste des Réservations -->
+      <!-- Section Réservations En Cours -->
       <div style="margin-top:30px;">
-        <p class="eyebrow">DEMANDES DE RÉSERVATION</p>
-        <div id="adminReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
+        <p class="eyebrow" style="color:var(--warning);">⏳ DEMANDES EN COURS</p>
+        <div id="adminPendingReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
+      </div>
+
+      <!-- Section Réservations Historisées (Modifiables) -->
+      <div style="margin-top:30px;">
+        <p class="eyebrow" style="color:var(--muted);">📁 DEMANDES DÉJÀ TRAITÉES (MODIFIABLES)</p>
+        <div id="adminProcessedReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
       </div>
     </div>
   </div>
 
-  <!-- Modale Authentification -->
+  <!-- MODALE AUTHENTIFICATION (Connexion / Inscription) -->
   <div id="authModal" class="modal hidden">
     <div class="modal-card">
       <button class="modal-close" data-close="authModal">×</button>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        
+        <!-- Connexion -->
         <form id="loginForm">
           <p class="eyebrow">SE CONNECTER</p>
           <input id="loginEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
           <input id="loginPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
           <button class="button primary" type="submit">Connexion</button>
-          <p id="loginMsg" class="form-message"></p>
+          <p id="loginMsg" class="form-message" style="margin-top:6px;"></p>
         </form>
+
+        <!-- Inscription -->
         <form id="signupForm">
           <p class="eyebrow">S'INSCRIRE</p>
           <input id="signupFirst" placeholder="Prénom" required style="width:100%; margin-bottom:8px;">
@@ -150,13 +174,17 @@
           <input id="signupEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
           <input id="signupPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
           <button class="button primary" type="submit">Créer compte</button>
-          <p id="signupMsg" class="form-message"></p>
+          <p id="signupMsg" class="form-message" style="margin-top:6px;"></p>
         </form>
+
       </div>
     </div>
   </div>
 
-  <footer><span>KBG / Association ludique</span><span>Catalogue participatif</span></footer>
+  <footer>
+    <span>KBG / Association ludique</span>
+    <span>Catalogue participatif</span>
+  </footer>
 
   <script type="module" src="app.js"></script>
 </body>
