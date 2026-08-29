@@ -5,19 +5,13 @@
   --bg-subtle: #f9eed0;       
   --panel: #fffbf0;           
   --panel-card: #fdf3d6;      
-  --panel-header: #fce38a;     
 
   --text: #1c0e3a;            
   --text-muted: #534373;      
   
-  --line: rgba(28, 14, 58, 0.10);
-  --line-strong: rgba(28, 14, 58, 0.20);
-
   --accent-yellow: #fce38a;       
   --accent-pink: #e752a1;         
   --accent-pink-hover: #d13d8c;   
-  --accent-blue: #4a72b8;         
-  --accent-blue-light: #e3eeff;   
 
   --radius-lg: 20px;
   --radius-md: 14px;
@@ -80,7 +74,7 @@ nav { display: flex; gap: 20px; font-size: 14px; font-weight: 700; }
 nav a { padding: 8px 16px; border-radius: var(--radius-sm); }
 nav a:hover { background: rgba(28, 14, 58, 0.08); }
 
-/* Hero & Panneau d'Événement */
+/* Hero & Panneau Événement */
 .hero {
   min-height: 540px;
   padding: 70px 8vw;
@@ -135,7 +129,6 @@ h1 span {
   font-weight: 500;
 }
 
-/* PANNEAU VISUEL ÉVÉNEMENT */
 .hero-visual {
   position: relative;
   width: 360px;
@@ -181,16 +174,13 @@ h1 span {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s ease;
 }
 
-.hero-visual:hover .event-image-container img { transform: scale(1.05); }
-
-.event-details h3 { margin: 6px 0 4px; font-size: 20px; font-weight: 800; color: var(--text); }
+.event-details h3 { margin: 6px 0 4px; font-size: 20px; font-weight: 800; }
 #event-date { font: 700 12.5px 'DM Mono', monospace; color: var(--accent-pink); margin: 2px 0 8px; }
-.event-details p { font-size: 13.5px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+.event-details p { font-size: 13.5px; color: var(--text-muted); margin: 0; }
 
-/* Boutons & Champs de saisie */
+/* Boutons & Formulaires */
 .button {
   display: inline-flex;
   align-items: center;
@@ -213,7 +203,6 @@ h1 span {
 .button.primary { background: var(--accent-pink); color: #ffffff; }
 .button.primary:hover { background: var(--accent-pink-hover); }
 
-/* Sections & Grille */
 .section { padding: 80px 8vw; border-top: 2px solid var(--text); }
 .section-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 35px; }
 h2 { font-size: 36px; letter-spacing: -0.03em; margin: 6px 0 0; font-weight: 800; }
@@ -240,29 +229,27 @@ input, select, textarea {
   box-shadow: 0 3px 0 rgba(28, 14, 58, 0.08);
 }
 
-input:focus, select:focus, textarea:focus {
-  outline: none;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(231, 82, 161, 0.3), 0 4px 0 var(--text);
-}
+input:focus, select:focus, textarea:focus { outline: none; background: #ffffff; box-shadow: 0 0 0 3px rgba(231, 82, 161, 0.3), 0 4px 0 var(--text); }
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 28px; }
 
-/* Cartes d'Avis Clients */
-.review-card {
+/* Carte de Jeu */
+.game-card {
   background: var(--panel);
-  border: 2px solid var(--text);
+  border: 2.5px solid var(--text);
   border-radius: var(--radius-lg);
-  padding: 24px;
-  box-shadow: 0 6px 0 var(--text);
+  overflow: hidden;
+  box-shadow: 6px 6px 0 var(--text);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  transition: transform 0.2s ease;
 }
 
-.review-author { font-weight: 800; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
-.review-stars { color: #f59e0b; font-size: 14px; }
-.review-text { font-size: 14px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+.game-card:hover { transform: translateY(-4px); }
+.game-card-img { width: 100%; height: 180px; object-fit: cover; border-bottom: 2px solid var(--text); }
+.game-card-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex-grow: 1; }
+.game-card-title { font-size: 18px; font-weight: 800; margin: 0; }
+.badge { display: inline-block; font: 700 10px 'DM Mono', monospace; background: var(--accent-yellow); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--text); align-self: flex-start; }
 
 .empty-state {
   grid-column: 1 / -1;
@@ -282,7 +269,7 @@ input:focus, select:focus, textarea:focus {
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .notice { margin-top: 20px; border-radius: var(--radius-md); padding: 16px; background: var(--accent-yellow); border: 2px solid var(--text); font-size: 13.5px; font-weight: 700; box-shadow: 0 4px 0 var(--text); }
 
-/* Fenêtres Modales & Admin Dashboard */
+/* Modales & Dashboard Admin */
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; width: 100vw; height: 100vh;
@@ -295,13 +282,11 @@ input:focus, select:focus, textarea:focus {
 }
 
 .modal-backdrop.active { opacity: 1; pointer-events: all; }
-.modal-content { width: 90%; max-width: 580px; transform: translateY(20px); transition: transform 0.3s ease; max-height: 90vh; overflow-y: auto; }
+.modal-content { width: 90%; max-width: 600px; transform: translateY(20px); transition: transform 0.3s ease; max-height: 90vh; overflow-y: auto; }
 .modal-backdrop.active .modal-content { transform: translateY(0); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; }
-.modal-header h3 { margin: 0; font-size: 20px; font-weight: 800; }
 .close-btn { background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text); }
 
-/* Dashboard Admin : Onglets */
 .admin-tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--text); padding-bottom: 12px; margin-bottom: 12px; }
 .tab-btn { background: none; border: 1.5px solid var(--text); padding: 8px 14px; border-radius: var(--radius-sm); font: 700 12px 'DM Mono', monospace; cursor: pointer; }
 .tab-btn.active { background: var(--accent-pink); color: #fff; }
@@ -310,12 +295,13 @@ input:focus, select:focus, textarea:focus {
 .tab-content.active { display: grid; gap: 14px; }
 
 .admin-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; }
-
 .admin-list { display: grid; gap: 10px; max-height: 250px; overflow-y: auto; }
 .admin-item { background: var(--panel-card); border: 1.5px solid var(--text); padding: 12px; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
 .admin-item-delete { background: #ef4444; color: #fff; border: 1px solid var(--text); padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 700; }
 
-/* Footer */
+.game-modal-body img { width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-md); border: 2px solid var(--text); }
+.game-modal-meta { display: flex; gap: 12px; margin: 10px 0; font-weight: 700; font-size: 13px; }
+
 footer {
   padding: 30px 8vw;
   border-top: 2.5px solid var(--text);
