@@ -1,300 +1,293 @@
-// CONFIGURATION SUPABASE
-const SUPABASE_URL = "https://VOTRE_PROJET.supabase.co";
-const SUPABASE_ANON_KEY = "VOTRE_CLE_ANON_SUPABASE";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-let supabaseClient = null;
-if (typeof supabase !== 'undefined' && !SUPABASE_URL.includes("VOTRE_PROJET")) {
-  supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
+const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// State Utilisateur
-let currentUser = null; // null si non connecté, sinon objet utilisateur
+let allGames = [];
+let ratingsMap = {};
+let currentUser = null;
+let currentProfile = null;
 
-// Données locales
-let currentEvent = {
-  id: 1,
-  title: "Soirée Jeux de Société & Découvertes",
-  date: "Vendredi 12 Septembre • 19h00",
-  image_url: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=600&q=80",
-  description: "Rejoignez la communauté KBG pour tester les dernières nouveautés !"
-};
-
-let gamesList = [
-  {
-    id: 1,
-    title: "Catan",
-    genre: "Gestion",
-    players: "3-4",
-    duration: 75,
-    image_url: "https://images.unsplash.com/photo-1610890716171-6b1bb98ffd09?auto=format&fit=crop&w=600&q=80",
-    description: "Bâtissez vos colonies et devenez le maître de l'île de Catan."
-  }
-];
-let gameReviewsList = [];
-let bookingsList = [];
-
-// Éléments DOM Auth
-const authModal = document.getElementById('auth-modal');
-const openAuthBtn = document.getElementById('open-auth-btn');
-const closeAuthModal = document.getElementById('close-auth-modal');
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-const btnShowLogin = document.getElementById('btn-show-login');
-const btnShowSignup = document.getElementById('btn-show-signup');
-const authWarning = document.getElementById('auth-warning');
-const submitBookingBtn = document.getElementById('submit-booking-btn');
-
-// Éléments DOM Modales & Administration
-const adminModal = document.getElementById('admin-modal');
-const gameModal = document.getElementById('game-modal');
-const openAdminBtn = document.getElementById('open-admin-btn');
-const closeAdminBtn = document.getElementById('close-admin-btn');
-const closeGameModal = document.getElementById('close-game-modal');
-
-// 1. GESTION DU SYSTÈME DE COMPTE (AUTH)
-
-// Mise à jour de l'UI selon l'état de connexion
-async function updateAuthUI() {
-  const userNav = document.querySelector('.user-nav');
-
-  if (currentUser) {
-    let isAdmin = false;
-
-    // Interrogation de Supabase pour savoir si l'utilisateur est admin
-    if (supabaseClient) {
-      // Note : si la colonne dans ta table s'appelle 'user_id', remplace 'id' par 'user_id' ci-dessous
-      const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', currentUser.id) 
-        .single();
-      
-      if (!error && profile) {
-        isAdmin = profile.is_admin;
-      }
-    }
-
-    // Affichage des éléments du menu du haut
-    userNav.innerHTML = `
-      <span style="font-weight:700; font-size:13px;">👋 ${currentUser.user_metadata?.name || currentUser.email}</span>
-      ${isAdmin ? '<button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>' : ''}
-      <button class="button" id="logout-btn">Déconnexion</button>
-    `;
-
-    // Attachement des événements sur les boutons
-    document.getElementById('logout-btn').addEventListener('click', handleLogout);
-    
-    if (isAdmin) {
-      document.getElementById('open-admin-btn').addEventListener('click', () => {
-        adminModal.classList.add('active');
-      });
-    }
-
-    authWarning.style.display = 'none';
-    submitBookingBtn.disabled = false;
-  } else {
-    // Cas non connecté
-    userNav.innerHTML = `<button class="button" id="open-auth-btn">👤 Se connecter</button>`;
-    document.getElementById('open-auth-btn').addEventListener('click', () => authModal.classList.add('active'));
-    authWarning.style.display = 'block';
-  }
-}
-// Inscription
-signupForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const name = document.getElementById('signup-name').value;
-  const email = document.getElementById('signup-email').value;
-  const password = document.getElementById('signup-password').value;
-
-  if (supabaseClient) {
-    const { data, error } = await supabaseClient.auth.signUp({
-      email, password, options: { data: { name } }
-    });
-    if (error) return alert(`Erreur: ${error.message}`);
-    currentUser = data.user;
-  } else {
-    // Mode démo sans Supabase configuré
-    currentUser = { email, user_metadata: { name } };
-  }
-
-  alert("🎉 Compte créé avec succès !");
-  authModal.classList.remove('active');
-  updateAuthUI();
-});
-
-// Connexion
-loginForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-
-  if (supabaseClient) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) return alert(`Erreur: ${error.message}`);
-    currentUser = data.user;
-  } else {
-    // Mode démo sans Supabase configuré
-    currentUser = { email, user_metadata: { name: email.split('@')[0] } };
-  }
-
-  alert("👋 Connexion réussie !");
-  authModal.classList.remove('active');
-  updateAuthUI();
-});
-
-// Déconnexion
-async function handleLogout() {
-  if (supabaseClient) await supabaseClient.auth.signOut();
-  currentUser = null;
-  updateAuthUI();
-  alert("Vous êtes déconnecté.");
-}
-
-// Toggle Onglets Auth
-btnShowLogin.addEventListener('click', () => {
-  btnShowLogin.classList.add('active');
-  btnShowSignup.classList.remove('active');
-  loginForm.style.display = 'grid';
-  signupForm.style.display = 'none';
-});
-
-btnShowSignup.addEventListener('click', () => {
-  btnShowSignup.classList.add('active');
-  btnShowLogin.classList.remove('active');
-  signupForm.style.display = 'grid';
-  loginForm.style.display = 'none';
-});
-
-// 2. EMBARQUEMENT & CATALOGUE
-function renderEvent(data) {
-  document.getElementById('event-title').textContent = data.title;
-  document.getElementById('event-date').textContent = `📅 ${data.date}`;
-  document.getElementById('event-desc').textContent = data.description;
-  document.getElementById('event-image').src = data.image_url;
-}
-
-function renderGames() {
-  const gamesGrid = document.getElementById('games-grid');
-  const gamesCounter = document.getElementById('games-counter');
-  const bookGameSelect = document.getElementById('book-game');
-
-  gamesGrid.innerHTML = "";
-  gamesCounter.textContent = `${gamesList.length} Jeu${gamesList.length > 1 ? 'x' : ''} Disponible${gamesList.length > 1 ? 's' : ''}`;
-
-  gamesList.forEach(game => {
-    const card = document.createElement('div');
-    card.className = "game-card";
-    card.innerHTML = `
-      <img src="${game.image_url}" class="game-card-img" alt="${game.title}">
-      <div class="game-card-body">
-        <span class="badge">${game.genre}</span>
-        <h3 class="game-card-title">${game.title}</h3>
-        <p style="font-size: 13px; color: var(--text-muted); margin: 0;">👥 ${game.players} joueurs • ⏱️ ${game.duration} min</p>
-        <button class="button" style="margin-top: auto;" onclick="openGameDetails(${game.id})">💬 Fiche & Avis</button>
-      </div>
-    `;
-    gamesGrid.appendChild(card);
-  });
-
-  bookGameSelect.innerHTML = `<option value="">-- Sélectionnez un jeu --</option>`;
-  gamesList.forEach(g => {
-    const opt = document.createElement('option');
-    opt.value = g.title;
-    opt.textContent = g.title;
-    bookGameSelect.appendChild(opt);
-  });
-}
-
-// Fiche Jeu & Avis
-function openGameDetails(gameId) {
-  const game = gamesList.find(g => g.id === gameId);
-  if (!game) return;
-
-  document.getElementById('modal-game-id').value = game.id;
-  document.getElementById('modal-game-title').textContent = game.title;
-  document.getElementById('modal-game-image').src = game.image_url;
-  document.getElementById('modal-game-genre').textContent = game.genre;
-  document.getElementById('modal-game-players').textContent = `👥 ${game.players} joueurs`;
-  document.getElementById('modal-game-duration').textContent = `⏱️ ${game.duration} min`;
-  document.getElementById('modal-game-desc').textContent = game.description;
-
-  if (currentUser) {
-    document.getElementById('game-review-author').value = currentUser.user_metadata?.name || currentUser.email;
-  }
-
-  renderGameReviews(game.id);
-  gameModal.classList.add('active');
-}
-
-function renderGameReviews(gameId) {
-  const container = document.getElementById('modal-game-reviews');
-  container.innerHTML = "";
-  const reviews = gameReviewsList.filter(r => r.game_id === gameId);
-
-  if (reviews.length === 0) {
-    container.innerHTML = `<p style="font-size:13px;">Aucun avis pour ce jeu pour le moment.</p>`;
-    return;
-  }
-
-  reviews.forEach(r => {
-    const stars = "⭐".repeat(r.rating);
-    const div = document.createElement('div');
-    div.className = "admin-item";
-    div.innerHTML = `<span><strong>${r.author}</strong> (${stars}) : "${r.comment}"</span>`;
-    container.appendChild(div);
-  });
-}
-
-document.getElementById('add-game-review-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (!currentUser) return alert("Vous devez être connecté pour laisser un avis.");
-
-  const gameId = parseInt(document.getElementById('modal-game-id').value);
-  gameReviewsList.unshift({
-    id: Date.now(),
-    game_id: gameId,
-    author: document.getElementById('game-review-author').value,
-    rating: parseInt(document.getElementById('game-review-rating').value),
-    comment: document.getElementById('game-review-comment').value
-  });
-
-  renderGameReviews(gameId);
-  document.getElementById('add-game-review-form').reset();
-});
-
-// Emprunts & Admin Forms
-document.getElementById('booking-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (!currentUser) return alert("Veuillez vous connecter pour emprunter un jeu.");
-
-  const startDate = document.getElementById('book-start-date').value;
-  const endDate = document.getElementById('book-end-date').value;
-
-  if (endDate < startDate) return alert("La date de retour doit être postérieure à la date de début.");
-
-  bookingsList.unshift({
-    name: document.getElementById('book-name').value,
-    game: document.getElementById('book-game').value,
-    startDate, endDate
-  });
-
-  alert("✨ Emprunt enregistré !");
-  document.getElementById('booking-form').reset();
-});
-
-// Modal Events
-openAuthBtn?.addEventListener('click', () => authModal.classList.add('active'));
-closeAuthModal.addEventListener('click', () => authModal.classList.remove('active'));
-closeAdminBtn.addEventListener('click', () => adminModal.classList.remove('active'));
-closeGameModal.addEventListener('click', () => gameModal.classList.remove('active'));
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', async () => {
-  if (supabaseClient) {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    currentUser = user;
-  }
-  updateAuthUI();
-  renderEvent(currentEvent);
-  renderGames();
+  setupEventListeners();
+  const { data: { session } } = await supabase.auth.getSession();
+  await handleAuthChange(session?.user || null);
+  loadGames();
 });
+
+// Gestion de la session utilisateur
+supabase.auth.onAuthStateChange((_e, session) => handleAuthChange(session?.user || null));
+
+async function handleAuthChange(user) {
+  currentUser = user;
+  const userNav = $('userNav');
+  const authWarning = $('authWarning');
+  const bookingForm = $('reservationForm');
+
+  if (currentUser) {
+    // Récupération du profil
+    const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', currentUser.id).maybeSingle();
+    currentProfile = profile;
+
+    // Mise à jour de la barre de navigation : Le bouton Admin est proposé dès qu'on est connecté
+    userNav.innerHTML = `
+      <span style="font-weight:700; font-size:13px;">👋 ${currentProfile?.first_name || currentUser.email}</span>
+      <button class="button primary" id="openAdminBtn">🔑 Espace Admin</button>
+      <button class="button" id="logoutBtn">Déconnexion</button>
+    `;
+
+    authWarning.classList.add('hidden');
+    bookingForm.classList.remove('reservation-locked');
+    bookingForm.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+
+    // Pré-remplissage du formulaire
+    bookingForm.querySelector('[name=first_name]').value = currentProfile?.first_name || '';
+    bookingForm.querySelector('[name=last_name]').value = currentProfile?.last_name || '';
+    bookingForm.querySelector('[name=promotion]').value = currentProfile?.promotion || '';
+
+    $('logoutBtn').addEventListener('click', () => supabase.auth.signOut());
+    $('openAdminBtn').addEventListener('click', () => {
+      $('adminModal').classList.remove('hidden');
+      loadAdminData();
+    });
+  } else {
+    currentProfile = null;
+    userNav.innerHTML = `<button class="button" id="openAuthBtn">👤 Se connecter</button>`;
+    
+    authWarning.classList.remove('hidden');
+    bookingForm.classList.add('reservation-locked');
+    bookingForm.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+
+    $('openAuthBtn').addEventListener('click', () => $('authModal').classList.remove('hidden'));
+  }
+}
+
+// Chargement des jeux et des avis
+async function loadGames() {
+  const { data, error } = await supabase.from('games').select('*').eq('is_active', true).order('name');
+  if (error) { $('games').innerHTML = `<div class="empty">Impossible de charger le catalogue.</div>`; return; }
+  allGames = data || [];
+  
+  await loadRatings();
+  
+  const cats = [...new Set(allGames.map(g => g.category).filter(Boolean))].sort();
+  $('category').innerHTML = '<option value="">Toutes les catégories</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('');
+  $('gameSelect').innerHTML = '<option value="">Sélectionnez un jeu…</option>' + allGames.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+  
+  renderGames();
+}
+
+async function loadRatings() {
+  const { data } = await supabase.from('comments').select('game_id, rating');
+  const grouped = {};
+  (data || []).forEach(c => { (grouped[c.game_id] ||= []).push(c.rating); });
+  ratingsMap = {};
+  Object.entries(grouped).forEach(([id, arr]) => {
+    ratingsMap[id] = { avg: arr.reduce((a, b) => a + b, 0) / arr.length, count: arr.length };
+  });
+}
+
+function renderGames() {
+  const q = $('search').value.toLowerCase().trim();
+  const cat = $('category').value;
+  const minPlayers = Number($('players').value || 0);
+  const sort = $('sort').value;
+
+  let games = allGames.filter(g => 
+    (!q || `${g.name} ${g.publisher} ${g.description}`.toLowerCase().includes(q)) &&
+    (!cat || g.category === cat) &&
+    (!minPlayers || (g.players_max || 0) >= minPlayers)
+  );
+
+  games.sort((a,b) => 
+    sort === 'duration' ? (a.duration||999)-(b.duration||999) :
+    sort === 'players' ? (a.players_min||0)-(b.players_min||0) :
+    sort === 'newest' ? new Date(b.created_at||0) - new Date(a.created_at||0) :
+    a.name.localeCompare(b.name, 'fr')
+  );
+
+  $('count').textContent = `${games.length} jeu${games.length > 1 ? 'x' : ''}`;
+  $('games').innerHTML = games.length ? games.map(g => {
+    const rt = ratingsMap[g.id];
+    const ratingLine = rt
+      ? `<div class="stars" title="${rt.avg.toFixed(1)}/5 · ${rt.count} avis">${stars(Math.round(rt.avg))} <span class="publisher">${rt.avg.toFixed(1)} (${rt.count})</span></div>`
+      : `<div class="publisher">Pas encore d'avis</div>`;
+    return `
+      <article class="card">
+        <div class="cover" data-view="${esc(g.id)}" style="cursor:pointer">${g.cover_image ? `<img src="${esc(g.cover_image)}" alt="">` : '<span>✦</span>'}</div>
+        <div class="card-body">
+          <p class="tag">${esc(g.category || 'Jeu')}</p>
+          <h3 data-view="${esc(g.id)}" style="cursor:pointer">${esc(g.name)}</h3>
+          <p class="publisher">${esc(g.publisher)}</p>
+          ${ratingLine}
+          <div class="meta"><span>♙ ${g.players_min || '?'}–${g.players_max || '?'} joueurs</span><span>◷ ${g.duration || '?'} min</span></div>
+          <p class="desc">${esc(g.description || 'Aucune description.')}</p>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
+            <button class="text-button" data-view="${esc(g.id)}">Voir la fiche & avis →</button>
+            <button class="text-button" data-reserve="${esc(g.id)}">Réserver ce jeu →</button>
+          </div>
+        </div>
+      </article>`;
+  }).join('') : '<div class="empty">Aucun jeu ne correspond à ces critères.</div>';
+
+  document.querySelectorAll('[data-reserve]').forEach(b => b.onclick = () => {
+    $('gameSelect').value = b.dataset.reserve;
+    $('reservation').scrollIntoView({ behavior: 'smooth' });
+  });
+  document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => openGameModal(b.dataset.view));
+}
+
+// Panneau d'administration : Récupération des demandes depuis Supabase
+async function loadAdminData() {
+  const container = $('adminReservations');
+  container.innerHTML = '<p class="loading">Chargement des données Supabase…</p>';
+
+  const { data: res, error } = await supabase
+    .from('reservations')
+    .select('*, games(name)')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    container.innerHTML = `<div class="empty">Accès refusé ou erreur : ${esc(error.message)}</div>`;
+    return;
+  }
+
+  if (!res || res.length === 0) {
+    container.innerHTML = `<div class="empty">Aucune réservation trouvée.</div>`;
+    return;
+  }
+
+  container.innerHTML = res.map(r => `
+    <article class="panel" style="padding:16px;">
+      <p class="eyebrow">${esc(r.status.toUpperCase())}</p>
+      <h3>${esc(r.games?.name || 'Jeu inconnu')}</h3>
+      <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)} (${esc(r.promotion)})</p>
+      <p><strong>Dates :</strong> Du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="button primary" data-status="approved" data-id="${r.id}">Valider</button>
+        <button class="button" data-status="rejected" data-id="${r.id}">Refuser</button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-status]').forEach(btn => {
+    btn.onclick = async () => {
+      await supabase.from('reservations').update({ status: btn.dataset.status }).eq('id', btn.dataset.id);
+      loadAdminData();
+    };
+  });
+}
+
+// Événements globaux & Modales
+function setupEventListeners() {
+  ['search', 'category', 'players', 'sort'].forEach(id => $(id).addEventListener('input', renderGames));
+
+  $('noticeAuthBtn')?.addEventListener('click', () => $('authModal').classList.remove('hidden'));
+
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.onclick = () => $(btn.dataset.close).classList.add('hidden');
+  });
+
+  // Authentification
+  $('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('loginMsg').textContent = 'Connexion…';
+    const { error } = await supabase.auth.signInWithPassword({
+      email: $('loginEmail').value,
+      password: $('loginPassword').value
+    });
+    if (error) $('loginMsg').textContent = 'E-mail ou mot de passe incorrect.';
+    else {
+      $('loginMsg').textContent = '';
+      $('authModal').classList.add('hidden');
+    }
+  });
+
+  $('signupForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    $('signupMsg').textContent = 'Création…';
+    const { data, error } = await supabase.auth.signUp({
+      email: $('signupEmail').value,
+      password: $('signupPassword').value,
+      options: {
+        data: {
+          first_name: $('signupFirst').value.trim(),
+          last_name: $('signupLast').value.trim(),
+          promotion: $('signupPromo').value.trim()
+        }
+      }
+    });
+    if (error) $('signupMsg').textContent = error.message;
+    else {
+      $('signupMsg').textContent = '✓ Compte créé.';
+      if (data.session) $('authModal').classList.add('hidden');
+    }
+  });
+
+  // Formulaire de réservation
+  $('reservationForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const f = new FormData(e.currentTarget);
+    const msg = $('formMessage');
+    msg.textContent = 'Envoi…';
+
+    const { error } = await supabase.from('reservations').insert({
+      id: crypto.randomUUID(),
+      game_id: f.get('game_id'),
+      first_name: f.get('first_name').trim(),
+      last_name: f.get('last_name').trim(),
+      promotion: f.get('promotion').trim(),
+      date_start: f.get('date_start'),
+      date_end: f.get('date_end'),
+      status: 'pending',
+      user_id: currentUser.id
+    });
+
+    if (error) msg.textContent = 'Erreur : ' + error.message;
+    else {
+      e.currentTarget.reset();
+      msg.textContent = '✓ Demande envoyée avec succès.';
+    }
+  });
+}
+
+// Modale de détail d'un jeu
+async function openGameModal(id) {
+  const g = allGames.find(x => x.id === id);
+  if (!g) return;
+
+  const { data: comments } = await supabase.from('comments').select('*').eq('game_id', id).order('created_at', { ascending: false });
+
+  $('modalContent').innerHTML = `
+    <div class="game-detail">
+      <div>${g.cover_image ? `<img src="${esc(g.cover_image)}" alt="">` : '<div class="cover" style="height:300px"><span>✦</span></div>'}</div>
+      <div>
+        <p class="eyebrow">${esc(g.category)}</p>
+        <h2>${esc(g.name)}</h2>
+        <p class="publisher">${esc(g.publisher)}</p>
+        <div class="meta"><span>♙ ${g.players_min||'?'}–${g.players_max||'?'} joueurs</span><span>◷ ${g.duration||'?'} min</span></div>
+        <p class="desc">${esc(g.description || 'Aucune description.')}</p>
+      </div>
+    </div>
+    <div class="comments">
+      <p class="eyebrow">AVIS DE LA COMMUNAUTÉ</p>
+      ${comments?.length ? comments.map(c => `
+        <article class="comment">
+          <div class="stars">${stars(c.rating)}</div>
+          <p>${esc(c.body)}</p>
+          <small>${new Date(c.created_at).toLocaleDateString('fr-FR')}</small>
+        </article>
+      `).join('') : '<p class="notice">Aucun avis pour le moment.</p>'}
+    </div>
+  `;
+
+  $('gameModal').classList.remove('hidden');
+}
