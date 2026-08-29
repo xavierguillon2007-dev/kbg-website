@@ -54,34 +54,51 @@ const closeGameModal = document.getElementById('close-game-modal');
 // 1. GESTION DU SYSTÈME DE COMPTE (AUTH)
 
 // Mise à jour de l'UI selon l'état de connexion
-function updateAuthUI() {
+async function updateAuthUI() {
   const userNav = document.querySelector('.user-nav');
 
   if (currentUser) {
-    const isAdmin = currentUser.email.includes('admin');
-    openAdminBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+    let isAdmin = false;
 
+    // Interrogation de Supabase pour savoir si l'utilisateur est admin
+    if (supabaseClient) {
+      // Note : si la colonne dans ta table s'appelle 'user_id', remplace 'id' par 'user_id' ci-dessous
+      const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', currentUser.id) 
+        .single();
+      
+      if (!error && profile) {
+        isAdmin = profile.is_admin;
+      }
+    }
+
+    // Affichage des éléments du menu du haut
     userNav.innerHTML = `
       <span style="font-weight:700; font-size:13px;">👋 ${currentUser.user_metadata?.name || currentUser.email}</span>
-      ${isAdmin ? '<button class="button primary" id="open-admin-btn">🔑 Admin</button>' : ''}
+      ${isAdmin ? '<button class="button primary" id="open-admin-btn">🔑 Espace Admin</button>' : ''}
       <button class="button" id="logout-btn">Déconnexion</button>
     `;
 
+    // Attachement des événements sur les boutons
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    
     if (isAdmin) {
-      document.getElementById('open-admin-btn').addEventListener('click', () => adminModal.classList.add('active'));
+      document.getElementById('open-admin-btn').addEventListener('click', () => {
+        adminModal.classList.add('active');
+      });
     }
 
     authWarning.style.display = 'none';
     submitBookingBtn.disabled = false;
   } else {
+    // Cas non connecté
     userNav.innerHTML = `<button class="button" id="open-auth-btn">👤 Se connecter</button>`;
     document.getElementById('open-auth-btn').addEventListener('click', () => authModal.classList.add('active'));
-    openAdminBtn.style.display = 'none';
     authWarning.style.display = 'block';
   }
 }
-
 // Inscription
 signupForm.addEventListener('submit', async (e) => {
   e.preventDefault();
