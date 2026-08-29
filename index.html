@@ -12,21 +12,19 @@
     <nav>
       <a href="#catalogue">Catalogue</a>
       <a href="#reservation">Réserver</a>
-      <div id="userNav" class="user-nav">
-        <!-- Rempli dynamiquement par app.js -->
-      </div>
+      <div id="userNav" class="user-nav"></div>
     </nav>
   </header>
 
   <main>
     <section class="hero">
+      <div class="orb"></div>
       <div>
         <p class="eyebrow">BIBLIOTHÈQUE LUDIQUE · 01</p>
         <h1>Choisissez votre<br><span>prochaine partie.</span></h1>
-        <p class="hero-copy">Explorez le catalogue, trouvez le jeu adapté à votre groupe et envoyez une demande de réservation en quelques secondes.</p>
+        <p class="hero-copy">Explorez le catalogue, trouvez le jeu adapté à votre groupe et envoyez une demande de réservation.</p>
         <a class="button primary" href="#catalogue">Explorer le catalogue ↘</a>
       </div>
-      <div class="orb" aria-hidden="true"><div></div></div>
     </section>
 
     <section id="catalogue" class="section">
@@ -56,94 +54,99 @@
       <div id="games" class="grid"><div class="loading">Connexion au catalogue…</div></div>
     </section>
 
-    <section id="reservation" class="section reservation">
-      <div class="reservation-copy">
-        <p class="eyebrow">RÉSERVATION · 02</p>
-        <h2>Demander un jeu</h2>
-        <p>Choisissez un jeu et une période. Votre demande restera <strong>en attente</strong> jusqu'à sa validation par un administrateur.</p>
-        <ol class="reservation-steps">
-          <li><span>1</span>Sélectionnez un jeu et vos dates</li>
-          <li><span>2</span>Indiquez vos informations</li>
-          <li><span>3</span>Recevez la validation d'un administrateur</li>
-        </ol>
+    <section id="reservation" class="section">
+      <div class="section-head">
+        <div><p class="eyebrow">RÉSERVATION · 02</p><h2>Demander un jeu</h2></div>
       </div>
       
-      <div id="authWarning" class="reservation-login-notice hidden">
+      <div id="authWarning" class="panel hidden">
         <p class="eyebrow">CONNEXION REQUISE</p>
-        <p>Vous devez créer un compte et être connecté pour envoyer une demande de réservation.</p>
-        <button class="button primary" id="noticeAuthBtn">Créer un compte / Se connecter →</button>
+        <p>Vous devez être connecté pour réserver un jeu.</p>
+        <button class="button primary" id="noticeAuthBtn" style="margin-top:10px;">Se connecter →</button>
       </div>
 
-      <form id="reservationForm" class="panel reservation-panel">
-        <div class="field-group">
-          <label class="field-label" for="gameSelect">Jeu</label>
-          <select id="gameSelect" name="game_id" required><option value="">Sélectionnez un jeu…</option></select>
-        </div>
-        <div class="two">
-          <div class="field-group">
-            <label class="field-label" for="dateStart">Du</label>
-            <input id="dateStart" name="date_start" type="date" required>
+      <form id="reservationForm" class="panel">
+        <div style="display:grid; gap:12px;">
+          <label>Jeu
+            <select id="gameSelect" name="game_id" required><option value="">Sélectionnez un jeu…</option></select>
+          </label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <label>Du <input id="dateStart" name="date_start" type="date" required></label>
+            <label>Au <input id="dateEnd" name="date_end" type="date" required></label>
           </div>
-          <div class="field-group">
-            <label class="field-label" for="dateEnd">Au</label>
-            <input id="dateEnd" name="date_end" type="date" required>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <input name="first_name" required placeholder="Prénom">
+            <input name="last_name" required placeholder="Nom">
           </div>
+          <input name="promotion" required placeholder="Promotion (ex. DFGSM2)">
+          <button id="submitBookingBtn" class="button primary" type="submit">Envoyer la demande →</button>
+          <p id="formMessage" class="form-message"></p>
         </div>
-        <div class="two">
-          <input name="first_name" maxlength="80" required placeholder="Prénom" aria-label="Prénom">
-          <input name="last_name" maxlength="80" required placeholder="Nom" aria-label="Nom">
-        </div>
-        <input name="promotion" maxlength="120" required placeholder="Promotion — ex. DFGSM2" aria-label="Promotion">
-        <button id="submitBookingBtn" class="button primary" type="submit">Envoyer la demande →</button>
-        <p id="formMessage" class="form-message"></p>
       </form>
     </section>
   </main>
+
+  <!-- MODALE ADMINISTRATION (Catalogue + Réservations) -->
+  <div id="adminModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="adminModal">×</button>
+      <p class="eyebrow">ESPACE ADMIN</p>
+      <h2>Panneau de gestion</h2>
+
+      <!-- Formulaire Ajout de Jeu -->
+      <form id="addGameForm" style="margin-top:20px; border-bottom:1px solid var(--line); padding-bottom:20px;">
+        <p class="eyebrow">+ AJOUTER UN JEU</p>
+        <div class="admin-form-grid">
+          <input name="name" placeholder="Nom du jeu" required>
+          <input name="publisher" placeholder="Éditeur" required>
+          <input name="category" placeholder="Catégorie">
+        </div>
+        <div class="admin-form-grid">
+          <input name="players_min" type="number" placeholder="Joueurs min">
+          <input name="players_max" type="number" placeholder="Joueurs max">
+          <input name="duration" type="number" placeholder="Durée (min)">
+        </div>
+        <input name="cover_image" placeholder="URL de l'image" style="width:100%; margin-bottom:8px; background:var(--bg); border:1px solid var(--line); padding:8px; border-radius:4px;">
+        <textarea name="description" class="admin-textarea" placeholder="Description..." style="height:60px; margin-bottom:12px;"></textarea>
+        <button type="submit" class="button primary">+ Ajouter au catalogue</button>
+        <p id="addGameMsg" class="form-message"></p>
+      </form>
+
+      <!-- Liste des Jeux pour suppression -->
+      <div style="margin-top:20px;">
+        <p class="eyebrow">GESTION DU CATALOGUE</p>
+        <div id="adminGamesList" class="grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"></div>
+      </div>
+
+      <!-- Liste des Réservations -->
+      <div style="margin-top:30px;">
+        <p class="eyebrow">DEMANDES DE RÉSERVATION</p>
+        <div id="adminReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Modale Authentification -->
   <div id="authModal" class="modal hidden">
     <div class="modal-card">
       <button class="modal-close" data-close="authModal">×</button>
-      <div class="auth-grid">
-        <form id="loginForm" class="panel">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <form id="loginForm">
           <p class="eyebrow">SE CONNECTER</p>
-          <label>E-mail<input id="loginEmail" type="email" required></label>
-          <label>Mot de passe<input id="loginPassword" type="password" required></label>
-          <button class="button primary" type="submit">Connexion →</button>
+          <input id="loginEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
+          <input id="loginPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
+          <button class="button primary" type="submit">Connexion</button>
           <p id="loginMsg" class="form-message"></p>
         </form>
-        <form id="signupForm" class="panel">
-          <p class="eyebrow">CRÉER UN COMPTE</p>
-          <div class="two">
-            <label>Prénom<input id="signupFirst" required maxlength="80"></label>
-            <label>Nom<input id="signupLast" required maxlength="80"></label>
-          </div>
-          <label>Promotion<input id="signupPromo" required maxlength="120" placeholder="Ex. DFGSM2"></label>
-          <label>E-mail<input id="signupEmail" type="email" required></label>
-          <label>Mot de passe<input id="signupPassword" type="password" minlength="6" required></label>
-          <button class="button primary" type="submit">Créer mon compte →</button>
+        <form id="signupForm">
+          <p class="eyebrow">S'INSCRIRE</p>
+          <input id="signupFirst" placeholder="Prénom" required style="width:100%; margin-bottom:8px;">
+          <input id="signupLast" placeholder="Nom" required style="width:100%; margin-bottom:8px;">
+          <input id="signupEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
+          <input id="signupPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
+          <button class="button primary" type="submit">Créer compte</button>
           <p id="signupMsg" class="form-message"></p>
         </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modale Fiche Jeu -->
-  <div id="gameModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="gameModal">×</button>
-      <div id="modalContent"></div>
-    </div>
-  </div>
-
-  <!-- Modale Espace Admin -->
-  <div id="adminModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="adminModal">×</button>
-      <p class="eyebrow">ADMINISTRATION</p>
-      <h2>Gestion des Réservations</h2>
-      <div id="adminReservations" class="grid" style="margin-top:20px;">
-        <p class="loading">Chargement des demandes…</p>
       </div>
     </div>
   </div>
