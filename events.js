@@ -1,394 +1,383 @@
+```javascript
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
 
 // =========================================================
 // SUPABASE
 // =========================================================
 
 const SUPABASE_URL =
-'https://qqelmmygalllmxinaxrf.supabase.co';
+  'https://qqelmmygalllmxinaxrf.supabase.co';
 
 const SUPABASE_KEY =
-'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
+  'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
 
-const supabase =
-createClient(
-SUPABASE_URL,
-SUPABASE_KEY
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
 );
+
+
+// =========================================================
+// ADMIN
+// =========================================================
+
+const ADMIN_EMAILS = [
+  'xavierguillon2007@gmail.com',
+  'kbg.asso@gmail.com'
+];
+
+function isAdminEmail(email) {
+
+  return !!email &&
+    ADMIN_EMAILS.includes(
+      email.toLowerCase().trim()
+    );
+
+}
+
 
 // =========================================================
 // VARIABLES
 // =========================================================
 
+let currentUser = null;
 let allEvents = [];
 
-let currentUser = null;
-
-let isAdmin = false;
 
 // =========================================================
 // OUTILS
 // =========================================================
 
-const $ =
-id => document.getElementById(id);
+const $ = id =>
+  document.getElementById(id);
+
 
 function esc(value) {
 
-return String(
-value ?? ''
-).replace(
-/[&<>"']/g,
-char => ({
-'&': '&',
-'<': '<',
-'>': '>',
-'"': '"',
-"'": '''
-}[char])
-);
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[char])
+  );
 
 }
+
 
 // =========================================================
-// DATES
+// DATE
 // =========================================================
 
-function getTodayString() {
+function parseEventDate(event) {
 
-const now =
-new Date();
+  /*
+   * On accepte plusieurs noms possibles pour la colonne
+   * de date afin de rendre le système plus robuste.
+   */
 
-const year =
-now.getFullYear();
+  const value =
+    event.date ||
+    event.event_date ||
+    event.date_start ||
+    event.start_date;
 
-const month =
-String(
-now.getMonth() + 1
-).padStart(2, '0');
+  if (!value) {
+    return null;
+  }
 
-const day =
-String(
-now.getDate()
-).padStart(2, '0');
+  const date =
+    new Date(value);
 
-return `${year}-${month}-${day}`;
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
 
-}
-
-function formatEventDate(dateString) {
-
-if (!dateString) {
-return '';
-}
-
-const date =
-new Date(
-dateString + 'T00:00:00'
-);
-
-if (
-Number.isNaN(
-date.getTime()
-)
-) {
-return dateString;
-}
-
-return date.toLocaleDateString(
-'fr-FR',
-{
-weekday: 'long',
-day: 'numeric',
-month: 'long',
-year: 'numeric'
-}
-);
+  return date;
 
 }
 
-function formatShortEventDate(dateString) {
 
-if (!dateString) {
-return '';
-}
+function formatEventDate(event) {
 
-const date =
-new Date(
-dateString + 'T00:00:00'
-);
+  const date =
+    parseEventDate(event);
 
-if (
-Number.isNaN(
-date.getTime()
-)
-) {
-return dateString;
-}
+  if (!date) {
+    return 'Date non renseignée';
+  }
 
-return date.toLocaleDateString(
-'fr-FR',
-{
-day: 'numeric',
-month: 'long',
-year: 'numeric'
-}
-);
+  return date.toLocaleDateString(
+    'fr-FR',
+    {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }
+  );
 
 }
+
+
+function formatEventDateShort(event) {
+
+  const date =
+    parseEventDate(event);
+
+  if (!date) {
+    return 'Date non renseignée';
+  }
+
+  return date.toLocaleDateString(
+    'fr-FR',
+    {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }
+  );
+
+}
+
+
+function isEventPast(event) {
+
+  const date =
+    parseEventDate(event);
+
+  if (!date) {
+    return false;
+  }
+
+  /*
+   * On compare uniquement la date,
+   * pas l'heure.
+   */
+
+  const today =
+    new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  date.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return date < today;
+
+}
+
 
 // =========================================================
 // INITIALISATION
 // =========================================================
 
 document.addEventListener(
-'DOMContentLoaded',
-async () => {
+  'DOMContentLoaded',
+  async () => {
 
-```
-setupEventListeners();
+    setupEventListeners();
 
-try {
+    await initializeAuth();
 
-  const {
-    data,
-    error
-  } =
-    await supabase.auth.getSession();
+    await loadEvents();
 
-  if (error) {
+  }
+);
+
+
+// =========================================================
+// AUTHENTIFICATION
+// =========================================================
+
+async function initializeAuth() {
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase.auth.getSession();
+
+    if (error) {
+      throw error;
+    }
+
+    currentUser =
+      data?.session?.user || null;
+
+    updateUserNav();
+
+  } catch (error) {
 
     console.error(
       'Erreur récupération session :',
       error
     );
 
+    currentUser = null;
+
+    updateUserNav();
+
   }
 
-  await handleAuthChange(
-    data?.session?.user || null
-  );
 
-} catch (error) {
+  supabase.auth.onAuthStateChange(
+    (_event, session) => {
 
-  console.error(
-    'Erreur Auth :',
-    error
-  );
+      currentUser =
+        session?.user || null;
 
-}
+      updateUserNav();
 
-await loadEvents();
-```
-
-}
-);
-
-// =========================================================
-// AUTHENTIFICATION
-// =========================================================
-
-supabase.auth.onAuthStateChange(
-async (
-_event,
-session
-) => {
-
-```
-await handleAuthChange(
-  session?.user || null
-);
-```
-
-}
-);
-
-async function handleAuthChange(user) {
-
-currentUser =
-user;
-
-isAdmin =
-false;
-
-const userNav =
-$('userNav');
-
-const addBtn =
-$('openAddEventBtn');
-
-if (currentUser) {
-
-```
-// -----------------------------------------------------
-// VÉRIFICATION ADMIN
-// -----------------------------------------------------
-
-const {
-  data: adminData,
-  error: adminError
-} =
-  await supabase
-    .from('admins')
-    .select('user_id')
-    .eq(
-      'user_id',
-      currentUser.id
-    )
-    .maybeSingle();
-
-
-if (adminError) {
-
-  console.error(
-    'Erreur vérification admin :',
-    adminError
-  );
-
-}
-
-
-isAdmin =
-  !!adminData;
-
-
-// -----------------------------------------------------
-// NAVIGATION
-// -----------------------------------------------------
-
-if (userNav) {
-
-  userNav.innerHTML = `
-
-    <span
-      style="
-        font-size:13px;
-        font-weight:700;
-      "
-    >
-      👋 ${esc(
-        currentUser.email
-      )}
-    </span>
-
-    ${
-      isAdmin
-        ? `
-          <span
-            class="tag"
-            style="margin-left:6px;"
-          >
-            ADMIN
-          </span>
-        `
-        : ''
     }
+  );
 
-    <button
-      class="button"
-      id="logoutBtn"
-    >
-      Déconnexion
-    </button>
-
-  `;
+}
 
 
-  $('logoutBtn')
-    ?.addEventListener(
-      'click',
-      async () => {
+// =========================================================
+// NAVIGATION UTILISATEUR
+// =========================================================
 
-        const {
-          error
-        } =
-          await supabase.auth
-            .signOut();
+function updateUserNav() {
 
-        if (error) {
+  const userNav =
+    $('userNav');
 
-          console.error(
-            'Erreur déconnexion :',
+  const addButton =
+    $('openAddEventBtn');
+
+
+  if (!userNav) {
+    return;
+  }
+
+
+  if (currentUser) {
+
+    const email =
+      currentUser.email || '';
+
+    const admin =
+      isAdminEmail(email);
+
+
+    userNav.innerHTML = `
+
+      <span
+        style="
+          font-size:13px;
+          font-weight:700;
+        "
+      >
+        👋 ${esc(email)}
+      </span>
+
+      <button
+        class="button"
+        id="eventsLogoutBtn"
+      >
+        Déconnexion
+      </button>
+
+    `;
+
+
+    $('eventsLogoutBtn')
+      ?.addEventListener(
+        'click',
+        async () => {
+
+          const {
             error
-          );
+          } =
+            await supabase.auth.signOut();
+
+          if (error) {
+
+            console.error(
+              'Erreur déconnexion :',
+              error
+            );
+
+          }
 
         }
+      );
+
+
+    /*
+     * Seuls les administrateurs voient
+     * le bouton d'ajout.
+     */
+
+    if (addButton) {
+
+      if (admin) {
+
+        addButton.classList.remove(
+          'hidden'
+        );
+
+      } else {
+
+        addButton.classList.add(
+          'hidden'
+        );
 
       }
-    );
 
-}
+    }
+
+  } else {
+
+    userNav.innerHTML = `
+
+      <button
+        class="button"
+        id="eventsLoginBtn"
+      >
+        👤 Connexion
+      </button>
+
+    `;
 
 
-// -----------------------------------------------------
-// BOUTON ADMIN
-// -----------------------------------------------------
+    $('eventsLoginBtn')
+      ?.addEventListener(
+        'click',
+        () => {
 
-if (isAdmin) {
+          $('authModal')
+            ?.classList.remove('hidden');
 
-  addBtn
-    ?.classList.remove(
+        }
+      );
+
+
+    addButton?.classList.add(
       'hidden'
     );
 
-} else {
-
-  addBtn
-    ?.classList.add(
-      'hidden'
-    );
-
-}
-```
-
-} else {
-
-```
-// -----------------------------------------------------
-// UTILISATEUR NON CONNECTÉ
-// -----------------------------------------------------
-
-if (userNav) {
-
-  userNav.innerHTML = `
-
-    <button
-      class="button"
-      id="openAuthBtn"
-    >
-      👤 Connexion
-    </button>
-
-  `;
-
-
-  $('openAuthBtn')
-    ?.addEventListener(
-      'click',
-      () => {
-
-        $('authModal')
-          ?.classList.remove(
-            'hidden'
-          );
-
-      }
-    );
+  }
 
 }
 
-
-addBtn
-  ?.classList.add(
-    'hidden'
-  );
-```
-
-}
-
-renderEvents();
-
-}
 
 // =========================================================
 // CHARGEMENT DES ÉVÉNEMENTS
@@ -396,72 +385,138 @@ renderEvents();
 
 async function loadEvents() {
 
-try {
+  const container =
+    $('events');
 
-```
-const {
-  data,
-  error
-} =
-  await supabase
-    .from('events')
-    .select('*')
-    .order(
-      'date',
-      {
-        ascending: true,
-        nullsFirst: false
+  const count =
+    $('eventsCount');
+
+
+  if (!container) {
+    return;
+  }
+
+
+  container.innerHTML = `
+    <div class="loading">
+      Connexion au catalogue d'événements…
+    </div>
+  `;
+
+
+  try {
+
+    /*
+     * On récupère toutes les colonnes.
+     * Cela permet au JS de fonctionner même si
+     * la table possède quelques champs supplémentaires.
+     */
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('events')
+        .select('*');
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    allEvents =
+      Array.isArray(data)
+        ? data
+        : [];
+
+
+    /*
+     * Tri chronologique.
+     */
+
+    allEvents.sort(
+      (a, b) => {
+
+        const dateA =
+          parseEventDate(a);
+
+        const dateB =
+          parseEventDate(b);
+
+
+        if (!dateA && !dateB) {
+          return 0;
+        }
+
+        if (!dateA) {
+          return 1;
+        }
+
+        if (!dateB) {
+          return -1;
+        }
+
+        return dateA - dateB;
+
       }
     );
 
 
-if (error) {
-  throw error;
+    if (count) {
+
+      count.textContent =
+        `${allEvents.length} événement${
+          allEvents.length > 1
+            ? 's'
+            : ''
+        }`;
+
+    }
+
+
+    renderEvents();
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur chargement événements :',
+      error
+    );
+
+
+    container.innerHTML = `
+
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
+
+        <strong>
+          Impossible de charger les événements.
+        </strong>
+
+        <br><br>
+
+        <small>
+          ${esc(error.message)}
+        </small>
+
+      </div>
+
+    `;
+
+
+    if (count) {
+      count.textContent = 'Erreur';
+    }
+
+  }
+
 }
 
-
-allEvents =
-  data || [];
-
-
-renderEvents();
-```
-
-} catch (error) {
-
-```
-console.error(
-  'Erreur événements :',
-  error
-);
-
-
-if ($('events')) {
-
-  $('events').innerHTML = `
-
-    <div class="empty">
-
-      Erreur de chargement des événements.
-
-      <br><br>
-
-      <small>
-        ${esc(
-          error.message
-        )}
-      </small>
-
-    </div>
-
-  `;
-
-}
-```
-
-}
-
-}
 
 // =========================================================
 // PROCHAIN ÉVÉNEMENT
@@ -469,920 +524,676 @@ if ($('events')) {
 
 function getNextEvent() {
 
-const today =
-getTodayString();
+  const today =
+    new Date();
 
-const upcomingEvents =
-allEvents
-.filter(
-event =>
-event.date &&
-event.date >= today
-)
-.sort(
-(a, b) =>
-String(a.date)
-.localeCompare(
-String(b.date)
-)
-);
-
-return (
-upcomingEvents[0] ||
-null
-);
-
-}
-
-function renderFeaturedEvent() {
-
-const container =
-$('featuredEvent');
-
-const image =
-$('featuredEventImage');
-
-const placeholder =
-$('featuredEventPlaceholder');
-
-const date =
-$('featuredEventDate');
-
-const title =
-$('featuredEventTitle');
-
-const description =
-$('featuredEventDescription');
-
-if (
-!container ||
-!title ||
-!description
-) {
-return;
-}
-
-const event =
-getNextEvent();
-
-// -------------------------------------------------------
-// AUCUN ÉVÉNEMENT À VENIR
-// -------------------------------------------------------
-
-if (!event) {
-
-```
-title.textContent =
-  'Aucun événement à venir';
-
-description.textContent =
-  'De nouveaux événements seront bientôt annoncés par le KBG.';
-
-if (date) {
-
-  date.textContent =
-    'À VENIR';
-
-}
-
-if (image) {
-
-  image.style.display =
-    'none';
-
-  image.removeAttribute(
-    'src'
+  today.setHours(
+    0,
+    0,
+    0,
+    0
   );
 
-}
 
-if (placeholder) {
+  const upcoming =
+    allEvents
+      .filter(event => {
 
-  placeholder.style.display =
-    'flex';
+        const date =
+          parseEventDate(event);
 
-}
+        if (!date) {
+          return false;
+        }
 
-container.onclick =
-  null;
+        date.setHours(
+          0,
+          0,
+          0,
+          0
+        );
 
-container.style.cursor =
-  'default';
+        return date >= today;
 
-return;
-```
+      })
+      .sort(
+        (a, b) =>
+          parseEventDate(a) -
+          parseEventDate(b)
+      );
 
-}
 
-// -------------------------------------------------------
-// IMAGE
-// -------------------------------------------------------
-
-if (
-event.photo_url
-) {
-
-```
-if (image) {
-
-  image.src =
-    event.photo_url;
-
-  image.alt =
-    event.name || 'Événement';
-
-  image.style.display =
-    'block';
+  return upcoming[0] || null;
 
 }
 
-if (placeholder) {
-
-  placeholder.style.display =
-    'none';
-
-}
-```
-
-} else {
-
-```
-if (image) {
-
-  image.style.display =
-    'none';
-
-  image.removeAttribute(
-    'src'
-  );
-
-}
-
-if (placeholder) {
-
-  placeholder.style.display =
-    'flex';
-
-}
-```
-
-}
-
-// -------------------------------------------------------
-// DATE
-// -------------------------------------------------------
-
-if (date) {
-
-```
-date.textContent =
-  formatEventDate(
-    event.date
-  );
-```
-
-}
-
-// -------------------------------------------------------
-// TITRE
-// -------------------------------------------------------
-
-title.textContent =
-event.name ||
-'Événement';
-
-// -------------------------------------------------------
-// DESCRIPTION BRÈVE
-// -------------------------------------------------------
-
-description.textContent =
-event.brief_description ||
-event.description ||
-'Aucune description disponible.';
-
-// -------------------------------------------------------
-// CLIC
-// -------------------------------------------------------
-
-container.style.cursor =
-'pointer';
-
-container.onclick =
-() => {
-
-```
-  openEventDetail(
-    event
-  );
-
-};
-```
-
-}
 
 // =========================================================
-// AFFICHAGE DES ÉVÉNEMENTS
+// RENDU DES ÉVÉNEMENTS
 // =========================================================
 
 function renderEvents() {
 
-const container =
-$('events');
-
-renderFeaturedEvent();
-
-if (!container) {
-return;
-}
-
-if ($('eventsCount')) {
-
-```
-$('eventsCount').textContent =
-  `${allEvents.length} événement(s)`;
-```
-
-}
-
-if (!allEvents.length) {
-
-```
-container.innerHTML = `
-
-  <div
-    class="empty panel"
-  >
-    Aucun événement pour le moment.
-  </div>
-
-`;
-
-return;
-```
-
-}
-
-// -------------------------------------------------------
-// TRI
-// -------------------------------------------------------
-
-const today =
-getTodayString();
-
-const sortedEvents =
-[...allEvents].sort(
-(a, b) => {
-
-```
-    const aDate =
-      a.date || '9999-12-31';
-
-    const bDate =
-      b.date || '9999-12-31';
+  const container =
+    $('events');
 
 
-    // Les événements à venir d'abord
-    const aUpcoming =
-      a.date &&
-      a.date >= today;
-
-    const bUpcoming =
-      b.date &&
-      b.date >= today;
+  if (!container) {
+    return;
+  }
 
 
-    if (
-      aUpcoming &&
-      !bUpcoming
-    ) {
-      return -1;
-    }
+  if (!allEvents.length) {
 
-    if (
-      !aUpcoming &&
-      bUpcoming
-    ) {
-      return 1;
-    }
+    container.innerHTML = `
 
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
 
-    if (aUpcoming && bUpcoming) {
+        Aucun événement n'est encore prévu.
 
-      return aDate.localeCompare(
-        bDate
-      );
+      </div>
 
-    }
+    `;
 
-
-    // Événements passés :
-    // les plus récents d'abord
-
-    return bDate.localeCompare(
-      aDate
-    );
+    return;
 
   }
-);
-```
-
-// -------------------------------------------------------
-// CARTES
-// -------------------------------------------------------
-
-container.innerHTML =
-sortedEvents
-.map(
-event => {
-
-```
-      const isPast =
-        event.date &&
-        event.date < today;
 
 
-      return `
+  const today =
+    new Date();
 
-        <article
-          class="card"
-          data-event-id="${esc(
-            event.id
-          )}"
-          style="
-            cursor:pointer;
-            ${
-              isPast
-                ? 'opacity:.72;'
-                : ''
-            }
-          "
-        >
-
-          <div class="cover">
-
-            ${
-              event.photo_url
-
-                ? `
-
-                  <img
-                    src="${esc(
-                      event.photo_url
-                    )}"
-                    alt="${esc(
-                      event.name
-                    )}"
-                  >
-
-                `
-
-                : '<span>✦</span>'
-            }
-
-          </div>
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
 
 
-          <div class="card-body">
+  const upcoming =
+    allEvents.filter(
+      event => {
 
-            <p class="tag">
+        const date =
+          parseEventDate(event);
 
-              ${
-                isPast
-                  ? 'Événement passé'
-                  : 'À venir'
-              }
-
-            </p>
-
-
-            <h3>
-              ${esc(
-                event.name
-              )}
-            </h3>
-
-
-            ${
-              event.date
-                ? `
-
-                  <p class="publisher">
-
-                    📅
-                    ${esc(
-                      formatShortEventDate(
-                        event.date
-                      )
-                    )}
-
-                  </p>
-
-                `
-                : ''
-            }
-
-
-            <p class="publisher">
-
-              Organisé par
-              ${esc(
-                event.organizers ||
-                ''
-              )}
-
-            </p>
-
-
-            ${
-              event.brief_description
-
-                ? `
-
-                  <p
-                    class="desc"
-                    style="
-                      font-weight:600;
-                    "
-                  >
-                    ${esc(
-                      event.brief_description
-                    )}
-                  </p>
-
-                `
-
-                : `
-
-                  <p class="desc">
-                    ${esc(
-                      event.description ||
-                      ''
-                    )}
-                  </p>
-
-                `
-            }
-
-
-            <p
-              style="
-                color:var(--accent);
-                font-size:12px;
-                margin-top:10px;
-                font-weight:700;
-              "
-            >
-              Voir les détails →
-            </p>
-
-          </div>
-
-        </article>
-
-      `;
-
-    }
-  )
-  .join('');
-```
-
-// -------------------------------------------------------
-// CLIC CARTES
-// -------------------------------------------------------
-
-container
-.querySelectorAll(
-'[data-event-id]'
-)
-.forEach(
-card => {
-
-```
-    card.addEventListener(
-      'click',
-      () => {
-
-        const event =
-          allEvents.find(
-            item =>
-              String(item.id) ===
-              String(
-                card.dataset.eventId
-              )
-          );
-
-
-        if (event) {
-
-          openEventDetail(
-            event
-          );
-
+        if (!date) {
+          return true;
         }
+
+        date.setHours(
+          0,
+          0,
+          0,
+          0
+        );
+
+        return date >= today;
 
       }
     );
 
+
+  const past =
+    allEvents.filter(
+      event => {
+
+        const date =
+          parseEventDate(event);
+
+        if (!date) {
+          return false;
+        }
+
+        date.setHours(
+          0,
+          0,
+          0,
+          0
+        );
+
+        return date < today;
+
+      }
+    );
+
+
+  let html = '';
+
+
+  // =======================================================
+  // À VENIR
+  // =======================================================
+
+  if (upcoming.length) {
+
+    html += `
+
+      <div
+        style="
+          grid-column:1/-1;
+          margin-bottom:4px;
+        "
+      >
+
+        <p class="eyebrow">
+          PROCHAINEMENT
+        </p>
+
+      </div>
+
+    `;
+
+
+    html += upcoming
+      .map(
+        event =>
+          renderEventCard(
+            event,
+            false
+          )
+      )
+      .join('');
+
   }
-);
-```
+
+
+  // =======================================================
+  // PASSÉS
+  // =======================================================
+
+  if (past.length) {
+
+    html += `
+
+      <div
+        style="
+          grid-column:1/-1;
+          margin-top:28px;
+          margin-bottom:4px;
+        "
+      >
+
+        <p class="eyebrow">
+          ÉVÉNEMENTS PASSÉS
+        </p>
+
+      </div>
+
+    `;
+
+
+    html += past
+      .slice()
+      .reverse()
+      .map(
+        event =>
+          renderEventCard(
+            event,
+            true
+          )
+      )
+      .join('');
+
+  }
+
+
+  container.innerHTML =
+    html;
+
+
+  /*
+   * Activation des clics.
+   */
+
+  container
+    .querySelectorAll(
+      '[data-event-id]'
+    )
+    .forEach(
+      card => {
+
+        card.addEventListener(
+          'click',
+          () => {
+
+            const id =
+              card.dataset.eventId;
+
+            const event =
+              allEvents.find(
+                item =>
+                  String(item.id) ===
+                  String(id)
+              );
+
+            if (event) {
+              openEventDetail(event);
+            }
+
+          }
+        );
+
+      }
+    );
 
 }
 
+
 // =========================================================
-// DÉTAIL D'UN ÉVÉNEMENT
+// CARTE ÉVÉNEMENT
 // =========================================================
 
-function openEventDetail(event) {
+function renderEventCard(
+  event,
+  past = false
+) {
 
-const body =
-$('eventDetailBody');
+  const photo =
+    event.photo_url ||
+    event.photo ||
+    event.image_url ||
+    '';
 
-if (!body) {
-return;
-}
 
-body.innerHTML = `
+  const brief =
+    event.short_description ||
+    event.brief_description ||
+    event.description_brief ||
+    '';
 
-```
-${
-  event.photo_url
 
-    ? `
+  const description =
+    brief ||
+    event.description ||
+    '';
+
+
+  return `
+
+    <article
+      class="card"
+      data-event-id="${esc(event.id)}"
+      style="
+        cursor:pointer;
+        ${past ? 'opacity:0.65;' : ''}
+      "
+      title="Voir les détails de l'événement"
+    >
 
       <div
         class="cover"
         style="
-          height:220px;
-          border-radius:8px;
-          margin-bottom:16px;
+          position:relative;
+          overflow:hidden;
         "
       >
 
-        <img
-          src="${esc(
-            event.photo_url
-          )}"
-          alt="${esc(
-            event.name
-          )}"
-          style="
-            width:100%;
-            height:100%;
-            object-fit:cover;
-            border-radius:8px;
-          "
-        >
+        ${
+          photo
+            ? `
+              <img
+                src="${esc(photo)}"
+                alt="${esc(event.name)}"
+                style="
+                  width:100%;
+                  height:100%;
+                  object-fit:cover;
+                "
+              >
+            `
+            : `
+              <span>
+                ✦
+              </span>
+            `
+        }
 
       </div>
 
-    `
 
-    : ''
-}
+      <div class="card-body">
 
-
-<p class="eyebrow">
-  ÉVÉNEMENT
-</p>
-
-
-<h2>
-  ${esc(
-    event.name
-  )}
-</h2>
-
-
-${
-  event.date
-
-    ? `
-
-      <p
-        class="publisher"
-        style="
-          margin-top:6px;
-        "
-      >
-        📅
-        ${esc(
-          formatEventDate(
-            event.date
-          )
-        )}
-      </p>
-
-    `
-
-    : ''
-}
+        ${
+          past
+            ? `
+              <p class="tag">
+                ÉVÉNEMENT PASSÉ
+              </p>
+            `
+            : `
+              <p class="tag">
+                ÉVÉNEMENT
+              </p>
+            `
+        }
 
 
-<p
-  class="publisher"
-  style="
-    margin-top:6px;
-  "
->
-  Organisé par
-  ${esc(
-    event.organizers ||
-    ''
-  )}
-</p>
-
-
-${
-  event.brief_description
-
-    ? `
-
-      <div
-        style="
-          margin-top:18px;
-          padding:14px;
-          background:var(--bg);
-          border:1px solid var(--line);
-          border-radius:8px;
-        "
-      >
-
-        <p
-          class="eyebrow"
-          style="
-            margin-bottom:6px;
-          "
-        >
-          EN BREF
-        </p>
-
-        <p
-          style="
-            font-size:13px;
-            line-height:1.6;
-          "
-        >
+        <h3>
           ${esc(
-            event.brief_description
+            event.name ||
+            'Événement'
+          )}
+        </h3>
+
+
+        <p
+          style="
+            color:var(--accent);
+            font-size:13px;
+            font-weight:700;
+            margin-top:6px;
+          "
+        >
+          📅 ${esc(
+            formatEventDateShort(event)
           )}
         </p>
 
+
+        ${
+          event.organizers
+            ? `
+              <p
+                class="publisher"
+                style="margin-top:5px;"
+              >
+                Organisé par
+                ${esc(event.organizers)}
+              </p>
+            `
+            : ''
+        }
+
+
+        ${
+          description
+            ? `
+              <p
+                class="desc"
+                style="
+                  display:-webkit-box;
+                  -webkit-line-clamp:3;
+                  -webkit-box-orient:vertical;
+                  overflow:hidden;
+                  margin-top:10px;
+                "
+              >
+                ${esc(description)}
+              </p>
+            `
+            : ''
+        }
+
+
+        <p
+          style="
+            color:#2583ff;
+            font-size:12px;
+            margin-top:12px;
+            font-weight:700;
+          "
+        >
+          Voir les détails →
+        </p>
+
       </div>
 
-    `
+    </article>
 
-    : ''
+  `;
+
 }
 
 
-<p
-  style="
-    margin-top:18px;
-    color:var(--text);
-    font-size:14px;
-    line-height:1.7;
-    white-space:pre-wrap;
-    overflow-wrap:anywhere;
-  "
->
-  ${esc(
-    event.description ||
-    ''
-  )}
-</p>
+// =========================================================
+// MODALE DÉTAIL
+// =========================================================
+
+function openEventDetail(event) {
+
+  const modal =
+    $('eventDetailModal');
+
+  const body =
+    $('eventDetailBody');
 
 
-${
-  isAdmin
+  if (!modal || !body) {
+    return;
+  }
 
-    ? `
 
-      <button
-        class="button danger"
-        id="deleteEventBtn"
+  const photo =
+    event.photo_url ||
+    event.photo ||
+    event.image_url ||
+    '';
+
+
+  const date =
+    parseEventDate(event);
+
+
+  const past =
+    isEventPast(event);
+
+
+  body.innerHTML = `
+
+    ${
+      photo
+        ? `
+          <img
+            src="${esc(photo)}"
+            alt="${esc(event.name)}"
+            style="
+              width:100%;
+              max-height:350px;
+              object-fit:cover;
+              border-radius:8px;
+              margin-bottom:20px;
+            "
+          >
+        `
+        : ''
+    }
+
+
+    <p class="eyebrow">
+      ${
+        past
+          ? 'ÉVÉNEMENT PASSÉ'
+          : 'ÉVÉNEMENT À VENIR'
+      }
+    </p>
+
+
+    <h2
+      style="
+        margin-top:5px;
+      "
+    >
+      ${esc(
+        event.name ||
+        'Événement'
+      )}
+    </h2>
+
+
+    <p
+      style="
+        color:var(--accent);
+        font-weight:700;
+        margin-top:8px;
+      "
+    >
+      📅 ${esc(
+        formatEventDate(event)
+      )}
+    </p>
+
+
+    ${
+      event.organizers
+        ? `
+          <p
+            style="
+              color:var(--muted);
+              font-size:13px;
+              margin-top:8px;
+            "
+          >
+            Organisé par :
+            ${esc(event.organizers)}
+          </p>
+        `
+        : ''
+    }
+
+
+    ${
+      event.short_description ||
+      event.brief_description ||
+      event.description_brief
+        ? `
+          <div
+            style="
+              margin-top:20px;
+              padding:14px;
+              border:1px solid var(--line);
+              background:var(--bg);
+              border-radius:8px;
+            "
+          >
+
+            <p class="eyebrow">
+              EN BREF
+            </p>
+
+            <p
+              style="
+                margin-top:7px;
+                font-size:14px;
+                line-height:1.6;
+              "
+            >
+              ${esc(
+                event.short_description ||
+                event.brief_description ||
+                event.description_brief
+              )}
+            </p>
+
+          </div>
+        `
+        : ''
+    }
+
+
+    <div
+      style="
+        margin-top:22px;
+      "
+    >
+
+      <p class="eyebrow">
+        DESCRIPTION
+      </p>
+
+      <p
         style="
-          margin-top:20px;
+          margin-top:8px;
+          font-size:14px;
+          line-height:1.75;
+          white-space:pre-wrap;
+          overflow-wrap:anywhere;
         "
       >
-        Supprimer l'événement
-      </button>
+        ${esc(
+          event.description ||
+          'Aucune description disponible.'
+        )}
+      </p>
 
-    `
+    </div>
 
-    : ''
-}
-```
-
-`;
-
-// -------------------------------------------------------
-// SUPPRESSION
-// -------------------------------------------------------
-
-if (isAdmin) {
-
-```
-$('deleteEventBtn')
-  ?.addEventListener(
-    'click',
-    async () => {
-
-      if (
-        !confirm(
-          'Supprimer cet événement ?'
-        )
-      ) {
-        return;
-      }
+  `;
 
 
-      const {
-        error
-      } =
-        await supabase
-          .from('events')
-          .delete()
-          .eq(
-            'id',
-            event.id
-          );
-
-
-      if (error) {
-
-        console.error(
-          'Erreur suppression événement :',
-          error
-        );
-
-
-        alert(
-          "Impossible de supprimer l'événement :\n" +
-          error.message
-        );
-
-        return;
-
-      }
-
-
-      $('eventDetailModal')
-        ?.classList.add(
-          'hidden'
-        );
-
-
-      await loadEvents();
-
-    }
+  modal.classList.remove(
+    'hidden'
   );
-```
 
 }
 
-$('eventDetailModal')
-?.classList.remove(
-'hidden'
-);
-
-}
 
 // =========================================================
-// LISTENERS
-// =========================================================
-
-function setupEventListeners() {
-
-// -------------------------------------------------------
-// FERMETURE MODALES
-// -------------------------------------------------------
-
-document
-.querySelectorAll(
-'[data-close]'
-)
-.forEach(
-button => {
-
-```
-    button.onclick =
-      () => {
-
-        const targetId =
-          button.dataset.close;
-
-        $(targetId)
-          ?.classList.add(
-            'hidden'
-          );
-
-      };
-
-  }
-);
-```
-
-// -------------------------------------------------------
 // AJOUT ÉVÉNEMENT
-// -------------------------------------------------------
+// =========================================================
 
-$('openAddEventBtn')
-?.addEventListener(
-'click',
-() => {
+async function handleAddEvent(e) {
 
-```
-    if (!currentUser) {
-
-      $('authModal')
-        ?.classList.remove(
-          'hidden'
-        );
-
-      return;
-
-    }
+  e.preventDefault();
 
 
-    if (!isAdmin) {
+  const form =
+    e.currentTarget;
 
-      alert(
-        'Seuls les administrateurs peuvent ajouter un événement.'
-      );
-
-      return;
-
-    }
+  const msg =
+    $('addEventMsg');
 
 
-    $('addEventModal')
-      ?.classList.remove(
-        'hidden'
-      );
+  if (
+    !(form instanceof HTMLFormElement)
+  ) {
+
+    console.error(
+      'Formulaire événement invalide.'
+    );
+
+    return;
 
   }
-);
-```
-
-// -------------------------------------------------------
-// FORMULAIRE AJOUT
-// -------------------------------------------------------
-
-$('addEventForm')
-?.addEventListener(
-'submit',
-async e => {
-
-```
-    e.preventDefault();
 
 
-    const form =
-      e.currentTarget;
+  if (
+    !isAdminEmail(
+      currentUser?.email
+    )
+  ) {
 
-    const msg =
-      $('addEventMsg');
+    if (msg) {
 
-    const submitBtn =
-      form.querySelector(
-        'button[type="submit"]'
-      );
+      msg.textContent =
+        'Accès réservé aux administrateurs.';
 
-
-    if (!currentUser) {
-
-      if (msg) {
-
-        msg.textContent =
-          'Vous devez être connecté pour ajouter un événement.';
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
+      msg.style.color =
+        'var(--danger)';
 
     }
 
+    return;
 
-    if (!isAdmin) {
+  }
 
-      if (msg) {
 
-        msg.textContent =
-          'Seuls les administrateurs peuvent ajouter un événement.';
+  const submitBtn =
+    form.querySelector(
+      'button[type="submit"]'
+    );
 
-        msg.style.color =
-          'var(--danger)';
 
-      }
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
 
-      return;
 
-    }
-
+  try {
 
     const formData =
       new FormData(form);
@@ -1391,13 +1202,6 @@ async e => {
     const name =
       String(
         formData.get('name') ||
-        ''
-      ).trim();
-
-
-    const date =
-      String(
-        formData.get('date') ||
         ''
       ).trim();
 
@@ -1416,10 +1220,16 @@ async e => {
       ).trim();
 
 
-    const briefDescription =
+    const shortDescription =
       String(
         formData.get(
+          'short_description'
+        ) ||
+        formData.get(
           'brief_description'
+        ) ||
+        formData.get(
+          'description_brief'
         ) ||
         ''
       ).trim();
@@ -1432,234 +1242,205 @@ async e => {
       ).trim();
 
 
-    // ---------------------------------------------------
-    // VALIDATION
-    // ---------------------------------------------------
+    /*
+     * Recherche de la date.
+     *
+     * Le champ peut être nommé :
+     * date
+     * event_date
+     * date_start
+     */
+
+    const date =
+      String(
+        formData.get('date') ||
+        formData.get('event_date') ||
+        formData.get('date_start') ||
+        ''
+      ).trim();
+
 
     if (!name) {
 
-      if (msg) {
-
-        msg.textContent =
-          "Le nom de l'événement est obligatoire.";
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
-
-    }
-
-
-    if (!date) {
-
-      if (msg) {
-
-        msg.textContent =
-          "La date de l'événement est obligatoire.";
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
+      throw new Error(
+        "Le nom de l'événement est obligatoire."
+      );
 
     }
 
 
     if (!organizers) {
 
-      if (msg) {
-
-        msg.textContent =
-          "L'organisateur est obligatoire.";
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
+      throw new Error(
+        "Le nom de l'organisateur est obligatoire."
+      );
 
     }
 
 
-    if (!briefDescription) {
+    if (!date) {
 
-      if (msg) {
-
-        msg.textContent =
-          'La description brève est obligatoire.';
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
+      throw new Error(
+        "La date de l'événement est obligatoire."
+      );
 
     }
 
 
     if (!description) {
 
-      if (msg) {
-
-        msg.textContent =
-          'La description complète est obligatoire.';
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
+      throw new Error(
+        "La description est obligatoire."
+      );
 
     }
 
 
-    if (submitBtn) {
-      submitBtn.disabled = true;
+    /*
+     * On construit l'objet.
+     *
+     * IMPORTANT :
+     * Ici j'utilise les noms de colonnes
+     * que ton système doit avoir dans Supabase.
+     */
+
+    const newEvent = {
+
+      id:
+        crypto.randomUUID(),
+
+      name:
+        name,
+
+      organizers:
+        organizers,
+
+      date:
+        date,
+
+      photo_url:
+        photoUrl || null,
+
+      short_description:
+        shortDescription || null,
+
+      description:
+        description
+
+    };
+
+
+    const {
+      error
+    } =
+      await supabase
+        .from('events')
+        .insert(
+          newEvent
+        );
+
+
+    if (error) {
+      throw error;
     }
 
 
     if (msg) {
 
       msg.textContent =
-        'Publication…';
+        '✓ Événement publié !';
 
       msg.style.color =
-        'var(--muted)';
+        'var(--success)';
 
     }
 
 
-    try {
-
-      const newEvent = {
-
-        name,
-
-        date,
-
-        organizers,
-
-        photo_url:
-          photoUrl ||
-          null,
-
-        brief_description:
-          briefDescription,
-
-        description
-
-      };
+    form.reset();
 
 
-      const {
-        error
-      } =
-        await supabase
-          .from('events')
-          .insert(
-            newEvent
-          );
+    await loadEvents();
 
 
-      if (error) {
-        throw error;
-      }
+    /*
+     * On ferme automatiquement
+     * la fenêtre après une courte pause.
+     */
+
+    setTimeout(
+      () => {
+
+        $('addEventModal')
+          ?.classList.add('hidden');
+
+        if (msg) {
+          msg.textContent = '';
+        }
+
+      },
+      700
+    );
 
 
-      if (msg) {
+  } catch (error) {
 
-        msg.textContent =
-          '✓ Événement publié !';
-
-        msg.style.color =
-          'var(--success)';
-
-      }
+    console.error(
+      'Erreur ajout événement :',
+      error
+    );
 
 
-      form.reset();
+    if (msg) {
 
+      msg.textContent =
+        'Erreur : ' +
+        error.message;
 
-      await loadEvents();
+      msg.style.color =
+        'var(--danger)';
 
+    }
 
-      setTimeout(
-        () => {
+  } finally {
 
-          $('addEventModal')
-            ?.classList.add(
-              'hidden'
-            );
-
-          if (msg) {
-            msg.textContent = '';
-          }
-
-        },
-        800
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        'Erreur création événement :',
-        error
-      );
-
-
-      if (msg) {
-
-        msg.textContent =
-          'Erreur : ' +
-          error.message;
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-    } finally {
-
-      if (submitBtn) {
-        submitBtn.disabled = false;
-      }
-
+    if (submitBtn) {
+      submitBtn.disabled = false;
     }
 
   }
-);
-```
 
-// -------------------------------------------------------
-// CONNEXION
-// -------------------------------------------------------
-
-$('loginForm')
-?.addEventListener(
-'submit',
-async e => {
-
-```
-    e.preventDefault();
+}
 
 
-    const msg =
-      $('loginMsg');
+// =========================================================
+// AUTH — CONNEXION
+// =========================================================
 
-    const submitBtn =
-      e.currentTarget.querySelector(
-        'button[type="submit"]'
-      );
+async function handleLogin(e) {
 
+  e.preventDefault();
+
+
+  const form =
+    e.currentTarget;
+
+  const msg =
+    $('loginMsg');
+
+
+  const email =
+    String(
+      $('loginEmail')?.value ||
+      ''
+    ).trim();
+
+
+  const password =
+    $('loginPassword')?.value ||
+    '';
+
+
+  try {
 
     if (msg) {
 
@@ -1672,101 +1453,102 @@ async e => {
     }
 
 
-    if (submitBtn) {
-      submitBtn.disabled = true;
+    const {
+      error
+    } =
+      await supabase.auth
+        .signInWithPassword({
+
+          email,
+          password
+
+        });
+
+
+    if (error) {
+      throw error;
     }
 
 
-    try {
-
-      const {
-        error
-      } =
-        await supabase.auth
-          .signInWithPassword({
-
-            email:
-              $('loginEmail')
-                .value
-                .trim(),
-
-            password:
-              $('loginPassword')
-                .value
-
-          });
+    form.reset();
 
 
-      if (error) {
-        throw error;
-      }
+    $('authModal')
+      ?.classList.add('hidden');
 
 
-      e.currentTarget.reset();
+  } catch (error) {
+
+    console.error(
+      'Erreur connexion :',
+      error
+    );
 
 
-      $('authModal')
-        ?.classList.add(
-          'hidden'
-        );
+    if (msg) {
 
+      msg.textContent =
+        error.message ===
+        'Invalid login credentials'
 
-    } catch (error) {
+          ? 'E-mail ou mot de passe incorrect.'
 
-      if (msg) {
+          : 'Erreur de connexion : ' +
+            error.message;
 
-        msg.textContent =
-          error.message ===
-          'Invalid login credentials'
-
-            ? 'E-mail ou mot de passe incorrect.'
-
-            : 'Erreur de connexion : ' +
-              error.message;
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-    } finally {
-
-      if (submitBtn) {
-        submitBtn.disabled = false;
-      }
+      msg.style.color =
+        'var(--danger)';
 
     }
 
   }
-);
-```
 
-// -------------------------------------------------------
-// INSCRIPTION
-// -------------------------------------------------------
-
-$('signupForm')
-?.addEventListener(
-'submit',
-async e => {
-
-```
-    e.preventDefault();
+}
 
 
-    const msg =
-      $('signupMsg');
+// =========================================================
+// AUTH — INSCRIPTION
+// =========================================================
 
-    const submitBtn =
-      e.currentTarget.querySelector(
-        'button[type="submit"]'
-      );
+async function handleSignup(e) {
+
+  e.preventDefault();
 
 
-    if (submitBtn) {
-      submitBtn.disabled = true;
-    }
+  const form =
+    e.currentTarget;
 
+  const msg =
+    $('signupMsg');
+
+
+  const firstName =
+    String(
+      $('signupFirst')?.value ||
+      ''
+    ).trim();
+
+
+  const lastName =
+    String(
+      $('signupLast')?.value ||
+      ''
+    ).trim();
+
+
+  const email =
+    String(
+      $('signupEmail')?.value ||
+      ''
+    ).trim();
+
+
+  const password =
+    $('signupPassword')?.value ||
+    '';
+
+
+  try {
 
     if (msg) {
 
@@ -1779,92 +1561,243 @@ async e => {
     }
 
 
-    try {
+    const {
+      data,
+      error
+    } =
+      await supabase.auth
+        .signUp({
 
-      const {
-        error
-      } =
-        await supabase.auth
-          .signUp({
+          email,
 
-            email:
-              $('signupEmail')
-                .value
-                .trim(),
+          password,
 
-            password:
-              $('signupPassword')
-                .value,
+          options: {
 
-            options: {
+            data: {
 
-              data: {
+              first_name:
+                firstName,
 
-                first_name:
-                  $('signupFirst')
-                    .value
-                    .trim(),
-
-                last_name:
-                  $('signupLast')
-                    .value
-                    .trim()
-
-              }
+              last_name:
+                lastName
 
             }
 
-          });
+          }
+
+        });
 
 
-      if (error) {
-        throw error;
-      }
+    if (error) {
+      throw error;
+    }
 
 
-      if (msg) {
+    if (msg) {
 
-        msg.textContent =
-          '✓ Compte créé ! Vérifiez votre boîte mail si une confirmation est requise.';
+      msg.textContent =
+        data?.session
+          ? '✓ Compte créé et connecté !'
+          : '✓ Compte créé ! Vérifiez votre boîte mail si nécessaire.';
 
-        msg.style.color =
-          'var(--success)';
+      msg.style.color =
+        'var(--success)';
 
-      }
-
-
-      e.currentTarget.reset();
-
-
-    } catch (error) {
-
-      console.error(
-        'Erreur inscription :',
-        error
-      );
+    }
 
 
-      if (msg) {
+    form.reset();
 
-        msg.textContent =
-          'Erreur : ' +
-          error.message;
 
-        msg.style.color =
-          'var(--danger)';
+  } catch (error) {
 
-      }
+    console.error(
+      'Erreur inscription :',
+      error
+    );
 
-    } finally {
 
-      if (submitBtn) {
-        submitBtn.disabled = false;
-      }
+    if (msg) {
+
+      msg.textContent =
+        'Erreur : ' +
+        error.message;
+
+      msg.style.color =
+        'var(--danger)';
 
     }
 
   }
-);
-```
 
 }
+
+
+// =========================================================
+// LISTENERS
+// =========================================================
+
+function setupEventListeners() {
+
+
+  // -------------------------------------------------------
+  // AJOUT ÉVÉNEMENT
+  // -------------------------------------------------------
+
+  $('openAddEventBtn')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        if (
+          !currentUser
+        ) {
+
+          $('authModal')
+            ?.classList.remove(
+              'hidden'
+            );
+
+          return;
+
+        }
+
+
+        if (
+          !isAdminEmail(
+            currentUser.email
+          )
+        ) {
+
+          return;
+
+        }
+
+
+        $('addEventModal')
+          ?.classList.remove(
+            'hidden'
+          );
+
+      }
+    );
+
+
+  $('addEventForm')
+    ?.addEventListener(
+      'submit',
+      handleAddEvent
+    );
+
+
+  // -------------------------------------------------------
+  // CONNEXION
+  // -------------------------------------------------------
+
+  $('loginForm')
+    ?.addEventListener(
+      'submit',
+      handleLogin
+    );
+
+
+  // -------------------------------------------------------
+  // INSCRIPTION
+  // -------------------------------------------------------
+
+  $('signupForm')
+    ?.addEventListener(
+      'submit',
+      handleSignup
+    );
+
+
+  // -------------------------------------------------------
+  // FERMETURE DES MODALES
+  // -------------------------------------------------------
+
+  document
+    .querySelectorAll(
+      '[data-close]'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            const target =
+              button.dataset.close;
+
+            $(target)
+              ?.classList.add(
+                'hidden'
+              );
+
+          }
+        );
+
+      }
+    );
+
+
+  // -------------------------------------------------------
+  // CLIC SUR LE FOND D'UNE MODALE
+  // -------------------------------------------------------
+
+  document
+    .querySelectorAll(
+      '.modal'
+    )
+    .forEach(
+      modal => {
+
+        modal.addEventListener(
+          'click',
+          event => {
+
+            if (
+              event.target === modal
+            ) {
+
+              modal.classList.add(
+                'hidden'
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+// =========================================================
+// FONCTION PUBLIQUE POUR APP.JS
+// =========================================================
+
+/*
+ * Cette fonction permet à app.js de récupérer
+ * le prochain événement sans avoir à connaître
+ * la logique interne de events.js.
+ *
+ * Elle est exposée globalement.
+ */
+
+window.getNextKBGEvent =
+  function () {
+
+    return getNextEvent();
+
+  };
+
+
+// =========================================================
+// FIN
+// =========================================================
+```
