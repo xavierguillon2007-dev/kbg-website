@@ -237,7 +237,34 @@ function renderReservations() {
 
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.onclick = async () => {
-      await supabase.from('reservations').update({ status: btn.dataset.action }).eq('id', btn.dataset.id);
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '…';
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: btn.dataset.action })
+        .eq('id', btn.dataset.id)
+        .select();
+
+      if (error) {
+        alert('Erreur : ' + error.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      if (!data || !data.length) {
+        alert(
+          "La mise à jour n'a pas été appliquée. C'est très probablement un problème de permissions Supabase : " +
+          "la policy RLS d'UPDATE sur la table 'reservations' n'autorise pas votre compte à modifier cette ligne. " +
+          "Vérifiez/ajoutez la policy admin dans Supabase (voir message précédent)."
+        );
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
       loadAdminReservations();
     };
   });
