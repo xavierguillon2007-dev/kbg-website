@@ -12,9 +12,10 @@
     <nav>
       <a href="#catalogue">Catalogue</a>
       <a href="#reservation">Réserver</a>
-      <!-- Bouton Notifications Visiteur -->
-      <button id="notifBtn" class="button" style="position:relative; padding:6px 10px;">
-        🔔 <span id="notifBadge" class="badge badge-warning hidden" style="position:absolute; top:-5px; right:-5px; border-radius:50%; width:16px; height:16px; padding:0; display:flex; align-items:center; justify-content:center; font-size:9px;">0</span>
+      <a href="#calendrier">Planning</a>
+      <!-- Bouton Centre de Notifications -->
+      <button id="notifBtn" class="button" style="position:relative; padding:6px 12px; margin-right:8px;" title="Mes notifications">
+        🔔 <span id="notifBadge" class="badge badge-warning hidden" style="position:absolute; top:-6px; right:-6px; border-radius:10px; padding:2px 6px; font-size:10px;">0</span>
       </button>
       <div id="userNav" class="user-nav"></div>
     </nav>
@@ -42,7 +43,7 @@
         <span id="count" class="counter">Chargement…</span>
       </div>
 
-      <!-- Barre d'outils / Filtres -->
+      <!-- Filtres -->
       <div class="toolbar">
         <input id="search" type="search" placeholder="Rechercher un jeu…" autocomplete="off">
         <select id="category">
@@ -63,30 +64,29 @@
         </select>
       </div>
 
-      <!-- Grille d'affichage des jeux -->
+      <!-- Liste de jeux -->
       <div id="games" class="grid">
         <div class="loading">Connexion au catalogue…</div>
       </div>
     </section>
 
-    <!-- FORMULAIRE DE RÉSERVATION UNIQUE (2 COLONNES) -->
+    <!-- FORMULAIRE DE RÉSERVATION (LAYOUT 2 COLONNES) -->
     <section id="reservation" class="section">
       <div class="reservation-layout">
         
-        <!-- Colonne Gauche : Présentation & Consignes -->
+        <!-- Colonne Gauche : Infos -->
         <div class="reservation-info">
           <p class="eyebrow">RÉSERVATION · 02</p>
           <h2>Demander à emprunter un jeu</h2>
-          <p>Sélectionnez le jeu de votre choix, vos dates d'emprunt et vos informations personnelles. L'équipe du KBG traitera votre demande sous 24h à 48h.</p>
+          <p>Sélectionnez le jeu souhaité, vos dates et vos coordonnées. L'équipe du KBG traitera votre demande rapidement.</p>
           
           <ul class="reservation-rules">
             <li>Emprunt réservé aux membres de l'association.</li>
-            <li>Durée maximale d'emprunt : 7 jours renouvelables.</li>
-            <li>Merci de vérifier que le matériel est complet au retour.</li>
+            <li>Durée maximale d’emprunt : 7 jours renouvelables.</li>
+            <li>Vérifiez l'intégralité du matériel avant retour.</li>
           </ul>
 
-          <!-- Avertissement si déconnecté -->
-          <div id="authWarning" class="panel hidden" style="border-color: var(--warning);">
+          <div id="authWarning" class="panel hidden" style="border-color: var(--warning); margin-top:16px;">
             <p class="eyebrow" style="color:var(--warning);">CONNEXION REQUISE</p>
             <p style="font-size:13px; margin-top:4px;">Vous devez être connecté à votre compte pour effectuer une demande.</p>
             <button class="button primary" id="noticeAuthBtn" style="margin-top:12px; width:100%;">Se connecter / S'inscrire →</button>
@@ -99,7 +99,7 @@
             <div class="form-group">
               <label for="gameSelect">Jeu souhaité</label>
               <select id="gameSelect" name="game_id" required>
-                <option value="">Sélectionnez un jeu dans la liste…</option>
+                <option value="">Sélectionnez un jeu…</option>
               </select>
             </div>
 
@@ -117,11 +117,11 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="firstName">Prénom</label>
-                <input id="firstName" name="first_name" placeholder="Ex. Jean" required>
+                <input id="firstName" name="first_name" placeholder="Jean" required>
               </div>
               <div class="form-group">
                 <label for="lastName">Nom</label>
-                <input id="lastName" name="last_name" placeholder="Ex. Dupont" required>
+                <input id="lastName" name="last_name" placeholder="Dupont" required>
               </div>
             </div>
 
@@ -134,21 +134,41 @@
             <p id="formMessage" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;"></p>
           </form>
         </div>
-<!-- CALENDRIER DES RÉSERVATIONS -->
-    <section class="section">
+
+      </div>
+    </section>
+
+    <!-- CALENDRIER DES DISPONIBILITÉS -->
+    <section id="calendrier" class="section">
       <div class="section-head">
         <div>
           <p class="eyebrow">DISPONIBILITÉS · 03</p>
-          <h2>Calendrier des réservations validées</h2>
+          <h2>Planning des réservations validées</h2>
         </div>
       </div>
-      <div class="panel" style="padding:20px;">
-        <div id="calendar" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; margin-top:10px;"></div>
-      </div>
-    </section>
+      
+      <div class="calendar-wrapper">
+        <div class="calendar-grid-header">
+          <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+        </div>
+        <div id="calendar" class="calendar-grid">
+          <div class="loading">Chargement du calendrier...</div>
+        </div>
       </div>
     </section>
   </main>
+
+  <!-- MODALE NOTIFICATIONS (VISITEURS / MEMBRES) -->
+  <div id="notifModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="notifModal">×</button>
+      <p class="eyebrow">SUIVI</p>
+      <h2>Mes demandes de réservation</h2>
+      <div id="notifList" style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
+        <div class="loading">Chargement...</div>
+      </div>
+    </div>
+  </div>
 
   <!-- MODALE ADMINISTRATION -->
   <div id="adminModal" class="modal hidden">
@@ -176,19 +196,19 @@
         <p id="addGameMsg" class="form-message" style="margin-top:6px;"></p>
       </form>
 
-      <!-- Section Suppression / Gestion du catalogue -->
+      <!-- Catalogue Admin -->
       <div style="margin-top:20px;">
         <p class="eyebrow">GESTION DU CATALOGUE</p>
         <div id="adminGamesList" class="grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;"></div>
       </div>
 
-      <!-- Section Réservations En Cours -->
+      <!-- Demandes en cours -->
       <div style="margin-top:30px;">
         <p class="eyebrow" style="color:var(--warning);">⏳ DEMANDES EN COURS</p>
         <div id="adminPendingReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
       </div>
 
-      <!-- Section Réservations Historisées (Modifiables) -->
+      <!-- Demandes historisées -->
       <div style="margin-top:30px;">
         <p class="eyebrow" style="color:var(--muted);">📁 DEMANDES DÉJÀ TRAITÉES (MODIFIABLES)</p>
         <div id="adminProcessedReservations" class="grid" style="grid-template-columns: 1fr; gap:10px; margin-top:10px;"></div>
@@ -202,7 +222,6 @@
       <button class="modal-close" data-close="authModal">×</button>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
         
-        <!-- Connexion -->
         <form id="loginForm">
           <p class="eyebrow">SE CONNECTER</p>
           <input id="loginEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
@@ -211,7 +230,6 @@
           <p id="loginMsg" class="form-message" style="margin-top:6px;"></p>
         </form>
 
-        <!-- Inscription -->
         <form id="signupForm">
           <p class="eyebrow">S'INSCRIRE</p>
           <input id="signupFirst" placeholder="Prénom" required style="width:100%; margin-bottom:8px;">
@@ -225,17 +243,7 @@
       </div>
     </div>
   </div>
-<!-- MODALE NOTIFICATIONS -->
-  <div id="notifModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="notifModal">×</button>
-      <p class="eyebrow">MES DEMANDES</p>
-      <h2>Suivi de vos réservations</h2>
-      <div id="notifList" style="margin-top:16px; display:flex; flex-direction:column; gap:10px;">
-        <div class="loading">Chargement...</div>
-      </div>
-    </div>
-  </div>
+
   <footer>
     <span>KBG / Association ludique</span>
     <span>Catalogue participatif</span>
