@@ -141,6 +141,10 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
+.form-message { font-weight: 600; }
+.form-message.error { color: var(--danger); }
+.form-message.success { color: var(--success); }
+
 /* CALENDRIER STRUCTURE & DESIGN */
 .calendar-wrapper { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
 .calendar-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
