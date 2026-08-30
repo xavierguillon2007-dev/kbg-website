@@ -215,9 +215,9 @@ document.addEventListener(
 
     }
 
-    await loadGames();
-
-    await renderCalendar();
+   await loadGames();
+await renderCalendar();
+await loadNextEvent();
 
   }
 );
