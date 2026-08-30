@@ -4,8 +4,8 @@
   --line: #e8d3a3;         /* liseré doré doux */
   --text: #2b1e4a;         /* violet très foncé, lisible sur fond clair */
   --muted: #7a6a52;        /* brun/violet grisé pour texte secondaire */
-  --accent: #ff6fae;       /* rose du logo (fantôme sorcière / dragon) */
-  --accent-hover: #ff8fc0;
+  --accent: #3d2a6d;       /* violet du logo (anneau extérieur) */
+  --accent-hover: #573b96;
   --success: #10b981;
   --warning: #f4c430;      /* jaune du dé */
   --danger: #ef4444;
