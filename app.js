@@ -1762,6 +1762,10 @@ async function loadUserNotifications() {
 // CALENDRIER
 // =========================================================
 
+// =========================================================
+// CALENDRIER DES ÉVÉNEMENTS
+// =========================================================
+
 async function renderCalendar() {
 
   const container =
@@ -1797,18 +1801,45 @@ async function renderCalendar() {
   }
 
 
+  // -------------------------------------------------------
+  // Changement du titre de la section
+  // -------------------------------------------------------
+
+  const calendarSection =
+    $('calendrier');
+
+  const calendarTitle =
+    calendarSection?.querySelector(
+      '.section-head h2'
+    );
+
+
+  if (calendarTitle) {
+
+    calendarTitle.textContent =
+      'Calendrier des événements';
+
+  }
+
+
   try {
 
+    // -----------------------------------------------------
+    // RÉCUPÉRATION DES ÉVÉNEMENTS
+    // -----------------------------------------------------
+
     const {
-      data: reservations,
+      data: events,
       error
     } =
       await supabase
-        .from('reservations')
-        .select('*, games(name)')
-        .eq(
-          'status',
-          'approved'
+        .from('events')
+        .select('*')
+        .order(
+          'date',
+          {
+            ascending: true
+          }
         );
 
 
@@ -1817,12 +1848,17 @@ async function renderCalendar() {
     }
 
 
+    // -----------------------------------------------------
+    // CALENDRIER DU MOIS
+    // -----------------------------------------------------
+
     const firstDay =
       new Date(
         year,
         month,
         1
       );
+
 
     const lastDay =
       new Date(
@@ -1835,6 +1871,8 @@ async function renderCalendar() {
     let startOffset =
       firstDay.getDay() - 1;
 
+
+    // Dimanche → position 6
     if (startOffset === -1) {
       startOffset = 6;
     }
@@ -1842,6 +1880,10 @@ async function renderCalendar() {
 
     let html = '';
 
+
+    // -----------------------------------------------------
+    // JOURS VIDES AVANT LE 1ER
+    // -----------------------------------------------------
 
     for (
       let i = 0;
@@ -1863,8 +1905,45 @@ async function renderCalendar() {
     }
 
 
+    // -----------------------------------------------------
+    // ÉVÉNEMENTS PAR DATE
+    // -----------------------------------------------------
+
     const dayEventsMap = {};
 
+
+    (events || []).forEach(
+      event => {
+
+        if (!event.date) {
+          return;
+        }
+
+
+        const eventDate =
+          String(
+            event.date
+          ).slice(0, 10);
+
+
+        if (!dayEventsMap[eventDate]) {
+
+          dayEventsMap[eventDate] =
+            [];
+
+        }
+
+
+        dayEventsMap[eventDate]
+          .push(event);
+
+      }
+    );
+
+
+    // -----------------------------------------------------
+    // JOURS DU MOIS
+    // -----------------------------------------------------
 
     for (
       let day = 1;
@@ -1876,44 +1955,55 @@ async function renderCalendar() {
         `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
 
-      const events =
-        (reservations || []).filter(
-          reservation =>
-            dateStr >= reservation.date_start &&
-            dateStr <= reservation.date_end
-        );
-
-
-      dayEventsMap[dateStr] =
-        events;
+      const dayEvents =
+        dayEventsMap[dateStr] || [];
 
 
       html += `
 
         <div
-          class="cal-day${events.length ? ' has-events' : ''}"
+          class="cal-day${
+            dayEvents.length
+              ? ' has-events'
+              : ''
+          }"
           data-date="${dateStr}"
+          style="
+            ${
+              dayEvents.length
+                ? 'cursor:pointer;'
+                : ''
+            }
+          "
         >
 
           <span class="cal-day-num">
             ${day}
           </span>
 
+
           ${
-            events.map(
-              event => `
-                <span
-                  class="cal-event"
-                  title="${esc(
-                    event.games?.name || 'Jeu'
-                  )}"
-                >
-                  📌 ${esc(
-                    event.games?.name || 'Jeu'
-                  )}
-                </span>
-              `
-            ).join('')
+            dayEvents
+              .map(
+                event => `
+
+                  <span
+                    class="cal-event"
+                    title="${esc(
+                      event.name ||
+                      'Événement'
+                    )}"
+                  >
+                    📅
+                    ${esc(
+                      event.name ||
+                      'Événement'
+                    )}
+                  </span>
+
+                `
+              )
+              .join('')
           }
 
         </div>
@@ -1923,9 +2013,17 @@ async function renderCalendar() {
     }
 
 
+    // -----------------------------------------------------
+    // AFFICHAGE
+    // -----------------------------------------------------
+
     container.innerHTML =
       html;
 
+
+    // -----------------------------------------------------
+    // CLIC SUR UN JOUR AVEC ÉVÉNEMENT
+    // -----------------------------------------------------
 
     container
       .querySelectorAll(
@@ -1955,27 +2053,39 @@ async function renderCalendar() {
   } catch (error) {
 
     console.error(
-      'Erreur calendrier :',
+      'Erreur calendrier événements :',
       error
     );
 
+
     container.innerHTML = `
+
       <div class="empty panel">
-        Impossible de charger le calendrier.
+
+        Impossible de charger
+        les événements.
+
         <br>
+
         <small>
-          ${esc(error.message)}
+          ${esc(
+            error.message
+          )}
         </small>
+
       </div>
+
     `;
 
   }
 
 }
-
-
 // =========================================================
 // MODALE JOUR
+// =========================================================
+
+// =========================================================
+// MODALE — ÉVÉNEMENTS D'UN JOUR
 // =========================================================
 
 function openDayModal(
@@ -2000,9 +2110,13 @@ function openDayModal(
 
   const date =
     new Date(
-      dateStr + 'T00:00:00'
+      `${dateStr}T00:00:00`
     );
 
+
+  // -------------------------------------------------------
+  // TITRE
+  // -------------------------------------------------------
 
   if (title) {
 
@@ -2017,9 +2131,11 @@ function openDayModal(
         }
       );
 
+
     label =
       label.charAt(0).toUpperCase() +
       label.slice(1);
+
 
     title.textContent =
       label;
@@ -2027,75 +2143,194 @@ function openDayModal(
   }
 
 
+  // -------------------------------------------------------
+  // AUCUN ÉVÉNEMENT
+  // -------------------------------------------------------
+
   if (!events.length) {
 
     list.innerHTML = `
+
       <div class="empty">
-        Aucun jeu réservé ce jour-là.
+
+        Aucun événement ce jour-là.
+
       </div>
+
     `;
 
-  } else {
 
-    list.innerHTML =
-      events.map(
-        event => `
+    modal.classList.remove(
+      'hidden'
+    );
 
-          <div
-            class="panel"
-            style="
-              padding:12px;
-              font-size:13px;
-            "
-          >
 
-            <strong>
-              ${esc(
-                event.games?.name || 'Jeu'
-              )}
-            </strong>
-
-            <p
-              style="
-                color:var(--muted);
-                font-size:12px;
-                margin-top:4px;
-              "
-            >
-              Du ${esc(event.date_start)}
-              au ${esc(event.date_end)}
-            </p>
-
-            <p
-              style="
-                margin-top:4px;
-                font-size:12px;
-              "
-            >
-              ${esc(event.first_name)}
-              ${esc(event.last_name)}
-
-              ${
-                event.promotion
-                  ? ` — ${esc(event.promotion)}`
-                  : ''
-              }
-
-            </p>
-
-          </div>
-
-        `
-      ).join('');
+    return;
 
   }
 
 
-  modal.classList.remove('hidden');
+  // -------------------------------------------------------
+  // ÉVÉNEMENTS
+  // -------------------------------------------------------
+
+  list.innerHTML =
+    events
+      .map(
+        event => {
+
+          const photo =
+            event.photo_url ||
+            event.photo ||
+            event.image_url ||
+            '';
+
+
+          const shortDescription =
+            event.short_description ||
+            event.brief_description ||
+            event.description_brief ||
+            '';
+
+
+          return `
+
+            <div
+              class="panel"
+              style="
+                padding:0;
+                overflow:hidden;
+              "
+            >
+
+              ${
+                photo
+
+                  ? `
+
+                    <img
+                      src="${esc(photo)}"
+                      alt="${esc(
+                        event.name ||
+                        'Événement'
+                      )}"
+                      style="
+                        width:100%;
+                        height:150px;
+                        object-fit:cover;
+                        display:block;
+                      "
+                    >
+
+                  `
+
+                  : ''
+              }
+
+
+              <div
+                style="
+                  padding:14px;
+                "
+              >
+
+                <p class="eyebrow">
+                  ÉVÉNEMENT
+                </p>
+
+
+                <strong
+                  style="
+                    display:block;
+                    font-size:16px;
+                    margin-top:4px;
+                  "
+                >
+                  ${esc(
+                    event.name ||
+                    'Événement'
+                  )}
+                </strong>
+
+
+                ${
+                  event.organizers
+
+                    ? `
+
+                      <p
+                        style="
+                          color:var(--muted);
+                          font-size:12px;
+                          margin-top:6px;
+                        "
+                      >
+                        Organisé par
+                        ${esc(
+                          event.organizers
+                        )}
+                      </p>
+
+                    `
+
+                    : ''
+                }
+
+
+                ${
+                  shortDescription
+
+                    ? `
+
+                      <p
+                        style="
+                          margin-top:10px;
+                          font-size:13px;
+                          line-height:1.6;
+                        "
+                      >
+                        ${esc(
+                          shortDescription
+                        )}
+                      </p>
+
+                    `
+
+                    : ''
+                }
+
+
+                <a
+                  href="events.html"
+                  class="button"
+                  style="
+                    display:inline-block;
+                    margin-top:12px;
+                  "
+                >
+                  Voir tous les événements →
+                </a>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+      )
+      .join('');
+
+
+  // -------------------------------------------------------
+  // OUVERTURE
+  // -------------------------------------------------------
+
+  modal.classList.remove(
+    'hidden'
+  );
 
 }
-
-
 // =========================================================
 // CATALOGUE
 // =========================================================
