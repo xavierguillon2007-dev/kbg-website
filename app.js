@@ -4184,13 +4184,327 @@ async function loadAdminPanel() {
   }
 
 
+  // -------------------------------------------------------
+  // VALIDATION DES COMPTES
+  // -------------------------------------------------------
+
+  await loadAdminAccountRequests();
+
+
+  // -------------------------------------------------------
+  // JEUX
+  // -------------------------------------------------------
+
   await loadAdminGamesList();
 
+
+  // -------------------------------------------------------
+  // RÉSERVATIONS
+  // -------------------------------------------------------
+
   await loadAdminReservationsList();
+}
+// =========================================================
+// ADMIN — VALIDATION DES COMPTES
+// =========================================================
+
+async function loadAdminAccountRequests() {
+
+  const container =
+    $('adminPendingAccounts');
+
+  if (!container) {
+    return;
+  }
+
+  if (
+    !isAdminEmail(
+      currentUser?.email
+    )
+  ) {
+    return;
+  }
+
+
+  container.innerHTML = `
+    <div class="loading">
+      Chargement des demandes…
+    </div>
+  `;
+
+
+  try {
+
+    const {
+      data: requests,
+      error
+    } =
+      await supabase
+        .from('account_requests')
+        .select('*')
+        .eq(
+          'status',
+          'pending'
+        )
+        .order(
+          'created_at',
+          {
+            ascending: true
+          }
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    if (!requests || !requests.length) {
+
+      container.innerHTML = `
+        <div
+          class="empty"
+          style="
+            padding:14px;
+          "
+        >
+          ✓ Aucun compte en attente de validation.
+        </div>
+      `;
+
+      return;
+    }
+
+
+    container.innerHTML =
+      requests
+        .map(
+          request => `
+            <div
+              class="panel"
+              style="
+                padding:14px;
+                border-left:3px solid var(--warning);
+              "
+            >
+
+              <div>
+
+                <strong
+                  style="
+                    font-size:15px;
+                  "
+                >
+                  ${esc(request.first_name)}
+                  ${esc(request.last_name)}
+                </strong>
+
+                <p
+                  style="
+                    margin-top:5px;
+                    color:var(--muted);
+                    font-size:12px;
+                  "
+                >
+                  ${esc(request.promotion)}
+                  —
+                  ${esc(request.email)}
+                </p>
+
+                <p
+                  style="
+                    margin-top:4px;
+                    color:var(--muted);
+                    font-size:11px;
+                  "
+                >
+                  Demande reçue le
+                  ${esc(
+                    new Date(
+                      request.created_at
+                    ).toLocaleDateString(
+                      'fr-FR'
+                    )
+                  )}
+                </p>
+
+              </div>
+
+
+              <div
+                style="
+                  display:flex;
+                  gap:8px;
+                  margin-top:10px;
+                  flex-wrap:wrap;
+                "
+              >
+
+                <button
+                  class="button primary"
+                  data-account-action="approved"
+                  data-account-id="${esc(request.id)}"
+                >
+                  ✓ Valider le compte
+                </button>
+
+                <button
+                  class="button danger"
+                  data-account-action="rejected"
+                  data-account-id="${esc(request.id)}"
+                >
+                  ✕ Refuser
+                </button>
+
+              </div>
+
+            </div>
+          `
+        )
+        .join('');
+
+
+    container
+      .querySelectorAll(
+        '[data-account-action]'
+      )
+      .forEach(
+        button => {
+
+          button.onclick =
+            async () => {
+
+              if (
+                !isAdminEmail(
+                  currentUser?.email
+                )
+              ) {
+                return;
+              }
+
+
+              const action =
+                button.dataset.accountAction;
+
+              const id =
+                button.dataset.accountId;
+
+
+              const confirmation =
+                action === 'approved'
+                  ? confirm(
+                      'Valider ce compte ?'
+                    )
+                  : confirm(
+                      'Refuser ce compte ?'
+                    );
+
+
+              if (!confirmation) {
+                return;
+              }
+
+
+              button.disabled = true;
+
+              const originalText =
+                button.textContent;
+
+              button.textContent =
+                '…';
+
+
+              const {
+                data,
+                error
+              } =
+                await supabase
+                  .from(
+                    'account_requests'
+                  )
+                  .update({
+                    status: action,
+                    reviewed_at:
+                      new Date().toISOString()
+                  })
+                  .eq(
+                    'id',
+                    id
+                  )
+                  .select();
+
+
+              if (error) {
+
+                console.error(
+                  'Erreur validation compte :',
+                  error
+                );
+
+                alert(
+                  'Impossible de modifier le compte : ' +
+                  error.message
+                );
+
+                button.disabled = false;
+
+                button.textContent =
+                  originalText;
+
+                return;
+              }
+
+
+              if (
+                !data ||
+                !data.length
+              ) {
+
+                alert(
+                  "La modification n'a pas été appliquée. Vérifiez les permissions RLS de Supabase."
+                );
+
+                button.disabled = false;
+
+                button.textContent =
+                  originalText;
+
+                return;
+              }
+
+
+              await loadAdminAccountRequests();
+
+            };
+
+        }
+      );
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur demandes de comptes :',
+      error
+    );
+
+
+    container.innerHTML = `
+      <div
+        class="empty"
+        style="color:var(--danger);"
+      >
+        Impossible de charger les demandes.
+        <br>
+        <small>
+          ${esc(error.message)}
+        </small>
+      </div>
+    `;
+
+  }
 
 }
-
-
 // =========================================================
 // ADMIN — JEUX
 // =========================================================
@@ -5215,14 +5529,49 @@ async function handleSignup(e) {
     if (error) {
       throw error;
     }
+    // -------------------------------------------------------
+// CRÉATION DE LA DEMANDE DE VALIDATION
+// -------------------------------------------------------
+
+if (data?.user) {
+
+  const {
+    error: requestError
+  } =
+    await supabase
+      .from('account_requests')
+      .insert({
+        user_id:
+          data.user.id,
+
+        first_name:
+          firstName,
+
+        last_name:
+          lastName,
+
+        promotion:
+          promotion,
+
+        email:
+          email,
+
+        status:
+          'pending'
+      });
+
+
+  if (requestError) {
+    throw requestError;
+  }
+}
 
 
     if (msg) {
 
       msg.textContent =
         data?.session
-          ? '✓ Compte créé et connecté !'
-          : '✓ Compte créé ! Vérifiez votre boîte mail si une confirmation est requise.';
+          '✓ Compte créé ! Votre inscription doit maintenant être validée par un administrateur.';
 
       msg.style.color =
         'var(--success)';
