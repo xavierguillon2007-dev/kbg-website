@@ -6,6 +6,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let allGames = [];
 let currentUser = null;
+let currentCalendarDate = new Date(); // Suivi du mois affiché dans le calendrier
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
@@ -28,7 +29,7 @@ supabase.auth.onAuthStateChange((_e, session) => {
   handleAuthChange(session?.user || null);
 });
 
-// --- GESTION AUTH & NOTIFICATIONS ---
+// --- GESTION AUTHENTIFICATION & NOTIFICATIONS ---
 
 async function handleAuthChange(user) {
   currentUser = user;
@@ -120,11 +121,21 @@ async function loadUserNotifications() {
   }
 }
 
-// --- CALENDRIER (RÉSERVATIONS VALIDÉES) ---
+// --- CALENDRIER AVEC DÉFILEMENT DES MOIS ---
 
 async function renderCalendar() {
   const container = $('calendar');
+  const label = $('currentMonthLabel');
   if (!container) return;
+
+  const year = currentCalendarDate.getFullYear();
+  const month = currentCalendarDate.getMonth();
+
+  // Affichage du nom du mois et de l'année (ex: Août 2026)
+  if (label) {
+    const monthName = currentCalendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    label.textContent = monthName;
+  }
 
   try {
     const { data: res, error } = await supabase
@@ -134,21 +145,20 @@ async function renderCalendar() {
 
     if (error) console.warn("Attention Supabase :", error.message);
 
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth();
-
     let html = '';
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
+    // Décalage pour commencer le calendrier un Lundi
     let startOffset = firstDay.getDay() - 1;
     if (startOffset === -1) startOffset = 6;
 
+    // Cases transparentes pour compléter le début de la première semaine
     for (let i = 0; i < startOffset; i++) {
-      html += `<div class="cal-day" style="opacity:0.2;"></div>`;
+      html += `<div class="cal-day" style="opacity:0.15; background:transparent; border:1px dashed var(--line);"></div>`;
     }
 
+    // Génération des jours du mois
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const events = (res || []).filter(r => currentDateStr >= r.date_start && currentDateStr <= r.date_end);
@@ -168,7 +178,7 @@ async function renderCalendar() {
   }
 }
 
-// --- CATALOGUE ---
+// --- CATALOGUE DE JEUX ---
 
 async function loadGames() {
   try {
@@ -236,7 +246,7 @@ function renderGames() {
   `).join('');
 }
 
-// --- RÉSERVATION ---
+// --- SOUMISSION DE RÉSERVATION ---
 
 async function handleBookingSubmit(e) {
   e.preventDefault();
@@ -286,7 +296,7 @@ async function handleBookingSubmit(e) {
   }
 }
 
-// --- ADMIN PANEL ---
+// --- ESPACE ADMIN ---
 
 async function loadAdminPanel() {
   loadAdminGamesList();
@@ -369,7 +379,7 @@ async function loadAdminReservationsList() {
   });
 }
 
-// --- ÉVÉNEMENTS ---
+// --- ÉVÉNEMENTS & LISTENERS ---
 
 function setupEventListeners() {
   ['search', 'category', 'players', 'sort'].forEach(id => {
@@ -384,7 +394,18 @@ function setupEventListeners() {
     };
   });
 
-  // CLIQUE BOUTON NOTIFICATION
+  // Navigation dans le calendrier (Mois Précédent / Mois Suivant)
+  $('prevMonthBtn')?.addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  $('nextMonthBtn')?.addEventListener('click', () => {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  // Ouverture Centre de Notifications
   const notifBtn = $('notifBtn');
   if (notifBtn) {
     notifBtn.onclick = () => {
