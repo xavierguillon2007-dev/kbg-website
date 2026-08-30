@@ -4,6 +4,10 @@ const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Adresses e-mail autorisées à accéder au panneau admin (jeux, réservations)
+const ADMIN_EMAILS = ['xavierguillon2007@gmail.com', 'kbg.asso@gmail.com'];
+const isAdminEmail = email => !!email && ADMIN_EMAILS.includes(email);
+
 let allGames = [];
 let currentUser = null;
 let currentCalendarDate = new Date(); // Suivi du mois affiché dans le calendrier
@@ -37,16 +41,19 @@ async function handleAuthChange(user) {
 
   if (currentUser) {
     if (userNav) {
+      const admin = isAdminEmail(currentUser.email);
       userNav.innerHTML = `
         <span style="font-size:13px; font-weight:700;">👋 ${esc(currentUser.email)}</span>
-        <button class="button primary" id="openAdminBtn">🔑 Admin</button>
+        ${admin ? `<button class="button primary" id="openAdminBtn">🔑 Admin</button>` : ''}
         <button class="button" id="logoutBtn">Déconnexion</button>
       `;
       $('logoutBtn').onclick = () => supabase.auth.signOut();
-      $('openAdminBtn').onclick = () => {
-        $('adminModal')?.classList.remove('hidden');
-        loadAdminPanel();
-      };
+      if (admin) {
+        $('openAdminBtn').onclick = () => {
+          $('adminModal')?.classList.remove('hidden');
+          loadAdminPanel();
+        };
+      }
     }
     $('authWarning')?.classList.add('hidden');
     loadUserNotifications();
@@ -336,6 +343,10 @@ async function handleBookingSubmit(e) {
 // --- ESPACE ADMIN ---
 
 async function loadAdminPanel() {
+  if (!isAdminEmail(currentUser?.email)) {
+    $('adminModal')?.classList.add('hidden');
+    return;
+  }
   loadAdminGamesList();
   loadAdminReservationsList();
 }
@@ -461,6 +472,10 @@ function setupEventListeners() {
   $('addGameForm')?.addEventListener('submit', async e => {
     e.preventDefault();
     const msg = $('addGameMsg');
+    if (!isAdminEmail(currentUser?.email)) {
+      if (msg) msg.textContent = 'Accès réservé aux administrateurs.';
+      return;
+    }
     const f = new FormData(e.currentTarget);
     const newGame = {
       id: crypto.randomUUID(),
