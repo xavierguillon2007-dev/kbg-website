@@ -51,10 +51,55 @@ async function getAccountStatus(userId) {
 
   if (error) {
     console.error('Erreur vérification du compte :', error);
-    return null;
+    // Sécurité : en cas d'impossibilité de vérifier le statut,
+    // on ne considère PAS le compte comme validé.
+    return '__verification_error__';
   }
 
   return data?.status || null;
+}
+
+async function requireApprovedAccount(messageElement = null, actionLabel = 'cette action') {
+  if (!currentUser) {
+    if (messageElement) {
+      messageElement.textContent = 'Vous devez être connecté pour effectuer ' + actionLabel + '.';
+      messageElement.style.color = 'var(--danger)';
+    }
+    $('authModal')?.classList.remove('hidden');
+    return false;
+  }
+
+  // Les administrateurs sont toujours autorisés.
+  if (isAdminEmail(currentUser.email)) return true;
+
+  const status = await getAccountStatus(currentUser.id);
+
+  if (status === 'approved') return true;
+
+  if (status === 'pending') {
+    if (messageElement) {
+      messageElement.textContent = 'Votre compte doit être validé par un administrateur avant de pouvoir ' + actionLabel + '.';
+      messageElement.style.color = 'var(--warning)';
+    }
+  } else if (status === 'rejected') {
+    if (messageElement) {
+      messageElement.textContent = 'Votre demande de compte a été refusée.';
+      messageElement.style.color = 'var(--danger)';
+    }
+  } else {
+    if (messageElement) {
+      messageElement.textContent = 'Impossible de vérifier la validation de votre compte. Réessayez plus tard.';
+      messageElement.style.color = 'var(--danger)';
+    }
+  }
+
+  // On détruit la session côté client dès qu'un compte non validé est détecté.
+  await supabase.auth.signOut();
+  currentUser = null;
+  $('authWarning')?.classList.remove('hidden');
+  $('notifBadge')?.classList.add('hidden');
+  $('authModal')?.classList.remove('hidden');
+  return false;
 }
 
 async function ensureAdminAccountSection() {
@@ -91,7 +136,7 @@ async function handleAuthChange(user) {
   if (currentUser && !isAdminEmail(currentUser.email)) {
     const status = await getAccountStatus(currentUser.id);
 
-    if (status && status !== 'approved') {
+    if (status !== 'approved') {
       await supabase.auth.signOut();
       currentUser = null;
 
@@ -105,10 +150,16 @@ async function handleAuthChange(user) {
 
       const msg = $('loginMsg');
       if (msg) {
-        msg.textContent = status === 'pending'
-          ? 'Votre compte est en attente de validation par un administrateur.'
-          : 'Votre demande de compte a été refusée.';
-        msg.style.color = 'var(--warning)';
+        if (status === 'pending') {
+          msg.textContent = 'Votre compte est en attente de validation par un administrateur.';
+          msg.style.color = 'var(--warning)';
+        } else if (status === 'rejected') {
+          msg.textContent = 'Votre demande de compte a été refusée.';
+          msg.style.color = 'var(--danger)';
+        } else {
+          msg.textContent = 'Impossible de vérifier la validation de votre compte. Réessayez plus tard.';
+          msg.style.color = 'var(--danger)';
+        }
       }
 
       $('authModal')?.classList.remove('hidden');
@@ -148,6 +199,11 @@ async function handleAuthChange(user) {
 
 async function loadUserNotifications() {
   if (!currentUser) return;
+
+  if (!isAdminEmail(currentUser.email)) {
+    const status = await getAccountStatus(currentUser.id);
+    if (status !== 'approved') return;
+  }
 
   try {
     const { data: res, error } = await supabase
@@ -500,12 +556,7 @@ async function handleBookingSubmit(e) {
   e.preventDefault();
   const msg = $('formMessage');
   
-  if (!currentUser) {
-    if (msg) {
-      msg.textContent = 'Vous devez être connecté pour effectuer une réservation.';
-      msg.style.color = 'var(--danger)';
-    }
-    $('authModal')?.classList.remove('hidden');
+  if (!(await requireApprovedAccount(msg, 'effectuer une réservation'))) {
     return;
   }
 
@@ -1140,12 +1191,7 @@ async function submitReview(e) {
   const msg = $('reviewMsg');
   const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
 
-  if (!currentUser) {
-    if (msg) {
-      msg.textContent = 'Vous devez être connecté pour laisser un avis.';
-      msg.style.color = 'var(--danger)';
-    }
-    $('authModal')?.classList.remove('hidden');
+  if (!(await requireApprovedAccount(msg, 'laisser un avis'))) {
     return;
   }
 
@@ -1296,9 +1342,9 @@ $('reviewForm')?.addEventListener(
   $('profileForm')?.addEventListener('submit', async e => {
     e.preventDefault();
 
-    if (!currentUser) return;
-
     const msg = $('profileMsg');
+    if (!(await requireApprovedAccount(msg, 'modifier votre profil'))) return;
+
     const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
     const firstName = $('profileFirstName')?.value.trim() || '';
     const lastName = $('profileLastName')?.value.trim() || '';
@@ -1414,13 +1460,20 @@ $('reviewForm')?.addEventListener(
       ? await getAccountStatus(user.id)
       : 'approved';
 
-    if (status && status !== 'approved') {
+    if (status !== 'approved') {
       await supabase.auth.signOut();
+      currentUser = null;
       if (msg) {
-        msg.textContent = status === 'pending'
-          ? 'Votre compte est en attente de validation par un administrateur.'
-          : 'Votre demande de compte a été refusée.';
-        msg.style.color = 'var(--warning)';
+        if (status === 'pending') {
+          msg.textContent = 'Votre compte est en attente de validation par un administrateur. Vous pourrez vous connecter après validation.';
+          msg.style.color = 'var(--warning)';
+        } else if (status === 'rejected') {
+          msg.textContent = 'Votre demande de compte a été refusée.';
+          msg.style.color = 'var(--danger)';
+        } else {
+          msg.textContent = 'Impossible de vérifier la validation de votre compte. Réessayez plus tard.';
+          msg.style.color = 'var(--danger)';
+        }
       }
       return;
     }
@@ -1444,9 +1497,17 @@ $('reviewForm')?.addEventListener(
     const email = $('signupEmail')?.value.trim() || '';
     const password = $('signupPassword')?.value || '';
 
-    if (!firstName || !lastName || !promotion) {
+    if (!firstName || !lastName || !promotion || !email || !password) {
       if (msg) {
-        msg.textContent = 'Le prénom, le nom et la promotion sont obligatoires.';
+        msg.textContent = 'Le prénom, le nom, la promotion, l’e-mail et le mot de passe sont obligatoires.';
+        msg.style.color = 'var(--danger)';
+      }
+      return;
+    }
+
+    if (password.length < 6) {
+      if (msg) {
+        msg.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
         msg.style.color = 'var(--danger)';
       }
       return;
@@ -1467,14 +1528,23 @@ $('reviewForm')?.addEventListener(
       if (data?.error) throw new Error(data.error);
 
       if (msg) {
-        msg.textContent = '✓ Demande envoyée ! Votre compte doit maintenant être validé par un administrateur. Aucun e-mail n’est envoyé à cette étape.';
+        msg.textContent = data?.message || '✓ Demande envoyée ! Votre compte est en attente de validation par un administrateur. Vous ne pourrez pas utiliser les fonctions réservées aux membres avant validation.';
         msg.style.color = 'var(--success)';
       }
       e.currentTarget.reset();
     } catch (error) {
       console.error('Erreur inscription :', error);
+      let errorMessage = error?.message || 'Une erreur est survenue.';
+
+      // Messages plus compréhensibles pour les erreurs fréquentes de la fonction Edge.
+      if (/already registered|already exists|duplicate/i.test(errorMessage)) {
+        errorMessage = 'Cette adresse e-mail possède déjà un compte ou une demande.';
+      } else if (/rate limit|too many requests/i.test(errorMessage)) {
+        errorMessage = 'Trop de demandes ont été effectuées récemment. Attendez quelques minutes puis réessayez.';
+      }
+
       if (msg) {
-        msg.textContent = 'Erreur : ' + error.message;
+        msg.textContent = 'Erreur : ' + errorMessage;
         msg.style.color = 'var(--danger)';
       }
     } finally {
