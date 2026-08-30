@@ -46,7 +46,14 @@ let currentCalendarDate = new Date();
 
 let selectedReviewGame = null;
 let selectedRating = 0;
+// =========================================================
+// CALENDRIER DE DISPONIBILITÉ PAR JEU
+// =========================================================
 
+let gameAvailabilityMonth = new Date();
+let gameAvailabilityReservations = [];
+let gameAvailabilityStart = null;
+let gameAvailabilityEnd = null;
 // Affichage limité du catalogue
 const GAMES_PREVIEW_LIMIT = 8;
 let showAllGames = false;
@@ -1668,7 +1675,742 @@ function renderGames() {
 
 }
 
+// =========================================================
+// CALENDRIER DE DISPONIBILITÉ PAR JEU
+// =========================================================
 
+function parseISODate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`);
+}
+
+
+function isDateBeforeToday(dateStr) {
+
+  const today = new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return parseISODate(dateStr) < today;
+
+}
+
+
+function isDateReserved(dateStr) {
+
+  return gameAvailabilityReservations.some(
+    reservation =>
+      dateStr >= reservation.date_start &&
+      dateStr <= reservation.date_end
+  );
+
+}
+
+
+function rangeContainsReservation(start, end) {
+
+  return gameAvailabilityReservations.some(
+    reservation =>
+      reservation.date_start <= end &&
+      reservation.date_end >= start
+  );
+
+}
+
+
+function isDateInSelectedRange(dateStr) {
+
+  if (!gameAvailabilityStart) {
+    return false;
+  }
+
+  if (!gameAvailabilityEnd) {
+    return dateStr === gameAvailabilityStart;
+  }
+
+  return (
+    dateStr >= gameAvailabilityStart &&
+    dateStr <= gameAvailabilityEnd
+  );
+
+}
+
+
+function injectGameCalendarStyles() {
+
+  if ($('gameAvailabilityStyles')) {
+    return;
+  }
+
+  const style =
+    document.createElement('style');
+
+  style.id =
+    'gameAvailabilityStyles';
+
+  style.textContent = `
+
+    .game-cal-shell {
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      background:var(--bg);
+    }
+
+    .game-cal-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .game-cal-title {
+      font-size:14px;
+      font-weight:800;
+      text-transform:capitalize;
+    }
+
+    .game-cal-nav {
+      width:32px;
+      height:32px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:transparent;
+      color:var(--text);
+      cursor:pointer;
+      font-size:18px;
+    }
+
+    .game-cal-nav:hover {
+      border-color:#2583ff;
+      color:#2583ff;
+    }
+
+    .game-cal-grid {
+      display:grid;
+      grid-template-columns:
+        repeat(7,minmax(0,1fr));
+      gap:4px;
+      padding:10px;
+    }
+
+    .game-cal-weekday {
+      text-align:center;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:800;
+      padding:4px 0 6px;
+    }
+
+    .game-cal-day {
+      min-height:42px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      transition:
+        transform .12s,
+        border-color .12s;
+    }
+
+    .game-cal-day:hover:not(.disabled) {
+      transform:translateY(-1px);
+      border-color:#2583ff;
+    }
+
+    .game-cal-day.empty {
+      visibility:hidden;
+      cursor:default;
+    }
+
+    .game-cal-day.available {
+      background:rgba(34,197,94,.16);
+      border-color:rgba(34,197,94,.65);
+    }
+
+    .game-cal-day.reserved {
+      background:rgba(239,68,68,.16);
+      border-color:rgba(239,68,68,.65);
+      cursor:not-allowed;
+    }
+
+    .game-cal-day.past {
+      opacity:.35;
+      cursor:not-allowed;
+    }
+
+    .game-cal-day.selected {
+      outline:2px solid #2583ff;
+      outline-offset:-2px;
+      background:rgba(37,131,255,.20);
+    }
+
+    .game-cal-loading {
+      padding:22px;
+      text-align:center;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    @media(max-width:520px) {
+
+      .game-cal-grid {
+        gap:3px;
+        padding:7px;
+      }
+
+      .game-cal-day {
+        min-height:38px;
+        font-size:11px;
+      }
+
+    }
+
+  `;
+
+  document.head.appendChild(style);
+
+}
+
+
+async function loadGameAvailability(
+  game,
+  monthDate = gameAvailabilityMonth
+) {
+
+  const container =
+    $('gameAvailabilityCalendar');
+
+  if (!container || !game) {
+    return;
+  }
+
+  injectGameCalendarStyles();
+
+  container.innerHTML = `
+    <div class="game-cal-loading">
+      Chargement des disponibilités…
+    </div>
+  `;
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('reservations')
+        .select(
+          'id,date_start,date_end,status'
+        )
+        .eq(
+          'game_id',
+          game.id
+        )
+        .eq(
+          'status',
+          'approved'
+        )
+        .order(
+          'date_start',
+          {
+            ascending:true
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    gameAvailabilityReservations =
+      data || [];
+
+    gameAvailabilityMonth =
+      new Date(
+        monthDate.getFullYear(),
+        monthDate.getMonth(),
+        1
+      );
+
+    renderGameAvailabilityCalendar(
+      game
+    );
+
+  } catch (error) {
+
+    console.error(
+      'Erreur calendrier du jeu :',
+      error
+    );
+
+    container.innerHTML = `
+      <div class="empty panel">
+
+        Impossible de charger
+        les disponibilités.
+
+        <br>
+
+        <small>
+          ${esc(error.message)}
+        </small>
+
+      </div>
+    `;
+
+  }
+
+}
+
+
+function renderGameAvailabilityCalendar(game) {
+
+  const container =
+    $('gameAvailabilityCalendar');
+
+  if (!container || !game) {
+    return;
+  }
+
+  const year =
+    gameAvailabilityMonth
+      .getFullYear();
+
+  const month =
+    gameAvailabilityMonth
+      .getMonth();
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    );
+
+  const lastDay =
+    new Date(
+      year,
+      month + 1,
+      0
+    );
+
+  let offset =
+    firstDay.getDay() - 1;
+
+  if (offset === -1) {
+    offset = 6;
+  }
+
+  const label =
+    gameAvailabilityMonth
+      .toLocaleDateString(
+        'fr-FR',
+        {
+          month:'long',
+          year:'numeric'
+        }
+      );
+
+  let html = `
+
+    <div class="game-cal-shell">
+
+      <div class="game-cal-header">
+
+        <button
+          type="button"
+          class="game-cal-nav"
+          id="gameCalPrev"
+          aria-label="Mois précédent"
+        >
+          ‹
+        </button>
+
+        <span class="game-cal-title">
+          ${esc(label)}
+        </span>
+
+        <button
+          type="button"
+          class="game-cal-nav"
+          id="gameCalNext"
+          aria-label="Mois suivant"
+        >
+          ›
+        </button>
+
+      </div>
+
+      <div class="game-cal-grid">
+
+  `;
+
+
+  for (
+    const dayName of
+    ['L','M','M','J','V','S','D']
+  ) {
+
+    html += `
+      <div class="game-cal-weekday">
+        ${dayName}
+      </div>
+    `;
+
+  }
+
+
+  for (
+    let i = 0;
+    i < offset;
+    i++
+  ) {
+
+    html += `
+      <div class="game-cal-day empty">
+      </div>
+    `;
+
+  }
+
+
+  for (
+    let day = 1;
+    day <= lastDay.getDate();
+    day++
+  ) {
+
+    const dateStr =
+      `${year}-${String(month + 1)
+        .padStart(2,'0')}-${String(day)
+        .padStart(2,'0')}`;
+
+    const reserved =
+      isDateReserved(dateStr);
+
+    const past =
+      isDateBeforeToday(dateStr);
+
+    const selected =
+      isDateInSelectedRange(
+        dateStr
+      );
+
+    const disabled =
+      reserved || past;
+
+    const classes =
+      [
+        'game-cal-day',
+
+        reserved
+          ? 'reserved'
+          : 'available',
+
+        past
+          ? 'past'
+          : '',
+
+        selected
+          ? 'selected'
+          : '',
+
+        disabled
+          ? 'disabled'
+          : ''
+
+      ]
+      .filter(Boolean)
+      .join(' ');
+
+
+    html += `
+
+      <button
+        type="button"
+        class="${classes}"
+        data-game-cal-date="${dateStr}"
+        ${disabled ? 'disabled' : ''}
+        title="${
+          reserved
+            ? 'Réservé'
+            : past
+              ? 'Date passée'
+              : 'Libre — cliquer pour sélectionner'
+        }"
+      >
+        ${day}
+      </button>
+
+    `;
+
+  }
+
+
+  html += `
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  container.innerHTML =
+    html;
+
+
+  $('gameCalPrev')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        gameAvailabilityMonth =
+          new Date(
+            year,
+            month - 1,
+            1
+          );
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+    );
+
+
+  $('gameCalNext')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        gameAvailabilityMonth =
+          new Date(
+            year,
+            month + 1,
+            1
+          );
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+    );
+
+
+  container
+    .querySelectorAll(
+      '[data-game-cal-date]:not([disabled])'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            selectGameAvailabilityDate(
+              button.dataset.gameCalDate,
+              game
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function selectGameAvailabilityDate(
+  dateStr,
+  game
+) {
+
+  if (
+    isDateBeforeToday(dateStr) ||
+    isDateReserved(dateStr)
+  ) {
+    return;
+  }
+
+
+  const startInput =
+    $('dateStart');
+
+  const endInput =
+    $('dateEnd');
+
+  const gameSelect =
+    $('gameSelect');
+
+  const msg =
+    $('formMessage');
+
+
+  if (gameSelect) {
+
+    gameSelect.value =
+      String(game.id);
+
+  }
+
+
+  /*
+   * Premier clic :
+   * sélection de la date de début.
+   *
+   * Deuxième clic :
+   * sélection de la date de fin.
+   */
+
+  if (
+    !gameAvailabilityStart ||
+    gameAvailabilityEnd ||
+    dateStr < gameAvailabilityStart
+  ) {
+
+    gameAvailabilityStart =
+      dateStr;
+
+    gameAvailabilityEnd =
+      null;
+
+
+    if (startInput) {
+      startInput.value =
+        dateStr;
+    }
+
+    if (endInput) {
+      endInput.value =
+        '';
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Date de début sélectionnée. ' +
+        'Cliquez sur une autre date verte ' +
+        'pour choisir la fin.';
+
+      msg.style.color =
+        'var(--muted)';
+
+    }
+
+  } else {
+
+    /*
+     * Vérifie que toute la période
+     * est libre.
+     */
+
+    if (
+      rangeContainsReservation(
+        gameAvailabilityStart,
+        dateStr
+      )
+    ) {
+
+      if (msg) {
+
+        msg.textContent =
+          'Cette période contient une date déjà réservée. ' +
+          'Choisissez une autre date de fin.';
+
+        msg.style.color =
+          'var(--danger)';
+
+      }
+
+      return;
+
+    }
+
+
+    gameAvailabilityEnd =
+      dateStr;
+
+
+    if (startInput) {
+
+      startInput.value =
+        gameAvailabilityStart;
+
+    }
+
+    if (endInput) {
+
+      endInput.value =
+        gameAvailabilityEnd;
+
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Période sélectionnée. ' +
+        'Vous pouvez envoyer la demande de réservation.';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
+  }
+
+
+  renderGameAvailabilityCalendar(
+    game
+  );
+
+
+  if (
+    gameAvailabilityStart &&
+    gameAvailabilityEnd
+  ) {
+
+    $('reservationForm')
+      ?.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+
+  }
+
+}
+
+
+function resetGameAvailabilitySelection() {
+
+  gameAvailabilityStart =
+    null;
+
+  gameAvailabilityEnd =
+    null;
+
+}
 // =========================================================
 // MODALE JEU
 // =========================================================
@@ -1892,7 +2634,17 @@ function openReviewModal(game) {
 
   renderReviews(game);
 
-  modal.classList.remove('hidden');
+resetGameAvailabilitySelection();
+
+gameAvailabilityMonth =
+  new Date();
+
+loadGameAvailability(
+  game,
+  gameAvailabilityMonth
+);
+
+modal.classList.remove('hidden');
 
 }
 
@@ -3460,11 +4212,20 @@ async function loadAdminReservationsList() {
             }
 
 
-            await loadAdminReservationsList();
+           await loadAdminReservationsList();
 
-            await renderCalendar();
+await renderCalendar();
 
-            await loadUserNotifications();
+if (selectedReviewGame) {
+
+  await loadGameAvailability(
+    selectedReviewGame,
+    gameAvailabilityMonth
+  );
+
+}
+
+await loadUserNotifications();
 
           };
 
@@ -4074,7 +4835,169 @@ function setupEventListeners() {
   // -------------------------------------------------------
   // RÉSERVATION
   // -------------------------------------------------------
+// -------------------------------------------------------
+// CALENDRIER DE DISPONIBILITÉ DU JEU
+// -------------------------------------------------------
 
+$('gameSelect')
+  ?.addEventListener(
+    'change',
+    async () => {
+
+      const gameId =
+        $('gameSelect')?.value || '';
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(gameId)
+        );
+
+      resetGameAvailabilitySelection();
+
+      if (game) {
+
+        gameAvailabilityMonth =
+          new Date();
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+
+    }
+  );
+
+
+$('dateStart')
+  ?.addEventListener(
+    'change',
+    () => {
+
+      const value =
+        $('dateStart')?.value || '';
+
+      if (!value) {
+
+        resetGameAvailabilitySelection();
+
+        return;
+
+      }
+
+      gameAvailabilityStart =
+        value;
+
+      gameAvailabilityEnd =
+        null;
+
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(
+              $('gameSelect')?.value || ''
+            )
+        );
+
+
+      if (game) {
+
+        renderGameAvailabilityCalendar(
+          game
+        );
+
+      }
+
+    }
+  );
+
+
+$('dateEnd')
+  ?.addEventListener(
+    'change',
+    () => {
+
+      const start =
+        $('dateStart')?.value || '';
+
+      const end =
+        $('dateEnd')?.value || '';
+
+
+      if (
+        !start ||
+        !end ||
+        end < start
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        rangeContainsReservation(
+          start,
+          end
+        )
+      ) {
+
+        $('dateEnd').value =
+          '';
+
+
+        const msg =
+          $('formMessage');
+
+
+        if (msg) {
+
+          msg.textContent =
+            'La période choisie contient ' +
+            'une date déjà réservée pour ce jeu.';
+
+          msg.style.color =
+            'var(--danger)';
+
+        }
+
+        return;
+
+      }
+
+
+      gameAvailabilityStart =
+        start;
+
+      gameAvailabilityEnd =
+        end;
+
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(
+              $('gameSelect')?.value || ''
+            )
+        );
+
+
+      if (game) {
+
+        renderGameAvailabilityCalendar(
+          game
+        );
+
+      }
+
+    }
+  );
   $('reservationForm')
     ?.addEventListener(
       'submit',
