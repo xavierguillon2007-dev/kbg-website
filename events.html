@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="fr">
 <head>
   <meta charset="utf-8">
@@ -6,120 +7,681 @@
   <title>KBG — Événements</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
+
   <header class="topbar">
-    <a class="brand" href="index.html"><img src="logo-kbg.png" alt="Logo KBG" class="brand-logo"><span>KBG<span class="muted">/</span> GAMES</span></a>
-    <nav>
-      <a href="index.html#catalogue">Catalogue</a>
-      <a href="index.html#reservation">Réserver</a>
-      <a href="index.html#calendrier">Planning</a>
-      <a href="events.html" style="color: var(--accent);">Événements</a>
-      <div id="userNav" class="user-nav"></div>
-    </nav>
+
+```
+<a class="brand" href="index.html">
+  <img
+    src="logo-kbg.png"
+    alt="Logo KBG"
+    class="brand-logo"
+  >
+  <span>
+    KBG<span class="muted">/</span> GAMES
+  </span>
+</a>
+
+<nav>
+
+  <a href="index.html#catalogue">
+    Catalogue
+  </a>
+
+  <a href="index.html#reservation">
+    Réserver
+  </a>
+
+  <a href="index.html#calendrier">
+    Planning
+  </a>
+
+  <a
+    href="events.html"
+    style="color: var(--accent);"
+  >
+    Événements
+  </a>
+
+  <div
+    id="userNav"
+    class="user-nav"
+  ></div>
+
+</nav>
+```
+
   </header>
 
   <main>
-    <!-- HERO ÉVÉNEMENTS -->
-    <section class="hero">
-      <div>
-        <p class="eyebrow">VIE ASSOCIATIVE · 04</p>
-        <h1>Nos<br><span>événements.</span></h1>
-        <p class="hero-copy">Soirées jeux, tournois, initiations… retrouvez ici tous les événements organisés par le KBG.</p>
-        <button id="openAddEventBtn" class="button primary hidden">+ Ajouter un événement</button>
-      </div>
-    </section>
 
-    <!-- LISTE DES ÉVÉNEMENTS -->
-    <section id="events-list" class="section">
-      <div class="section-head">
-        <div>
-          <p class="eyebrow">À VENIR & PASSÉS</p>
-          <h2>Tous les événements</h2>
+```
+<!-- =====================================================
+     HERO ÉVÉNEMENTS
+====================================================== -->
+
+<section class="hero">
+
+  <div
+    style="
+      width:100%;
+      display:grid;
+      grid-template-columns:minmax(0, 1fr) minmax(300px, 430px);
+      gap:40px;
+      align-items:center;
+    "
+  >
+
+    <!-- TITRE -->
+
+    <div>
+
+      <p class="eyebrow">
+        VIE ASSOCIATIVE · 04
+      </p>
+
+      <h1>
+        Nos<br>
+        <span>événements.</span>
+      </h1>
+
+      <p class="hero-copy">
+        Soirées jeux, tournois, initiations…
+        retrouvez ici tous les événements organisés
+        par le KBG.
+      </p>
+
+      <button
+        id="openAddEventBtn"
+        class="button primary hidden"
+      >
+        + Ajouter un événement
+      </button>
+
+    </div>
+
+
+    <!-- =================================================
+         PROCHAIN ÉVÉNEMENT
+    ================================================== -->
+
+    <div
+      id="featuredEvent"
+      class="panel"
+      style="
+        padding:0;
+        overflow:hidden;
+        cursor:pointer;
+        border:1px solid var(--line);
+        background:var(--bg);
+        transition:transform .2s ease, border-color .2s ease;
+      "
+    >
+
+      <div
+        style="
+          height:190px;
+          position:relative;
+          overflow:hidden;
+          background:var(--surface, var(--bg));
+        "
+      >
+
+        <img
+          id="featuredEventImage"
+          src=""
+          alt=""
+          style="
+            width:100%;
+            height:100%;
+            object-fit:cover;
+            display:none;
+          "
+        >
+
+        <div
+          id="featuredEventPlaceholder"
+          style="
+            width:100%;
+            height:100%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:40px;
+            color:var(--muted);
+          "
+        >
+          ✦
         </div>
-        <span id="eventsCount" class="counter">Chargement…</span>
+
+        <div
+          style="
+            position:absolute;
+            left:12px;
+            top:12px;
+          "
+        >
+          <span
+            class="badge"
+            style="
+              background:rgba(0,0,0,.75);
+              backdrop-filter:blur(5px);
+            "
+          >
+            PROCHAIN ÉVÉNEMENT
+          </span>
+        </div>
+
       </div>
 
-      <div id="events" class="grid">
-        <div class="loading">Connexion au catalogue d'événements…</div>
+
+      <div
+        style="
+          padding:18px;
+        "
+      >
+
+        <p
+          id="featuredEventDate"
+          class="eyebrow"
+          style="
+            margin-bottom:6px;
+          "
+        >
+          À VENIR
+        </p>
+
+        <h2
+          id="featuredEventTitle"
+          style="
+            margin:0;
+            font-size:24px;
+          "
+        >
+          Chargement…
+        </h2>
+
+        <p
+          id="featuredEventDescription"
+          style="
+            margin-top:10px;
+            color:var(--muted);
+            font-size:13px;
+            line-height:1.6;
+            display:-webkit-box;
+            -webkit-line-clamp:3;
+            -webkit-box-orient:vertical;
+            overflow:hidden;
+          "
+        >
+          Recherche du prochain événement…
+        </p>
+
+        <p
+          style="
+            margin-top:14px;
+            color:var(--accent);
+            font-size:12px;
+            font-weight:700;
+          "
+        >
+          Voir l'événement →
+        </p>
+
       </div>
-    </section>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- =====================================================
+     LISTE DES ÉVÉNEMENTS
+====================================================== -->
+
+<section
+  id="events-list"
+  class="section"
+>
+
+  <div class="section-head">
+
+    <div>
+
+      <p class="eyebrow">
+        À VENIR & PASSÉS
+      </p>
+
+      <h2>
+        Tous les événements
+      </h2>
+
+    </div>
+
+    <span
+      id="eventsCount"
+      class="counter"
+    >
+      Chargement…
+    </span>
+
+  </div>
+
+
+  <div
+    id="events"
+    class="grid"
+  >
+
+    <div class="loading">
+      Connexion au catalogue d'événements…
+    </div>
+
+  </div>
+
+</section>
+```
+
   </main>
 
-  <!-- MODALE DÉTAIL D'UN ÉVÉNEMENT -->
-  <div id="eventDetailModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="eventDetailModal">×</button>
-      <div id="eventDetailBody"></div>
-    </div>
+  <!-- =====================================================
+       MODALE DÉTAIL
+  ====================================================== -->
+
+  <div
+    id="eventDetailModal"
+    class="modal hidden"
+  >
+
+```
+<div class="modal-card">
+
+  <button
+    class="modal-close"
+    data-close="eventDetailModal"
+  >
+    ×
+  </button>
+
+  <div id="eventDetailBody"></div>
+
+</div>
+```
+
   </div>
 
-  <!-- MODALE AJOUT D'UN ÉVÉNEMENT (RÉSERVÉ AUX MEMBRES CONNECTÉS) -->
-  <div id="addEventModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="addEventModal">×</button>
-      <p class="eyebrow">+ NOUVEL ÉVÉNEMENT</p>
-      <h2>Ajouter un événement</h2>
+  <!-- =====================================================
+       MODALE AJOUT
+  ====================================================== -->
 
-      <form id="addEventForm" style="margin-top:20px;">
-        <div class="form-group">
-          <label for="eventName">Nom de l'événement</label>
-          <input id="eventName" name="name" placeholder="Ex. Soirée jeux de rôle" required>
-        </div>
+  <div
+    id="addEventModal"
+    class="modal hidden"
+  >
 
-        <div class="form-group">
-          <label for="eventOrganizers">Organisateur(s)</label>
-          <input id="eventOrganizers" name="organizers" placeholder="Ex. Jean Dupont, Marie Martin" required>
-        </div>
+```
+<div class="modal-card">
 
-        <div class="form-group">
-          <label for="eventPhoto">URL de la photo</label>
-          <input id="eventPhoto" name="photo_url" placeholder="https://…">
-        </div>
+  <button
+    class="modal-close"
+    data-close="addEventModal"
+  >
+    ×
+  </button>
 
-        <div class="form-group">
-          <label for="eventDescription">Description</label>
-          <textarea id="eventDescription" name="description" rows="4" style="background: var(--bg); border: 1px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 6px; outline: none; width: 100%; resize: vertical;" placeholder="Détails de l'événement…" required></textarea>
-        </div>
+  <p class="eyebrow">
+    + NOUVEL ÉVÉNEMENT
+  </p>
 
-        <button class="button primary" type="submit" style="width:100%; margin-top:8px; padding:12px;">Publier l'événement →</button>
-        <p id="addEventMsg" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;"></p>
-      </form>
+  <h2>
+    Ajouter un événement
+  </h2>
+
+
+  <form
+    id="addEventForm"
+    style="margin-top:20px;"
+  >
+
+    <!-- NOM -->
+
+    <div class="form-group">
+
+      <label for="eventName">
+        Nom de l'événement
+      </label>
+
+      <input
+        id="eventName"
+        name="name"
+        placeholder="Ex. Soirée jeux de rôle"
+        required
+      >
+
     </div>
+
+
+    <!-- DATE -->
+
+    <div class="form-group">
+
+      <label for="eventDate">
+        Date de l'événement
+      </label>
+
+      <input
+        id="eventDate"
+        name="date"
+        type="date"
+        required
+      >
+
+    </div>
+
+
+    <!-- ORGANISATEURS -->
+
+    <div class="form-group">
+
+      <label for="eventOrganizers">
+        Organisateur(s)
+      </label>
+
+      <input
+        id="eventOrganizers"
+        name="organizers"
+        placeholder="Ex. Jean Dupont, Marie Martin"
+        required
+      >
+
+    </div>
+
+
+    <!-- PHOTO -->
+
+    <div class="form-group">
+
+      <label for="eventPhoto">
+        URL de la photo
+      </label>
+
+      <input
+        id="eventPhoto"
+        name="photo_url"
+        placeholder="https://…"
+      >
+
+    </div>
+
+
+    <!-- DESCRIPTION BRÈVE -->
+
+    <div class="form-group">
+
+      <label for="eventBriefDescription">
+        Description brève
+      </label>
+
+      <textarea
+        id="eventBriefDescription"
+        name="brief_description"
+        rows="2"
+        maxlength="300"
+        style="
+          background:var(--bg);
+          border:1px solid var(--line);
+          color:var(--text);
+          padding:10px 12px;
+          border-radius:6px;
+          outline:none;
+          width:100%;
+          resize:vertical;
+        "
+        placeholder="Quelques mots pour présenter rapidement l'événement…"
+        required
+      ></textarea>
+
+      <small
+        style="
+          color:var(--muted);
+          font-size:11px;
+        "
+      >
+        Cette description apparaîtra dans le cadre
+        « Prochain événement ».
+      </small>
+
+    </div>
+
+
+    <!-- DESCRIPTION COMPLÈTE -->
+
+    <div class="form-group">
+
+      <label for="eventDescription">
+        Description complète
+      </label>
+
+      <textarea
+        id="eventDescription"
+        name="description"
+        rows="5"
+        style="
+          background:var(--bg);
+          border:1px solid var(--line);
+          color:var(--text);
+          padding:10px 12px;
+          border-radius:6px;
+          outline:none;
+          width:100%;
+          resize:vertical;
+        "
+        placeholder="Détails de l'événement…"
+        required
+      ></textarea>
+
+    </div>
+
+
+    <button
+      class="button primary"
+      type="submit"
+      style="
+        width:100%;
+        margin-top:8px;
+        padding:12px;
+      "
+    >
+      Publier l'événement →
+    </button>
+
+
+    <p
+      id="addEventMsg"
+      class="form-message"
+      style="
+        margin-top:10px;
+        text-align:center;
+        font-size:13px;
+      "
+    ></p>
+
+  </form>
+
+</div>
+```
+
   </div>
 
-  <!-- MODALE AUTHENTIFICATION -->
-  <div id="authModal" class="modal hidden">
-    <div class="modal-card">
-      <button class="modal-close" data-close="authModal">×</button>
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+  <!-- =====================================================
+       AUTHENTIFICATION
+  ====================================================== -->
 
-        <form id="loginForm">
-          <p class="eyebrow">SE CONNECTER</p>
-          <input id="loginEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
-          <input id="loginPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
-          <button class="button primary" type="submit">Connexion</button>
-          <p id="loginMsg" class="form-message" style="margin-top:6px;" role="alert" aria-live="polite"></p>
-        </form>
+  <div
+    id="authModal"
+    class="modal hidden"
+  >
 
-        <form id="signupForm">
-          <p class="eyebrow">S'INSCRIRE</p>
-          <input id="signupFirst" placeholder="Prénom" required style="width:100%; margin-bottom:8px;">
-          <input id="signupLast" placeholder="Nom" required style="width:100%; margin-bottom:8px;">
-          <input id="signupEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
-          <input id="signupPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
-          <button class="button primary" type="submit">Créer compte</button>
-          <p id="signupMsg" class="form-message" style="margin-top:6px;"></p>
-        </form>
+```
+<div class="modal-card">
 
-      </div>
-    </div>
+  <button
+    class="modal-close"
+    data-close="authModal"
+  >
+    ×
+  </button>
+
+  <div
+    style="
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:20px;
+    "
+  >
+
+    <!-- CONNEXION -->
+
+    <form id="loginForm">
+
+      <p class="eyebrow">
+        SE CONNECTER
+      </p>
+
+      <input
+        id="loginEmail"
+        type="email"
+        placeholder="E-mail"
+        required
+        style="
+          width:100%;
+          margin-bottom:8px;
+        "
+      >
+
+      <input
+        id="loginPassword"
+        type="password"
+        placeholder="Mot de passe"
+        required
+        style="
+          width:100%;
+          margin-bottom:12px;
+        "
+      >
+
+      <button
+        class="button primary"
+        type="submit"
+      >
+        Connexion
+      </button>
+
+      <p
+        id="loginMsg"
+        class="form-message"
+        style="margin-top:6px;"
+        role="alert"
+        aria-live="polite"
+      ></p>
+
+    </form>
+
+
+    <!-- INSCRIPTION -->
+
+    <form id="signupForm">
+
+      <p class="eyebrow">
+        S'INSCRIRE
+      </p>
+
+      <input
+        id="signupFirst"
+        placeholder="Prénom"
+        required
+        style="
+          width:100%;
+          margin-bottom:8px;
+        "
+      >
+
+      <input
+        id="signupLast"
+        placeholder="Nom"
+        required
+        style="
+          width:100%;
+          margin-bottom:8px;
+        "
+      >
+
+      <input
+        id="signupEmail"
+        type="email"
+        placeholder="E-mail"
+        required
+        style="
+          width:100%;
+          margin-bottom:8px;
+        "
+      >
+
+      <input
+        id="signupPassword"
+        type="password"
+        placeholder="Mot de passe"
+        required
+        style="
+          width:100%;
+          margin-bottom:12px;
+        "
+      >
+
+      <button
+        class="button primary"
+        type="submit"
+      >
+        Créer compte
+      </button>
+
+      <p
+        id="signupMsg"
+        class="form-message"
+        style="margin-top:6px;"
+      ></p>
+
+    </form>
+
+  </div>
+
+</div>
+```
+
   </div>
 
   <footer>
-    <span>KBG / Association ludique</span>
-    <span>Catalogue participatif</span>
+
+```
+<span>
+  KBG / Association ludique
+</span>
+
+<span>
+  Catalogue participatif
+</span>
+```
+
   </footer>
 
-  <script type="module" src="events.js"></script>
+  <script
+    type="module"
+    src="events.js"
+  ></script>
+
 </body>
 </html>
