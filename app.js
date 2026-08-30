@@ -3387,7 +3387,20 @@ async function loadAdminReservationsList() {
               true;
 
 
+            const originalText =
+              button.textContent;
+
+            button.textContent =
+              '…';
+
+
+            // -----------------------------------------------
+            // MISE À JOUR + VÉRIFICATION QU'UNE LIGNE
+            // A RÉELLEMENT ÉTÉ MODIFIÉE (garde-fou RLS)
+            // -----------------------------------------------
+
             const {
+              data,
               error
             } =
               await supabase
@@ -3401,7 +3414,8 @@ async function loadAdminReservationsList() {
                 .eq(
                   'id',
                   button.dataset.id
-                );
+                )
+                .select();
 
 
             if (error) {
@@ -3420,6 +3434,27 @@ async function loadAdminReservationsList() {
 
               button.disabled =
                 false;
+
+              button.textContent =
+                originalText;
+
+              return;
+            }
+
+
+            if (!data || !data.length) {
+
+              alert(
+                "La mise à jour n'a pas été appliquée. C'est très probablement un problème de permissions Supabase : " +
+                "la policy RLS d'UPDATE sur la table 'reservations' n'autorise pas votre compte à modifier cette ligne. " +
+                "Vérifiez la policy admin dans Supabase."
+              );
+
+              button.disabled =
+                false;
+
+              button.textContent =
+                originalText;
 
               return;
             }
