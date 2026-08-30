@@ -47,6 +47,10 @@ let currentCalendarDate = new Date();
 let selectedReviewGame = null;
 let selectedRating = 0;
 
+// Affichage limité du catalogue
+const GAMES_PREVIEW_LIMIT = 8;
+let showAllGames = false;
+
 
 // =========================================================
 // OUTILS
@@ -1391,13 +1395,80 @@ function renderGames() {
       </div>
     `;
 
+    $('catalogueToggle')
+      ?.style.setProperty('display', 'none');
+
     return;
 
   }
 
 
+  const hasMore =
+    games.length > GAMES_PREVIEW_LIMIT;
+
+  const displayGames =
+    (!hasMore || showAllGames)
+      ? games
+      : games.slice(0, GAMES_PREVIEW_LIMIT);
+
+
+  const toggleWrapper =
+    $('catalogueToggle');
+
+  const toggleBtn =
+    $('showAllGamesBtn');
+
+  const toggleArrow =
+    $('showAllGamesArrow');
+
+  const toggleText =
+    $('showAllGamesText');
+
+
+  if (toggleWrapper) {
+
+    toggleWrapper.style.display =
+      hasMore ? 'flex' : 'none';
+
+  }
+
+
+  if (hasMore && toggleBtn) {
+
+    toggleBtn.setAttribute(
+      'aria-expanded',
+      String(showAllGames)
+    );
+
+    if (toggleArrow) {
+      toggleArrow.textContent =
+        showAllGames ? '↑' : '↓';
+    }
+
+    if (toggleText) {
+      toggleText.textContent =
+        showAllGames
+          ? 'Réduire la liste'
+          : `Afficher tous les jeux (${games.length})`;
+    }
+
+    toggleBtn.onclick = () => {
+      showAllGames = !showAllGames;
+      renderGames();
+
+      if (!showAllGames) {
+        container.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    };
+
+  }
+
+
   container.innerHTML =
-    games.map(
+    displayGames.map(
       game => {
 
         const reviews =
