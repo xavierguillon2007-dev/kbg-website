@@ -73,13 +73,41 @@ function renderEvents() {
   const container = $('events');
   if (!container) return;
 
-  if ($('eventsCount')) $('eventsCount').textContent = `${allEvents.length} événement(s)`;
+  if ($('eventsCount')) {
+    $('eventsCount').textContent = `${allEvents.length} événement(s)`;
+  }
 
   if (!allEvents.length) {
     container.innerHTML = '<div class="empty panel">Aucun événement pour le moment.</div>';
     return;
   }
 
+  container.innerHTML = allEvents.map(ev => `
+    <article class="card" data-event-id="${esc(ev.id)}" style="cursor:pointer;">
+      <div class="cover">
+        ${ev.photo_url
+          ? `<img src="${esc(ev.photo_url)}" alt="${esc(ev.name)}">`
+          : '<span>✦</span>'
+        }
+      </div>
+
+      <div class="card-body">
+        <p class="tag">Événement</p>
+        <h3>${esc(ev.name)}</h3>
+        ${ev.date ? `<p class="publisher">📅 ${esc(ev.date)}</p>` : ''}
+        <p class="publisher">Organisé par ${esc(ev.organizers || '')}</p>
+        <p class="desc">${esc(ev.description || '')}</p>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-event-id]').forEach(card => {
+    card.addEventListener('click', () => {
+      const ev = allEvents.find(e => String(e.id) === card.dataset.eventId);
+      if (ev) openEventDetail(ev);
+    });
+  });
+}
   container.innerHTML = allEvents.map(ev => `
     <article class="card" data-event-id="${esc(ev.id)}" style="cursor:pointer;">
       <div class="cover">${ev.photo_url ? `<img src="${esc(ev.photo_url)}" alt="${esc(ev.name)}">` : '<span>✦</span>'}</div>
@@ -108,7 +136,8 @@ function openEventDetail(ev) {
     ${ev.photo_url ? `<div class="cover" style="height:220px; border-radius:8px; margin-bottom:16px;"><img src="${esc(ev.photo_url)}" alt="${esc(ev.name)}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;"></div>` : ''}
     <p class="eyebrow">ÉVÉNEMENT</p>
     <h2>${esc(ev.name)}</h2>
-    <p class="publisher" style="margin-top:6px;">Organisé par ${esc(ev.organizers)}</p>
+    ${ev.date ? `<p class="publisher" style="margin-top:6px;">📅 ${esc(ev.date)}</p>` : ''}
+    <p class="publisher" style="margin-top:6px;">Organisé par ${esc(ev.organizers || '')}</p>
     <p style="margin-top:16px; color:var(--text); font-size:14px; white-space:pre-wrap;">${esc(ev.description || '')}</p>
     ${currentUser ? `<button class="button danger" id="deleteEventBtn" style="margin-top:20px;">Supprimer l'événement</button>` : ''}
   `;
@@ -116,11 +145,20 @@ function openEventDetail(ev) {
   if (currentUser) {
     $('deleteEventBtn').onclick = async () => {
       if (!confirm('Supprimer cet événement ?')) return;
-      const { error } = await supabase.from('events').delete().eq('id', ev.id);
-      if (!error) {
-        $('eventDetailModal')?.classList.add('hidden');
-        loadEvents();
+
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', ev.id);
+
+      if (error) {
+        console.error("Erreur suppression :", error);
+        alert("Impossible de supprimer l'événement : " + error.message);
+        return;
       }
+
+      $('eventDetailModal')?.classList.add('hidden');
+      loadEvents();
     };
   }
 
@@ -165,13 +203,12 @@ function setupEventListeners() {
     if (submitBtn) submitBtn.disabled = true;
 
     const f = new FormData(e.currentTarget);
-    const newEvent = {
-      id: crypto.randomUUID(),
-      name: f.get('name').trim(),
-      organizers: f.get('organizers').trim(),
-      photo_url: f.get('photo_url').trim() || null,
-      description: f.get('description').trim()
-    };
+   const newEvent = {
+  name: f.get('name').trim(),
+  organizers: f.get('organizers').trim(),
+  photo_url: f.get('photo_url').trim() || null,
+  description: f.get('description').trim()
+};
 
     const { error } = await supabase.from('events').insert(newEvent);
     if (submitBtn) submitBtn.disabled = false;
