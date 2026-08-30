@@ -1139,6 +1139,54 @@
     <h2>
       Panneau de gestion
     </h2>
+    <!-- =====================================================
+     VALIDATION DES COMPTES
+====================================================== -->
+
+<div
+  style="
+    margin-top:20px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+  "
+>
+
+  <p
+    class="eyebrow"
+    style="color:var(--warning);"
+  >
+    👤 VALIDATION DES COMPTES
+  </p>
+
+  <p
+    style="
+      margin-top:6px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    "
+  >
+    Les nouveaux comptes doivent être validés par un administrateur
+    avant de pouvoir utiliser le site.
+  </p>
+
+  <div
+    id="adminPendingAccounts"
+    class="grid"
+    style="
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:12px;
+    "
+  >
+    <div class="loading">
+      Chargement des demandes…
+    </div>
+  </div>
+
+</div>
 
 
     <!-- AJOUT JEU -->
