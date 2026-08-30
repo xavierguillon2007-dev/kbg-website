@@ -236,7 +236,142 @@
       </div>
     </div>
   </div>
+<!-- MODALE AVIS D'UN JEU -->
+<div id="reviewModal" class="modal hidden">
+  <div class="modal-card" style="max-width:700px;">
 
+    <button class="modal-close" data-close="reviewModal">×</button>
+
+    <div id="reviewGameHeader"></div>
+
+    <!-- AVIS EXISTANTS -->
+    <div style="margin-top:24px;">
+      <p class="eyebrow">AVIS DES MEMBRES</p>
+
+      <div id="reviewsList" style="margin-top:12px;">
+        <div class="loading">Chargement des avis…</div>
+      </div>
+    </div>
+
+    <!-- FORMULAIRE D'AVIS -->
+    <div id="reviewFormContainer"
+         style="margin-top:28px; border-top:1px solid var(--line); padding-top:20px;">
+
+      <p class="eyebrow">VOTRE AVIS</p>
+
+      <form id="reviewForm" style="margin-top:12px;">
+
+        <input type="hidden" id="reviewGameId">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+
+          <input
+            id="reviewFirstName"
+            placeholder="Prénom"
+            required
+            maxlength="100"
+          >
+
+          <input
+            id="reviewLastName"
+            placeholder="Nom de famille"
+            required
+            maxlength="100"
+          >
+
+        </div>
+
+        <input
+          id="reviewPromotion"
+          placeholder="Promotion"
+          required
+          maxlength="100"
+          style="width:100%; margin-top:10px;"
+        >
+
+        <!-- ÉTOILES -->
+        <div style="margin-top:18px;">
+
+          <label style="display:block; margin-bottom:8px;">
+            Note
+          </label>
+
+          <div
+            id="starRating"
+            style="
+              display:flex;
+              gap:5px;
+              font-size:32px;
+              line-height:1;
+            "
+          >
+
+            <button type="button" class="star-button" data-rating="1">★</button>
+            <button type="button" class="star-button" data-rating="2">★</button>
+            <button type="button" class="star-button" data-rating="3">★</button>
+            <button type="button" class="star-button" data-rating="4">★</button>
+            <button type="button" class="star-button" data-rating="5">★</button>
+
+          </div>
+
+          <input
+            type="hidden"
+            id="reviewRating"
+            value="0"
+          >
+
+          <p
+            id="ratingHelp"
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-top:6px;
+            "
+          >
+            Sélectionnez une note de 1 à 5 étoiles.
+          </p>
+
+        </div>
+
+        <textarea
+          id="reviewText"
+          rows="4"
+          maxlength="2000"
+          placeholder="Votre avis sur ce jeu…"
+          style="
+            width:100%;
+            margin-top:14px;
+            background:var(--bg);
+            border:1px solid var(--line);
+            color:var(--text);
+            padding:10px 12px;
+            border-radius:6px;
+            resize:vertical;
+          "
+        ></textarea>
+
+        <button
+          class="button primary"
+          type="submit"
+          style="width:100%; margin-top:12px;"
+        >
+          Publier mon avis →
+        </button>
+
+        <p
+          id="reviewMsg"
+          class="form-message"
+          style="margin-top:8px;"
+          role="alert"
+          aria-live="polite"
+        ></p>
+
+      </form>
+
+    </div>
+
+  </div>
+</div>
   <!-- MODALE AUTHENTIFICATION -->
   <div id="authModal" class="modal hidden">
     <div class="modal-card">
