@@ -184,44 +184,27 @@ document.addEventListener(
 
     setupEventListeners();
 
-    try {
+    // Le prochain événement est public : il démarre immédiatement et
+    // ne dépend ni de l'authentification ni des notifications.
+    loadNextEvent();
 
-      const {
-        data,
-        error
-      } =
-        await supabase.auth.getSession();
+    try {
+      const { data, error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error(
-          'Erreur récupération session :',
-          error
-        );
+        console.error('Erreur récupération session :', error);
       }
 
-      currentUser =
-        data?.session?.user || null;
-
-      await handleAuthChange(
-        currentUser
-      );
+      currentUser = data?.session?.user || null;
+      await handleAuthChange(currentUser);
 
     } catch (error) {
-
-      console.error(
-        'Erreur initialisation Auth :',
-        error
-      );
-
+      console.error('Erreur initialisation Auth :', error);
     }
 
-    // Les trois chargements sont indépendants : si le catalogue ou
-    // le calendrier rencontre un problème réseau, le prochain événement
-    // doit quand même pouvoir s'afficher immédiatement.
     await Promise.allSettled([
       loadGames(),
-      renderCalendar(),
-      loadNextEvent()
+      renderCalendar()
     ]);
 
   }
@@ -1080,11 +1063,13 @@ function openDayModal(
 
 async function loadNextEvent() {
 
+  // Ce bloc est volontairement totalement indépendant de l'authentification.
+  // L'événement affiché sur l'accueil doit fonctionner pour un visiteur non connecté.
   const card = $('featuredEvent');
 
-  // Cette fonctionnalité n'existe que sur l'accueil.
-  // Sur events.html, on ne fait donc aucune requête inutile.
-  if (!card) return;
+  if (!card) {
+    return;
+  }
 
   const title = $('featuredEventTitle');
   const date = $('featuredEventDate');
@@ -1092,66 +1077,200 @@ async function loadNextEvent() {
   const image = $('featuredEventImage');
   const placeholder = $('featuredEventPlaceholder');
 
+  const showFallback = (titleText, descriptionText) => {
+    if (title) {
+      title.textContent = titleText;
+    }
+
+    if (date) {
+      date.textContent = '';
+    }
+
+    if (description) {
+      description.textContent = descriptionText;
+    }
+
+    if (image) {
+      image.removeAttribute('src');
+      image.style.display = 'none';
+    }
+
+    if (placeholder) {
+      placeholder.style.display = 'flex';
+    }
+  };
+
+  // Évite de laisser « Chargement… » affiché si la requête Supabase
+  // rencontre un problème réseau ou une policy RLS.
+  if (title) {
+    title.textContent = 'Chargement…';
+  }
+
+  if (date) {
+    date.textContent = '';
+  }
+
+  if (description) {
+    description.textContent = 'Recherche du prochain événement…';
+  }
+
+  if (image) {
+    image.style.display = 'none';
+  }
+
+  if (placeholder) {
+    placeholder.style.display = 'flex';
+  }
+
+  let controller = null;
+  let timeoutId = null;
+
   try {
-    const eventsRequest = supabase
+    controller = new AbortController();
+
+    timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 5000);
+
+    const { data, error } = await supabase
       .from('events')
-      .select('id,name,date,photo_url,short_description,description,organizers')
-      .order('date', { ascending: true });
+      .select('*')
+      .abortSignal(controller.signal);
 
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Délai dépassé lors du chargement des événements.')), 8000)
-    );
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
 
-    const { data: events, error } = await Promise.race([eventsRequest, timeout]);
+    if (error) {
+      throw error;
+    }
 
-    if (error) throw error;
+    const events = Array.isArray(data) ? data : [];
+
+    // On considère comme date de début la première colonne disponible.
+    // Cela rend le code compatible avec les différentes versions de la table events.
+    const parseEventDate = event => {
+      const rawDate =
+        event.date_start ||
+        event.event_date ||
+        event.start_date ||
+        event.date ||
+        null;
+
+      if (!rawDate) {
+        return null;
+      }
+
+      const value = String(rawDate).slice(0, 10);
+      const parsed = new Date(`${value}T00:00:00`);
+
+      return Number.isNaN(parsed.getTime())
+        ? null
+        : parsed;
+    };
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const nextEvent = (events || [])
-      .filter(event => {
-        if (!event.date) return false;
-        const d = new Date(`${event.date}T00:00:00`);
-        return !Number.isNaN(d.getTime()) && d >= today;
-      })
-      .sort((a, b) => new Date(`${a.date}T00:00:00`) - new Date(`${b.date}T00:00:00`))[0];
+    const datedEvents = events
+      .map(event => ({
+        event,
+        date: parseEventDate(event)
+      }))
+      .filter(item => item.date && item.date >= today)
+      .sort((a, b) => a.date - b.date);
 
-    if (!nextEvent) {
-      title.textContent = 'Aucun événement prévu';
-      date.textContent = 'À VENIR';
-      description.textContent = 'Aucun prochain événement n’est actuellement annoncé.';
-      image.style.display = 'none';
-      placeholder.style.display = 'flex';
+    // Si les événements n'ont pas de date exploitable, on ne bloque pas
+    // l'accueil : on prend le plus récent comme solution de secours.
+    const selected = datedEvents[0] ||
+      (events.length
+        ? { event: events[0], date: parseEventDate(events[0]) }
+        : null);
+
+    if (!selected) {
+      showFallback(
+        'Aucun événement prévu',
+        'Aucun prochain événement n’est actuellement annoncé.'
+      );
       return;
     }
 
-    date.textContent = `📅 ${formatEventDate(nextEvent.date)}`;
-    title.textContent = nextEvent.name || 'Événement';
-    description.textContent = nextEvent.short_description || nextEvent.description || 'Découvrez les prochains événements du KBG.';
+    const event = selected.event;
 
-    if (nextEvent.photo_url) {
-      image.src = nextEvent.photo_url;
-      image.alt = nextEvent.name || 'Événement';
-      image.style.display = 'block';
-      placeholder.style.display = 'none';
-    } else {
-      image.removeAttribute('src');
-      image.style.display = 'none';
-      placeholder.style.display = 'flex';
+    if (date) {
+      if (selected.date) {
+        date.textContent = `📅 ${selected.date.toLocaleDateString('fr-FR', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })}`;
+      } else {
+        date.textContent = '';
+      }
     }
 
-    card.onclick = () => {
-      window.location.href = `events.html#event-${encodeURIComponent(nextEvent.id)}`;
-    };
+    if (title) {
+      title.textContent = event.name || 'Événement';
+    }
+
+    if (description) {
+      description.textContent =
+        event.short_description ||
+        event.brief_description ||
+        event.description_brief ||
+        event.description ||
+        'Découvrez les prochains événements du KBG.';
+    }
+
+    const photo =
+      event.photo_url ||
+      event.photo ||
+      event.image_url ||
+      '';
+
+    if (image && placeholder) {
+      if (photo) {
+        image.src = photo;
+        image.alt = event.name || 'Événement';
+        image.style.display = 'block';
+        placeholder.style.display = 'none';
+      } else {
+        image.removeAttribute('src');
+        image.style.display = 'none';
+        placeholder.style.display = 'flex';
+      }
+    }
+
+    // Le clic renvoie vers la page événements uniquement si un ID existe.
+    if (event.id) {
+      card.style.cursor = 'pointer';
+      card.onclick = () => {
+        window.location.href =
+          `events.html#event-${encodeURIComponent(event.id)}`;
+      };
+    } else {
+      card.style.cursor = '';
+      card.onclick = null;
+    }
 
   } catch (error) {
-    console.error('Erreur chargement prochain événement :', error);
-    title.textContent = 'Événements';
-    date.textContent = 'INFORMATION INDISPONIBLE';
-    description.textContent = 'Impossible de charger le prochain événement.';
-    image.style.display = 'none';
-    placeholder.style.display = 'flex';
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+
+    console.error(
+      'Erreur chargement prochain événement :',
+      error
+    );
+
+    showFallback(
+      'Événements',
+      'Impossible de charger le prochain événement pour le moment.'
+    );
   }
 }
 
