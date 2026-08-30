@@ -139,6 +139,7 @@
     </section>
 
     <!-- CALENDRIER DES DISPONIBILITÉS -->
+   <!-- CALENDRIER DES DISPONIBILITÉS -->
     <section id="calendrier" class="section">
       <div class="section-head">
         <div>
@@ -148,6 +149,13 @@
       </div>
       
       <div class="calendar-wrapper">
+        <!-- Barre de navigation des mois -->
+        <div class="calendar-nav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <button id="prevMonthBtn" class="button" title="Mois précédent">← Mois précédent</button>
+          <h3 id="currentMonthLabel" style="font-size:18px; font-weight:700; text-transform:capitalize;">---</h3>
+          <button id="nextMonthBtn" class="button" title="Mois suivant">Mois suivant →</button>
+        </div>
+
         <div class="calendar-grid-header">
           <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
         </div>
