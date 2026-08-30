@@ -1,6 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-
 // =========================================================
 // SUPABASE
 // =========================================================
@@ -11,11 +10,10 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
 
-const supabase =
-  createClient(
-    SUPABASE_URL,
-    SUPABASE_KEY
-  );
+const supabase = createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
 
 
 // =========================================================
@@ -27,14 +25,11 @@ const ADMIN_EMAILS = [
   'kbg.asso@gmail.com'
 ];
 
-
 function isAdminEmail(email) {
-
   return !!email &&
     ADMIN_EMAILS.includes(
       email.toLowerCase().trim()
     );
-
 }
 
 
@@ -47,8 +42,7 @@ let allReviews = [];
 
 let currentUser = null;
 
-let currentCalendarDate =
-  new Date();
+let currentCalendarDate = new Date();
 
 let selectedReviewGame = null;
 let selectedRating = 0;
@@ -58,12 +52,9 @@ let selectedRating = 0;
 // OUTILS
 // =========================================================
 
-const $ = id =>
-  document.getElementById(id);
-
+const $ = id => document.getElementById(id);
 
 function esc(value) {
-
   return String(value ?? '').replace(
     /[&<>"']/g,
     char => ({
@@ -74,7 +65,101 @@ function esc(value) {
       "'": '&#039;'
     }[char])
   );
+}
 
+
+// =========================================================
+// PROFIL
+// =========================================================
+
+function getUserProfile() {
+
+  if (!currentUser) {
+    return {
+      firstName: '',
+      lastName: '',
+      promotion: ''
+    };
+  }
+
+  const metadata =
+    currentUser.user_metadata || {};
+
+  return {
+    firstName:
+      String(
+        metadata.first_name || ''
+      ).trim(),
+
+    lastName:
+      String(
+        metadata.last_name || ''
+      ).trim(),
+
+    promotion:
+      String(
+        metadata.promotion || ''
+      ).trim()
+  };
+}
+
+
+function hasCompleteProfile() {
+
+  const profile =
+    getUserProfile();
+
+  return !!(
+    profile.firstName &&
+    profile.lastName &&
+    profile.promotion
+  );
+}
+
+
+async function ensureUserProfile() {
+
+  if (!currentUser) {
+    return false;
+  }
+
+  if (hasCompleteProfile()) {
+    return true;
+  }
+
+  const modal =
+    $('profileModal');
+
+  const firstInput =
+    $('profileFirstName');
+
+  const lastInput =
+    $('profileLastName');
+
+  const promotionInput =
+    $('profilePromotion');
+
+  const profile =
+    getUserProfile();
+
+  if (firstInput) {
+    firstInput.value =
+      profile.firstName;
+  }
+
+  if (lastInput) {
+    lastInput.value =
+      profile.lastName;
+  }
+
+  if (promotionInput) {
+    promotionInput.value =
+      profile.promotion;
+  }
+
+  modal?.classList.remove('hidden');
+
+  return false;
 }
 
 
@@ -88,11 +173,6 @@ document.addEventListener(
 
     setupEventListeners();
 
-
-    // -----------------------------------------------------
-    // SESSION
-    // -----------------------------------------------------
-
     try {
 
       const {
@@ -102,12 +182,10 @@ document.addEventListener(
         await supabase.auth.getSession();
 
       if (error) {
-
         console.error(
           'Erreur récupération session :',
           error
         );
-
       }
 
       currentUser =
@@ -126,17 +204,7 @@ document.addEventListener(
 
     }
 
-
-    // -----------------------------------------------------
-    // CATALOGUE
-    // -----------------------------------------------------
-
     await loadGames();
-
-
-    // -----------------------------------------------------
-    // CALENDRIER
-    // -----------------------------------------------------
 
     await renderCalendar();
 
@@ -145,7 +213,7 @@ document.addEventListener(
 
 
 // =========================================================
-// CHANGEMENT AUTH
+// AUTH
 // =========================================================
 
 supabase.auth.onAuthStateChange(
@@ -161,10 +229,6 @@ supabase.auth.onAuthStateChange(
   }
 );
 
-
-// =========================================================
-// AUTH UI
-// =========================================================
 
 async function handleAuthChange(user) {
 
@@ -187,8 +251,14 @@ async function handleAuthChange(user) {
         currentUser.email
       );
 
-
     if (userNav) {
+
+      const profile =
+        getUserProfile();
+
+      const displayName =
+        profile.firstName ||
+        currentUser.email;
 
       userNav.innerHTML = `
 
@@ -198,10 +268,7 @@ async function handleAuthChange(user) {
             font-weight:700;
           "
         >
-          👋 ${esc(
-            currentUser.user_metadata?.first_name ||
-            currentUser.email
-          )}
+          👋 ${esc(displayName)}
         </span>
 
         ${
@@ -226,7 +293,6 @@ async function handleAuthChange(user) {
 
       `;
 
-
       $('logoutBtn')
         ?.addEventListener(
           'click',
@@ -238,12 +304,10 @@ async function handleAuthChange(user) {
               await supabase.auth.signOut();
 
             if (error) {
-
               console.error(
                 'Erreur déconnexion :',
                 error
               );
-
             }
 
           }
@@ -258,9 +322,7 @@ async function handleAuthChange(user) {
             async () => {
 
               $('adminModal')
-                ?.classList.remove(
-                  'hidden'
-                );
+                ?.classList.remove('hidden');
 
               await loadAdminPanel();
 
@@ -271,13 +333,10 @@ async function handleAuthChange(user) {
 
     }
 
-
     authWarning
       ?.classList.add('hidden');
 
-
     await loadUserNotifications();
-
 
   } else {
 
@@ -294,109 +353,28 @@ async function handleAuthChange(user) {
 
       `;
 
-
       $('openAuthBtn')
         ?.addEventListener(
           'click',
           () => {
 
             $('authModal')
-              ?.classList.remove(
-                'hidden'
-              );
+              ?.classList.remove('hidden');
 
           }
         );
 
     }
 
-
     authWarning
       ?.classList.remove('hidden');
-
 
     notifBadge
       ?.classList.add('hidden');
 
   }
 
-
   renderGames();
-
-}
-
-
-// =========================================================
-// PROFIL
-// =========================================================
-
-function hasCompleteProfile() {
-
-  if (!currentUser) {
-    return false;
-  }
-
-  const metadata =
-    currentUser.user_metadata || {};
-
-  return !!(
-    String(
-      metadata.first_name || ''
-    ).trim() &&
-    String(
-      metadata.last_name || ''
-    ).trim()
-  );
-
-}
-
-
-async function ensureUserProfile() {
-
-  if (!currentUser) {
-    return false;
-  }
-
-
-  if (hasCompleteProfile()) {
-    return true;
-  }
-
-
-  const modal =
-    $('profileModal');
-
-  const firstInput =
-    $('profileFirstName');
-
-  const lastInput =
-    $('profileLastName');
-
-  const metadata =
-    currentUser.user_metadata || {};
-
-
-  if (firstInput) {
-
-    firstInput.value =
-      metadata.first_name || '';
-
-  }
-
-
-  if (lastInput) {
-
-    lastInput.value =
-      metadata.last_name || '';
-
-  }
-
-
-  modal
-    ?.classList.remove('hidden');
-
-
-  return false;
 
 }
 
@@ -408,7 +386,6 @@ async function ensureUserProfile() {
 async function submitProfile(e) {
 
   e.preventDefault();
-
 
   const msg =
     $('profileMsg');
@@ -423,13 +400,22 @@ async function submitProfile(e) {
       $('profileLastName')?.value || ''
     ).trim();
 
+  const promotion =
+    String(
+      $('profilePromotion')?.value || ''
+    ).trim();
 
-  if (!firstName || !lastName) {
+
+  if (
+    !firstName ||
+    !lastName ||
+    !promotion
+  ) {
 
     if (msg) {
 
       msg.textContent =
-        'Le prénom et le nom sont obligatoires.';
+        'Le prénom, le nom et la promotion sont obligatoires.';
 
       msg.style.color =
         'var(--danger)';
@@ -437,7 +423,6 @@ async function submitProfile(e) {
     }
 
     return;
-
   }
 
 
@@ -457,7 +442,10 @@ async function submitProfile(e) {
             firstName,
 
           last_name:
-            lastName
+            lastName,
+
+          promotion:
+            promotion
 
         }
 
@@ -488,9 +476,7 @@ async function submitProfile(e) {
       () => {
 
         $('profileModal')
-          ?.classList.add(
-            'hidden'
-          );
+          ?.classList.add('hidden');
 
         if (msg) {
           msg.textContent = '';
@@ -501,7 +487,7 @@ async function submitProfile(e) {
     );
 
 
-    handleAuthChange(
+    await handleAuthChange(
       currentUser
     );
 
@@ -512,7 +498,6 @@ async function submitProfile(e) {
       'Erreur profil :',
       error
     );
-
 
     if (msg) {
 
@@ -540,7 +525,6 @@ async function loadUserNotifications() {
     return;
   }
 
-
   try {
 
     const {
@@ -549,9 +533,7 @@ async function loadUserNotifications() {
     } =
       await supabase
         .from('reservations')
-        .select(
-          '*, games(name)'
-        )
+        .select('*, games(name)')
         .eq(
           'user_id',
           currentUser.id
@@ -580,17 +562,15 @@ async function loadUserNotifications() {
 
       if (list) {
 
-        list.innerHTML =
-          `
-            <div class="empty">
-              Vous n'avez effectué aucune demande.
-            </div>
-          `;
+        list.innerHTML = `
+          <div class="empty">
+            Vous n'avez effectué aucune demande.
+          </div>
+        `;
 
       }
 
-      badge
-        ?.classList.add('hidden');
+      badge?.classList.add('hidden');
 
       return;
 
@@ -612,15 +592,11 @@ async function loadUserNotifications() {
         badge.textContent =
           processedCount;
 
-        badge.classList.remove(
-          'hidden'
-        );
+        badge.classList.remove('hidden');
 
       } else {
 
-        badge.classList.add(
-          'hidden'
-        );
+        badge.classList.add('hidden');
 
       }
 
@@ -633,27 +609,23 @@ async function loadUserNotifications() {
         reservations.map(
           r => {
 
-            let status =
-              `
-                <span class="badge badge-warning">
-                  En attente
-                </span>
-              `;
+            let status = `
+              <span class="badge badge-warning">
+                En attente
+              </span>
+            `;
 
             let message =
               'Votre demande est en cours de traitement par l’administrateur.';
 
 
-            if (
-              r.status === 'approved'
-            ) {
+            if (r.status === 'approved') {
 
-              status =
-                `
-                  <span class="badge badge-success">
-                    Acceptée
-                  </span>
-                `;
+              status = `
+                <span class="badge badge-success">
+                  Acceptée
+                </span>
+              `;
 
               message =
                 'Bonne nouvelle ! Votre réservation a été validée.';
@@ -661,16 +633,13 @@ async function loadUserNotifications() {
             }
 
 
-            if (
-              r.status === 'rejected'
-            ) {
+            if (r.status === 'rejected') {
 
-              status =
-                `
-                  <span class="badge badge-danger">
-                    Rejetée
-                  </span>
-                `;
+              status = `
+                <span class="badge badge-danger">
+                  Rejetée
+                </span>
+              `;
 
               message =
                 'Désolé, votre demande a été refusée pour cette période.';
@@ -699,8 +668,7 @@ async function loadUserNotifications() {
 
                   <strong>
                     ${esc(
-                      r.games?.name ||
-                      'Jeu'
+                      r.games?.name || 'Jeu'
                     )}
                   </strong>
 
@@ -736,7 +704,6 @@ async function loadUserNotifications() {
         ).join('');
 
     }
-
 
   } catch (error) {
 
@@ -797,9 +764,7 @@ async function renderCalendar() {
     } =
       await supabase
         .from('reservations')
-        .select(
-          '*, games(name)'
-        )
+        .select('*, games(name)')
         .eq(
           'status',
           'approved'
@@ -807,12 +772,7 @@ async function renderCalendar() {
 
 
     if (error) {
-
-      console.warn(
-        'Erreur calendrier :',
-        error.message
-      );
-
+      throw error;
     }
 
 
@@ -834,7 +794,6 @@ async function renderCalendar() {
     let startOffset =
       firstDay.getDay() - 1;
 
-
     if (startOffset === -1) {
       startOffset = 6;
     }
@@ -850,7 +809,6 @@ async function renderCalendar() {
     ) {
 
       html += `
-
         <div
           class="cal-day"
           style="
@@ -859,7 +817,6 @@ async function renderCalendar() {
             border:1px dashed var(--line);
           "
         ></div>
-
       `;
 
     }
@@ -879,14 +836,11 @@ async function renderCalendar() {
 
 
       const events =
-        (reservations || [])
-          .filter(
-            reservation =>
-              dateStr >=
-                reservation.date_start &&
-              dateStr <=
-                reservation.date_end
-          );
+        (reservations || []).filter(
+          reservation =>
+            dateStr >= reservation.date_start &&
+            dateStr <= reservation.date_end
+        );
 
 
       dayEventsMap[dateStr] =
@@ -907,20 +861,16 @@ async function renderCalendar() {
           ${
             events.map(
               event => `
-
                 <span
                   class="cal-event"
                   title="${esc(
-                    event.games?.name ||
-                    'Jeu'
+                    event.games?.name || 'Jeu'
                   )}"
                 >
                   📌 ${esc(
-                    event.games?.name ||
-                    'Jeu'
+                    event.games?.name || 'Jeu'
                   )}
                 </span>
-
               `
             ).join('')
           }
@@ -968,17 +918,15 @@ async function renderCalendar() {
       error
     );
 
-
-    container.innerHTML =
-      `
-        <div class="empty panel">
-          Impossible de charger le calendrier.
-          <br>
-          <small>
-            ${esc(error.message)}
-          </small>
-        </div>
-      `;
+    container.innerHTML = `
+      <div class="empty panel">
+        Impossible de charger le calendrier.
+        <br>
+        <small>
+          ${esc(error.message)}
+        </small>
+      </div>
+    `;
 
   }
 
@@ -1028,11 +976,9 @@ function openDayModal(
         }
       );
 
-
     label =
       label.charAt(0).toUpperCase() +
       label.slice(1);
-
 
     title.textContent =
       label;
@@ -1042,12 +988,11 @@ function openDayModal(
 
   if (!events.length) {
 
-    list.innerHTML =
-      `
-        <div class="empty">
-          Aucun jeu réservé ce jour-là.
-        </div>
-      `;
+    list.innerHTML = `
+      <div class="empty">
+        Aucun jeu réservé ce jour-là.
+      </div>
+    `;
 
   } else {
 
@@ -1065,8 +1010,7 @@ function openDayModal(
 
             <strong>
               ${esc(
-                event.games?.name ||
-                'Jeu'
+                event.games?.name || 'Jeu'
               )}
             </strong>
 
@@ -1106,15 +1050,13 @@ function openDayModal(
   }
 
 
-  modal.classList.remove(
-    'hidden'
-  );
+  modal.classList.remove('hidden');
 
 }
 
 
 // =========================================================
-// CHARGEMENT CATALOGUE
+// CATALOGUE
 // =========================================================
 
 async function loadGames() {
@@ -1128,13 +1070,11 @@ async function loadGames() {
   }
 
 
-  // Évite de rester bloqué visuellement
-  container.innerHTML =
-    `
-      <div class="loading">
-        Connexion au catalogue…
-      </div>
-    `;
+  container.innerHTML = `
+    <div class="loading">
+      Connexion au catalogue…
+    </div>
+  `;
 
 
   try {
@@ -1160,17 +1100,12 @@ async function loadGames() {
         : [];
 
 
-    // -----------------------------------------------------
-    // CATÉGORIES
-    // -----------------------------------------------------
-
     const categories =
       [
         ...new Set(
           allGames
             .map(
-              game =>
-                game.category
+              game => game.category
             )
             .filter(Boolean)
         )
@@ -1179,54 +1114,41 @@ async function loadGames() {
 
     if ($('category')) {
 
-      $('category').innerHTML =
-        `
-          <option value="">
-            Toutes les catégories
+      $('category').innerHTML = `
+        <option value="">
+          Toutes les catégories
+        </option>
+      ` +
+      categories.map(
+        category => `
+          <option value="${esc(category)}">
+            ${esc(category)}
           </option>
-        ` +
-        categories.map(
-          category =>
-            `
-              <option value="${esc(category)}">
-                ${esc(category)}
-              </option>
-            `
-        ).join('');
+        `
+      ).join('');
 
     }
 
-
-    // -----------------------------------------------------
-    // SELECT RÉSERVATION
-    // -----------------------------------------------------
 
     if ($('gameSelect')) {
 
-      $('gameSelect').innerHTML =
-        `
-          <option value="">
-            Sélectionnez un jeu…
+      $('gameSelect').innerHTML = `
+        <option value="">
+          Sélectionnez un jeu…
+        </option>
+      ` +
+      allGames.map(
+        game => `
+          <option value="${esc(game.id)}">
+            ${esc(game.name)}
           </option>
-        ` +
-        allGames.map(
-          game =>
-            `
-              <option value="${esc(game.id)}">
-                ${esc(game.name)}
-              </option>
-            `
-        ).join('');
+        `
+      ).join('');
 
     }
 
 
-    // -----------------------------------------------------
-    // AVIS
-    // -----------------------------------------------------
-
     await loadAllReviews();
-
 
     renderGames();
 
@@ -1239,35 +1161,32 @@ async function loadGames() {
     );
 
 
-    container.innerHTML =
-      `
-        <div
-          class="empty panel"
-          style="grid-column:1/-1;"
-        >
+    container.innerHTML = `
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
 
-          <strong>
-            Impossible de charger le catalogue.
-          </strong>
+        <strong>
+          Impossible de charger le catalogue.
+        </strong>
 
-          <br><br>
+        <br><br>
 
-          <small>
-            ${esc(
-              error.message ||
-              'Erreur inconnue'
-            )}
-          </small>
+        <small>
+          ${esc(
+            error.message ||
+            'Erreur inconnue'
+          )}
+        </small>
 
-        </div>
-      `;
+      </div>
+    `;
 
 
     if ($('count')) {
-
       $('count').textContent =
         'Erreur';
-
     }
 
   }
@@ -1276,7 +1195,7 @@ async function loadGames() {
 
 
 // =========================================================
-// AVIS — CHARGEMENT
+// AVIS
 // =========================================================
 
 async function loadAllReviews() {
@@ -1314,17 +1233,12 @@ async function loadAllReviews() {
       error
     );
 
-
     allReviews = [];
 
   }
 
 }
 
-
-// =========================================================
-// AVIS — CALCULS
-// =========================================================
 
 function getGameReviews(gameId) {
 
@@ -1400,46 +1314,27 @@ function renderGames() {
     allGames.filter(
       game => {
 
-        const searchText =
-          `
-            ${game.name || ''}
-            ${game.publisher || ''}
-            ${game.category || ''}
-          `.toLowerCase();
+        const searchText = `
+          ${game.name || ''}
+          ${game.publisher || ''}
+          ${game.category || ''}
+        `.toLowerCase();
 
 
         return (
-
-          (
-            !query ||
-            searchText.includes(query)
-          )
-
+          (!query ||
+            searchText.includes(query))
           &&
-
-          (
-            !category ||
-            game.category === category
-          )
-
+          (!category ||
+            game.category === category)
           &&
-
-          (
-            !minPlayers ||
-            Number(
-              game.players_max || 0
-            ) >= minPlayers
-          )
-
+          (!minPlayers ||
+            Number(game.players_max || 0) >= minPlayers)
         );
 
       }
     );
 
-
-  // -----------------------------------------------------
-  // TRI
-  // -----------------------------------------------------
 
   if (sortBy === 'duration') {
 
@@ -1449,9 +1344,7 @@ function renderGames() {
         Number(b.duration || 0)
     );
 
-  }
-
-  else if (sortBy === 'players') {
+  } else if (sortBy === 'players') {
 
     games.sort(
       (a, b) =>
@@ -1459,23 +1352,15 @@ function renderGames() {
         Number(a.players_max || 0)
     );
 
-  }
-
-  else if (sortBy === 'newest') {
+  } else if (sortBy === 'newest') {
 
     games.sort(
       (a, b) =>
-        new Date(
-          b.created_at || 0
-        ) -
-        new Date(
-          a.created_at || 0
-        )
+        new Date(b.created_at || 0) -
+        new Date(a.created_at || 0)
     );
 
-  }
-
-  else {
+  } else {
 
     games.sort(
       (a, b) =>
@@ -1490,24 +1375,21 @@ function renderGames() {
 
 
   if ($('count')) {
-
     $('count').textContent =
       `${games.length} jeu(x)`;
-
   }
 
 
   if (!games.length) {
 
-    container.innerHTML =
-      `
-        <div
-          class="empty panel"
-          style="grid-column:1/-1;"
-        >
-          Aucun jeu trouvé.
-        </div>
-      `;
+    container.innerHTML = `
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
+        Aucun jeu trouvé.
+      </div>
+    `;
 
     return;
 
@@ -1519,19 +1401,13 @@ function renderGames() {
       game => {
 
         const reviews =
-          getGameReviews(
-            game.id
-          );
-
+          getGameReviews(game.id);
 
         const average =
-          getAverageRating(
-            game.id
-          );
+          getAverageRating(game.id);
 
 
-        let ratingHTML =
-          '';
+        let ratingHTML = '';
 
 
         if (reviews.length) {
@@ -1546,51 +1422,50 @@ function renderGames() {
             );
 
 
-          ratingHTML =
-            `
-              <div
-                style="
-                  display:flex;
-                  align-items:center;
-                  gap:7px;
-                  margin-top:8px;
-                "
-              >
+          ratingHTML = `
+            <div
+              style="
+                display:flex;
+                align-items:center;
+                gap:7px;
+                margin-top:8px;
+              "
+            >
 
-                <span class="review-stars">
-                  ${'★'.repeat(rounded)}
-                  <span style="color:var(--line);">
-                    ${'★'.repeat(5 - rounded)}
-                  </span>
+              <span class="review-stars">
+                ${'★'.repeat(rounded)}
+
+                <span style="color:var(--line);">
+                  ${'★'.repeat(5 - rounded)}
                 </span>
+              </span>
 
-                <span
-                  style="
-                    color:var(--muted);
-                    font-size:12px;
-                  "
-                >
-                  ${average.toFixed(1)}/5
-                  · ${reviews.length} avis
-                </span>
-
-              </div>
-            `;
-
-        } else {
-
-          ratingHTML =
-            `
-              <div
+              <span
                 style="
                   color:var(--muted);
                   font-size:12px;
-                  margin-top:8px;
                 "
               >
-                Aucun avis
-              </div>
-            `;
+                ${average.toFixed(1)}/5
+                · ${reviews.length} avis
+              </span>
+
+            </div>
+          `;
+
+        } else {
+
+          ratingHTML = `
+            <div
+              style="
+                color:var(--muted);
+                font-size:12px;
+                margin-top:8px;
+              "
+            >
+              Aucun avis
+            </div>
+          `;
 
         }
 
@@ -1619,29 +1494,21 @@ function renderGames() {
 
             </div>
 
-
             <div class="card-body">
 
               <p class="tag">
                 ${esc(
-                  game.category ||
-                  'Jeu'
+                  game.category || 'Jeu'
                 )}
               </p>
-
 
               <h3>
                 ${esc(game.name)}
               </h3>
 
-
               <p class="publisher">
-                ${esc(
-                  game.publisher ||
-                  ''
-                )}
+                ${esc(game.publisher || '')}
               </p>
-
 
               <div class="meta">
 
@@ -1660,9 +1527,7 @@ function renderGames() {
 
               </div>
 
-
               ${ratingHTML}
-
 
               <p
                 class="desc"
@@ -1678,7 +1543,6 @@ function renderGames() {
                   'Aucune description disponible.'
                 )}
               </p>
-
 
               <p
                 style="
@@ -1721,13 +1585,8 @@ function renderGames() {
                   )
               );
 
-
             if (game) {
-
-              openReviewModal(
-                game
-              );
-
+              openReviewModal(game);
             }
 
           }
@@ -1764,67 +1623,45 @@ function openReviewModal(game) {
   }
 
 
-  $('reviewGameId').value =
-    game.id;
+  if ($('reviewGameId')) {
+    $('reviewGameId').value =
+      game.id;
+  }
 
+  if ($('reviewRating')) {
+    $('reviewRating').value =
+      '0';
+  }
 
-  $('reviewRating').value =
-    '0';
-
-
-  $('ratingHelp').textContent =
-    'Sélectionnez une note de 1 à 5 étoiles.';
+  if ($('ratingHelp')) {
+    $('ratingHelp').textContent =
+      'Sélectionnez une note de 1 à 5 étoiles.';
+  }
 
 
   document
-    .querySelectorAll(
-      '.star-button'
-    )
+    .querySelectorAll('.star-button')
     .forEach(
       star =>
-        star.classList.remove(
-          'active'
-        )
+        star.classList.remove('active')
     );
 
 
-  // -----------------------------------------------------
-  // NOM UTILISATEUR
-  // -----------------------------------------------------
-
-  const metadata =
-    currentUser?.user_metadata || {};
-
-
-  const firstName =
-    String(
-      metadata.first_name || ''
-    ).trim();
-
-
-  const lastName =
-    String(
-      metadata.last_name || ''
-    ).trim();
+  const profile =
+    getUserProfile();
 
 
   const authorName =
-    firstName || lastName
-      ? `${firstName} ${lastName}`.trim()
+    profile.firstName || profile.lastName
+      ? `${profile.firstName} ${profile.lastName}`.trim()
       : 'Profil incomplet';
 
 
   if ($('reviewAuthorName')) {
-
     $('reviewAuthorName').textContent =
       authorName;
-
   }
 
-
-  // -----------------------------------------------------
-  // DESCRIPTION COMPLÈTE
-  // -----------------------------------------------------
 
   const description =
     game.description
@@ -1832,173 +1669,159 @@ function openReviewModal(game) {
       : 'Aucune description disponible pour ce jeu.';
 
 
-  header.innerHTML =
-    `
+  header.innerHTML = `
 
-      <div
-        style="
-          display:flex;
-          gap:16px;
-          align-items:center;
-        "
-      >
+    <div
+      style="
+        display:flex;
+        gap:16px;
+        align-items:center;
+      "
+    >
 
-        ${
-          game.cover_image
-            ? `
-              <img
-                src="${esc(game.cover_image)}"
-                alt="${esc(game.name)}"
-                style="
-                  width:90px;
-                  height:90px;
-                  object-fit:cover;
-                  border-radius:8px;
-                  flex-shrink:0;
-                "
-              >
-            `
-            : `
-              <div
-                style="
-                  width:90px;
-                  height:90px;
-                  border-radius:8px;
-                  background:var(--bg);
-                  border:1px solid var(--line);
-                  display:flex;
-                  align-items:center;
-                  justify-content:center;
-                  font-size:30px;
-                  flex-shrink:0;
-                "
-              >
-                ✦
-              </div>
-            `
-        }
+      ${
+        game.cover_image
+          ? `
+            <img
+              src="${esc(game.cover_image)}"
+              alt="${esc(game.name)}"
+              style="
+                width:90px;
+                height:90px;
+                object-fit:cover;
+                border-radius:8px;
+                flex-shrink:0;
+              "
+            >
+          `
+          : `
+            <div
+              style="
+                width:90px;
+                height:90px;
+                border-radius:8px;
+                background:var(--bg);
+                border:1px solid var(--line);
+                display:flex;
+                align-items:center;
+                justify-content:center;
+                font-size:30px;
+                flex-shrink:0;
+              "
+            >
+              ✦
+            </div>
+          `
+      }
 
+      <div style="min-width:0;">
 
-        <div style="min-width:0;">
-
-          <p class="eyebrow">
-            FICHE DU JEU
-          </p>
-
-          <h2 style="margin-top:4px;">
-            ${esc(game.name)}
-          </h2>
-
-
-          ${
-            game.publisher
-              ? `
-                <p
-                  style="
-                    color:var(--muted);
-                    font-size:13px;
-                    margin-top:4px;
-                  "
-                >
-                  ${esc(game.publisher)}
-                </p>
-              `
-              : ''
-          }
-
-
-          <div
-            id="reviewAverage"
-            style="margin-top:6px;"
-          ></div>
-
-        </div>
-
-      </div>
-
-
-      <!-- DESCRIPTION -->
-
-      <div
-        style="
-          margin-top:22px;
-          padding:16px;
-          background:var(--bg);
-          border:1px solid var(--line);
-          border-radius:8px;
-        "
-      >
-
-        <p
-          class="eyebrow"
-          style="margin-bottom:8px;"
-        >
-          DESCRIPTION
+        <p class="eyebrow">
+          FICHE DU JEU
         </p>
 
-
-        <p
-          style="
-            font-size:14px;
-            line-height:1.7;
-            color:var(--text);
-            white-space:pre-wrap;
-            overflow-wrap:anywhere;
-          "
-        >
-          ${description}
-        </p>
-
-      </div>
-
-
-      <!-- INFOS -->
-
-      <div
-        style="
-          display:flex;
-          flex-wrap:wrap;
-          gap:8px;
-          margin-top:12px;
-        "
-      >
+        <h2 style="margin-top:4px;">
+          ${esc(game.name)}
+        </h2>
 
         ${
-          game.category
+          game.publisher
             ? `
-              <span class="badge">
-                ${esc(game.category)}
-              </span>
+              <p
+                style="
+                  color:var(--muted);
+                  font-size:13px;
+                  margin-top:4px;
+                "
+              >
+                ${esc(game.publisher)}
+              </p>
             `
             : ''
         }
 
-
-        <span class="badge">
-          ♙
-          ${game.players_min || '?'}-
-          ${game.players_max || '?'}
-          joueurs
-        </span>
-
-
-        <span class="badge">
-          ◷
-          ${game.duration || '?'}
-          min
-        </span>
+        <div
+          id="reviewAverage"
+          style="margin-top:6px;"
+        ></div>
 
       </div>
 
-    `;
+    </div>
+
+
+    <div
+      style="
+        margin-top:22px;
+        padding:16px;
+        background:var(--bg);
+        border:1px solid var(--line);
+        border-radius:8px;
+      "
+    >
+
+      <p
+        class="eyebrow"
+        style="margin-bottom:8px;"
+      >
+        DESCRIPTION
+      </p>
+
+      <p
+        style="
+          font-size:14px;
+          line-height:1.7;
+          color:var(--text);
+          white-space:pre-wrap;
+          overflow-wrap:anywhere;
+        "
+      >
+        ${description}
+      </p>
+
+    </div>
+
+
+    <div
+      style="
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-top:12px;
+      "
+    >
+
+      ${
+        game.category
+          ? `
+            <span class="badge">
+              ${esc(game.category)}
+            </span>
+          `
+          : ''
+      }
+
+      <span class="badge">
+        ♙
+        ${game.players_min || '?'}-
+        ${game.players_max || '?'}
+        joueurs
+      </span>
+
+      <span class="badge">
+        ◷
+        ${game.duration || '?'}
+        min
+      </span>
+
+    </div>
+
+  `;
 
 
   renderReviews(game);
 
-
-  modal.classList.remove(
-    'hidden'
-  );
+  modal.classList.remove('hidden');
 
 }
 
@@ -2019,16 +1842,10 @@ function renderReviews(game) {
 
 
   const reviews =
-    getGameReviews(
-      game.id
-    );
-
+    getGameReviews(game.id);
 
   const average =
-    getAverageRating(
-      game.id
-    );
-
+    getAverageRating(game.id);
 
   const averageContainer =
     $('reviewAverage');
@@ -2048,44 +1865,41 @@ function renderReviews(game) {
         );
 
 
-      averageContainer.innerHTML =
-        `
+      averageContainer.innerHTML = `
 
-          <span class="review-stars">
-            ${'★'.repeat(rounded)}
+        <span class="review-stars">
+          ${'★'.repeat(rounded)}
 
-            <span style="color:var(--line);">
-              ${'★'.repeat(5 - rounded)}
-            </span>
+          <span style="color:var(--line);">
+            ${'★'.repeat(5 - rounded)}
           </span>
+        </span>
 
+        <span
+          style="
+            color:var(--muted);
+            font-size:13px;
+            margin-left:6px;
+          "
+        >
+          ${average.toFixed(1)}/5
+          · ${reviews.length} avis
+        </span>
 
-          <span
-            style="
-              color:var(--muted);
-              font-size:13px;
-              margin-left:6px;
-            "
-          >
-            ${average.toFixed(1)}/5
-            · ${reviews.length} avis
-          </span>
-
-        `;
+      `;
 
     } else {
 
-      averageContainer.innerHTML =
-        `
-          <span
-            style="
-              color:var(--muted);
-              font-size:13px;
-            "
-          >
-            Aucun avis pour le moment
-          </span>
-        `;
+      averageContainer.innerHTML = `
+        <span
+          style="
+            color:var(--muted);
+            font-size:13px;
+          "
+        >
+          Aucun avis pour le moment
+        </span>
+      `;
 
     }
 
@@ -2094,23 +1908,15 @@ function renderReviews(game) {
 
   if (!reviews.length) {
 
-    list.innerHTML =
-      `
-
-        <div class="empty panel">
-
-          Aucun avis pour le moment.
-
-          <br>
-
-          Soyez le premier à donner votre avis !
-
-        </div>
-
-      `;
+    list.innerHTML = `
+      <div class="empty panel">
+        Aucun avis pour le moment.
+        <br>
+        Soyez le premier à donner votre avis !
+      </div>
+    `;
 
     return;
-
   }
 
 
@@ -2136,9 +1942,7 @@ function renderReviews(game) {
 
         return `
 
-          <div
-            class="review-card"
-          >
+          <div class="review-card">
 
             <div
               style="
@@ -2152,14 +1956,9 @@ function renderReviews(game) {
               <div>
 
                 <strong>
-                  ${esc(
-                    review.first_name
-                  )}
-                  ${esc(
-                    review.last_name
-                  )}
+                  ${esc(review.first_name)}
+                  ${esc(review.last_name)}
                 </strong>
-
 
                 ${
                   review.promotion
@@ -2171,16 +1970,13 @@ function renderReviews(game) {
                           margin-left:5px;
                         "
                       >
-                        ${esc(
-                          review.promotion
-                        )}
+                        ${esc(review.promotion)}
                       </span>
                     `
                     : ''
                 }
 
               </div>
-
 
               <span
                 class="review-stars"
@@ -2209,9 +2005,7 @@ function renderReviews(game) {
                       overflow-wrap:anywhere;
                     "
                   >
-                    ${esc(
-                      review.review
-                    )}
+                    ${esc(review.review)}
                   </p>
                 `
                 : ''
@@ -2267,10 +2061,6 @@ function renderReviews(game) {
     ).join('');
 
 
-  // -----------------------------------------------------
-  // SUPPRESSION AVIS
-  // -----------------------------------------------------
-
   list
     .querySelectorAll(
       '[data-delete-review]'
@@ -2325,18 +2115,15 @@ function renderReviews(game) {
                 error
               );
 
-
               alert(
                 'Impossible de supprimer l\'avis : ' +
                 error.message
               );
 
-
               button.disabled =
                 false;
 
               return;
-
             }
 
 
@@ -2350,11 +2137,7 @@ function renderReviews(game) {
               );
 
 
-            renderReviews(
-              game
-            );
-
-
+            renderReviews(game);
             renderGames();
 
           };
@@ -2365,16 +2148,11 @@ function renderReviews(game) {
 }
 
 
-// =========================================================
-// DATE AVIS
-// =========================================================
-
 function formatReviewDate(date) {
 
   if (!date) {
     return '';
   }
-
 
   return new Date(date)
     .toLocaleDateString(
@@ -2393,9 +2171,7 @@ function formatReviewDate(date) {
 // ÉTOILES
 // =========================================================
 
-function setReviewRating(
-  rating
-) {
+function setReviewRating(rating) {
 
   selectedRating =
     Number(rating);
@@ -2409,19 +2185,13 @@ function setReviewRating(
 
 
   if (input) {
-
     input.value =
-      String(
-        selectedRating
-      );
-
+      String(selectedRating);
   }
 
 
   document
-    .querySelectorAll(
-      '.star-button'
-    )
+    .querySelectorAll('.star-button')
     .forEach(
       star => {
 
@@ -2430,11 +2200,9 @@ function setReviewRating(
             star.dataset.rating
           );
 
-
         star.classList.toggle(
           'active',
-          value <=
-            selectedRating
+          value <= selectedRating
         );
 
       }
@@ -2442,10 +2210,8 @@ function setReviewRating(
 
 
   if (help) {
-
     help.textContent =
       `${selectedRating}/5 étoiles`;
-
   }
 
 }
@@ -2460,12 +2226,14 @@ async function submitReview(e) {
   e.preventDefault();
 
 
+  const form =
+    e.currentTarget;
+
   const msg =
     $('reviewMsg');
 
-
   const submitBtn =
-    e.currentTarget.querySelector(
+    form.querySelector(
       'button[type="submit"]'
     );
 
@@ -2482,35 +2250,21 @@ async function submitReview(e) {
 
     }
 
-
     $('authModal')
-      ?.classList.remove(
-        'hidden'
-      );
+      ?.classList.remove('hidden');
 
     return;
-
   }
 
 
-  // -----------------------------------------------------
-  // PROFIL
-  // -----------------------------------------------------
-
-  if (
-    !hasCompleteProfile()
-  ) {
+  if (!hasCompleteProfile()) {
 
     $('reviewModal')
-      ?.classList.add(
-        'hidden'
-      );
-
+      ?.classList.add('hidden');
 
     await ensureUserProfile();
 
     return;
-
   }
 
 
@@ -2527,53 +2281,17 @@ async function submitReview(e) {
     }
 
     return;
-
   }
 
 
-  const metadata =
-    currentUser.user_metadata || {};
-
-
-  const firstName =
-    String(
-      metadata.first_name || ''
-    ).trim();
-
-
-  const lastName =
-    String(
-      metadata.last_name || ''
-    ).trim();
-
-
-  const promotion =
-    String(
-      $('reviewPromotion')?.value || ''
-    ).trim();
+  const profile =
+    getUserProfile();
 
 
   const reviewText =
     String(
       $('reviewText')?.value || ''
     ).trim();
-
-
-  if (!promotion) {
-
-    if (msg) {
-
-      msg.textContent =
-        'La promotion est obligatoire.';
-
-      msg.style.color =
-        'var(--danger)';
-
-    }
-
-    return;
-
-  }
 
 
   if (
@@ -2592,7 +2310,6 @@ async function submitReview(e) {
     }
 
     return;
-
   }
 
 
@@ -2629,20 +2346,19 @@ async function submitReview(e) {
             currentUser.id,
 
           first_name:
-            firstName,
+            profile.firstName,
 
           last_name:
-            lastName,
+            profile.lastName,
 
           promotion:
-            promotion,
+            profile.promotion,
 
           rating:
             selectedRating,
 
           review:
-            reviewText ||
-            null
+            reviewText || null
 
         })
         .select()
@@ -2655,11 +2371,7 @@ async function submitReview(e) {
 
 
     if (data) {
-
-      allReviews.unshift(
-        data
-      );
-
+      allReviews.unshift(data);
     }
 
 
@@ -2674,37 +2386,30 @@ async function submitReview(e) {
     }
 
 
-    $('reviewText').value =
-      '';
-
-    $('reviewPromotion').value =
-      '';
+    if ($('reviewText')) {
+      $('reviewText').value = '';
+    }
 
 
-    selectedRating =
-      0;
+    selectedRating = 0;
 
 
-    $('reviewRating').value =
-      '0';
+    if ($('reviewRating')) {
+      $('reviewRating').value = '0';
+    }
 
 
     document
-      .querySelectorAll(
-        '.star-button'
-      )
+      .querySelectorAll('.star-button')
       .forEach(
         star =>
-          star.classList.remove(
-            'active'
-          )
+          star.classList.remove('active')
       );
 
 
     renderReviews(
       selectedReviewGame
     );
-
 
     renderGames();
 
@@ -2719,21 +2424,10 @@ async function submitReview(e) {
 
     if (msg) {
 
-      if (
+      msg.textContent =
         error.code === '23505'
-      ) {
-
-        msg.textContent =
-          'Vous avez déjà laissé un avis pour ce jeu.';
-
-      } else {
-
-        msg.textContent =
-          'Erreur : ' +
-          error.message;
-
-      }
-
+          ? 'Vous avez déjà laissé un avis pour ce jeu.'
+          : 'Erreur : ' + error.message;
 
       msg.style.color =
         'var(--danger)';
@@ -2752,7 +2446,7 @@ async function submitReview(e) {
 
 
 // =========================================================
-// RÉSERVATION
+// RÉSERVATION — VERSION CORRIGÉE
 // =========================================================
 
 async function handleBookingSubmit(e) {
@@ -2760,12 +2454,30 @@ async function handleBookingSubmit(e) {
   e.preventDefault();
 
 
+  // IMPORTANT :
+  // On récupère explicitement le formulaire.
+  // Cela évite l'erreur FormData que tu avais.
+
   const form =
-    e.currentTarget;
+    e.target instanceof HTMLFormElement
+      ? e.target
+      : e.currentTarget instanceof HTMLFormElement
+        ? e.currentTarget
+        : null;
+
+
+  if (!form) {
+
+    console.error(
+      'Erreur réservation : le formulaire est introuvable.'
+    );
+
+    return;
+  }
+
 
   const msg =
     $('formMessage');
-
 
   const submitBtn =
     form.querySelector(
@@ -2785,14 +2497,32 @@ async function handleBookingSubmit(e) {
 
     }
 
-
     $('authModal')
-      ?.classList.remove(
-        'hidden'
-      );
+      ?.classList.remove('hidden');
 
     return;
+  }
 
+
+  // -------------------------------------------------------
+  // PROFIL OBLIGATOIRE
+  // -------------------------------------------------------
+
+  if (!hasCompleteProfile()) {
+
+    if (msg) {
+
+      msg.textContent =
+        'Veuillez compléter votre profil avant de réserver.';
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+    await ensureUserProfile();
+
+    return;
   }
 
 
@@ -2814,63 +2544,82 @@ async function handleBookingSubmit(e) {
 
   try {
 
-    const formData =
-      new FormData(form);
-
+    // -----------------------------------------------------
+    // LECTURE DES CHAMPS
+    // -----------------------------------------------------
 
     const gameId =
       String(
-        formData.get('game_id') ||
-        ''
+        form.querySelector(
+          '[name="game_id"]'
+        )?.value || ''
       ).trim();
 
 
     const dateStart =
       String(
-        formData.get('date_start') ||
-        ''
+        form.querySelector(
+          '[name="date_start"]'
+        )?.value || ''
       ).trim();
 
 
     const dateEnd =
       String(
-        formData.get('date_end') ||
-        ''
+        form.querySelector(
+          '[name="date_end"]'
+        )?.value || ''
       ).trim();
 
 
-    const firstName =
-      String(
-        formData.get('first_name') ||
-        ''
-      ).trim();
+    const profile =
+      getUserProfile();
 
 
-    const lastName =
-      String(
-        formData.get('last_name') ||
-        ''
-      ).trim();
+    // -----------------------------------------------------
+    // VALIDATION
+    // -----------------------------------------------------
 
-
-    const promotion =
-      String(
-        formData.get('promotion') ||
-        ''
-      ).trim();
-
-
-    if (
-      !gameId ||
-      !dateStart ||
-      !dateEnd ||
-      !firstName ||
-      !lastName ||
-      !promotion
-    ) {
+    if (!gameId) {
 
       throw new Error(
-        'Veuillez remplir tous les champs.'
+        'Veuillez sélectionner un jeu.'
+      );
+
+    }
+
+
+    if (!dateStart || !dateEnd) {
+
+      throw new Error(
+        'Veuillez sélectionner les dates de réservation.'
+      );
+
+    }
+
+
+    if (!profile.firstName) {
+
+      throw new Error(
+        'Le prénom est obligatoire.'
+      );
+
+    }
+
+
+    if (!profile.lastName) {
+
+      throw new Error(
+        'Le nom est obligatoire.'
+      );
+
+    }
+
+
+    if (!profile.promotion) {
+
+      throw new Error(
+        'La promotion est obligatoire.'
       );
 
     }
@@ -2884,6 +2633,40 @@ async function handleBookingSubmit(e) {
 
     }
 
+
+    // -----------------------------------------------------
+    // VÉRIFICATION DES DATES
+    // -----------------------------------------------------
+
+    const today =
+      new Date();
+
+    today.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+
+    const startDateObject =
+      new Date(
+        dateStart + 'T00:00:00'
+      );
+
+
+    if (startDateObject < today) {
+
+      throw new Error(
+        'La date de début ne peut pas être dans le passé.'
+      );
+
+    }
+
+
+    // -----------------------------------------------------
+    // NOUVELLE RÉSERVATION
+    // -----------------------------------------------------
 
     const newReservation = {
 
@@ -2903,19 +2686,23 @@ async function handleBookingSubmit(e) {
         dateEnd,
 
       first_name:
-        firstName,
+        profile.firstName,
 
       last_name:
-        lastName,
+        profile.lastName,
 
       promotion:
-        promotion,
+        profile.promotion,
 
       status:
         'pending'
 
     };
 
+
+    // -----------------------------------------------------
+    // ENVOI SUPABASE
+    // -----------------------------------------------------
 
     const {
       error
@@ -2932,10 +2719,14 @@ async function handleBookingSubmit(e) {
     }
 
 
+    // -----------------------------------------------------
+    // SUCCÈS
+    // -----------------------------------------------------
+
     if (msg) {
 
       msg.textContent =
-        '✓ Demande enregistrée !';
+        '✓ Demande enregistrée ! Elle sera examinée par un administrateur.';
 
       msg.style.color =
         'var(--success)';
@@ -2947,6 +2738,10 @@ async function handleBookingSubmit(e) {
 
 
     await loadUserNotifications();
+
+
+    // Petit rafraîchissement du calendrier
+    await renderCalendar();
 
 
   } catch (error) {
@@ -2992,12 +2787,9 @@ async function loadAdminPanel() {
   ) {
 
     $('adminModal')
-      ?.classList.add(
-        'hidden'
-      );
+      ?.classList.add('hidden');
 
     return;
-
   }
 
 
@@ -3041,19 +2833,17 @@ async function loadAdminGamesList() {
     );
 
 
-    container.innerHTML =
-      `
-        <div class="empty">
-          Erreur de chargement.
-          <br>
-          <small>
-            ${esc(error.message)}
-          </small>
-        </div>
-      `;
+    container.innerHTML = `
+      <div class="empty">
+        Erreur de chargement.
+        <br>
+        <small>
+          ${esc(error.message)}
+        </small>
+      </div>
+    `;
 
     return;
-
   }
 
 
@@ -3078,7 +2868,6 @@ async function loadAdminGamesList() {
               ${esc(game.name)}
             </strong>
           </span>
-
 
           <button
             class="button danger"
@@ -3125,8 +2914,7 @@ async function loadAdminGamesList() {
             }
 
 
-            button.disabled =
-              true;
+            button.disabled = true;
 
 
             const {
@@ -3155,11 +2943,9 @@ async function loadAdminGamesList() {
               );
 
 
-              button.disabled =
-                false;
+              button.disabled = false;
 
               return;
-
             }
 
 
@@ -3211,9 +2997,7 @@ async function loadAdminReservationsList() {
   } =
     await supabase
       .from('reservations')
-      .select(
-        '*, games(name)'
-      )
+      .select('*, games(name)')
       .order(
         'created_at',
         {
@@ -3230,52 +3014,44 @@ async function loadAdminReservationsList() {
     );
 
 
-    pendingContainer.innerHTML =
-      `
-        <div class="empty">
-          Accès refusé ou erreur.
-          <br>
-          <small>
-            ${esc(error.message)}
-          </small>
-        </div>
-      `;
+    pendingContainer.innerHTML = `
+      <div class="empty">
+        Accès refusé ou erreur.
+        <br>
+        <small>
+          ${esc(error.message)}
+        </small>
+      </div>
+    `;
 
     return;
-
   }
 
 
   const pending =
-    (reservations || [])
-      .filter(
-        reservation =>
-          !reservation.status ||
-          reservation.status === 'pending'
-      );
+    (reservations || []).filter(
+      reservation =>
+        !reservation.status ||
+        reservation.status === 'pending'
+    );
 
 
   const processed =
-    (reservations || [])
-      .filter(
-        reservation =>
-          reservation.status === 'approved' ||
-          reservation.status === 'rejected'
-      );
+    (reservations || []).filter(
+      reservation =>
+        reservation.status === 'approved' ||
+        reservation.status === 'rejected'
+    );
 
-
-  // -----------------------------------------------------
-  // PENDING
-  // -----------------------------------------------------
 
   pendingContainer.innerHTML =
     !pending.length
 
       ? `
-          <div class="empty">
-            Aucune demande en attente.
-          </div>
-        `
+        <div class="empty">
+          Aucune demande en attente.
+        </div>
+      `
 
       : pending.map(
           reservation => `
@@ -3305,7 +3081,6 @@ async function loadAdminReservationsList() {
                 </span>
 
               </p>
-
 
               <p
                 style="
@@ -3341,7 +3116,6 @@ async function loadAdminReservationsList() {
 
               </p>
 
-
               <div
                 style="
                   display:flex;
@@ -3359,7 +3133,6 @@ async function loadAdminReservationsList() {
                 >
                   ✓ Accepter
                 </button>
-
 
                 <button
                   class="button danger"
@@ -3379,18 +3152,14 @@ async function loadAdminReservationsList() {
         ).join('');
 
 
-  // -----------------------------------------------------
-  // PROCESSED
-  // -----------------------------------------------------
-
   processedContainer.innerHTML =
     !processed.length
 
       ? `
-          <div class="empty">
-            Aucun historique.
-          </div>
-        `
+        <div class="empty">
+          Aucun historique.
+        </div>
+      `
 
       : processed.map(
           reservation => `
@@ -3417,22 +3186,19 @@ async function loadAdminReservationsList() {
 
                 <span
                   class="badge ${
-                    reservation.status ===
-                    'approved'
+                    reservation.status === 'approved'
                       ? 'badge-success'
                       : 'badge-danger'
                   }"
                 >
                   ${
-                    reservation.status ===
-                    'approved'
+                    reservation.status === 'approved'
                       ? 'Acceptée'
                       : 'Rejetée'
                   }
                 </span>
 
               </p>
-
 
               <p
                 style="
@@ -3449,6 +3215,14 @@ async function loadAdminReservationsList() {
                   reservation.last_name
                 )}
 
+                ${
+                  reservation.promotion
+                    ? `(${esc(
+                        reservation.promotion
+                      )})`
+                    : ''
+                }
+
                 — du
                 ${esc(
                   reservation.date_start
@@ -3460,7 +3234,6 @@ async function loadAdminReservationsList() {
 
               </p>
 
-
               <div
                 style="
                   display:flex;
@@ -3471,8 +3244,7 @@ async function loadAdminReservationsList() {
               >
 
                 ${
-                  reservation.status !==
-                  'approved'
+                  reservation.status !== 'approved'
                     ? `
                       <button
                         class="button"
@@ -3487,10 +3259,8 @@ async function loadAdminReservationsList() {
                     : ''
                 }
 
-
                 ${
-                  reservation.status !==
-                  'rejected'
+                  reservation.status !== 'rejected'
                     ? `
                       <button
                         class="button"
@@ -3504,7 +3274,6 @@ async function loadAdminReservationsList() {
                     `
                     : ''
                 }
-
 
                 <button
                   class="button"
@@ -3523,10 +3292,6 @@ async function loadAdminReservationsList() {
           `
         ).join('');
 
-
-  // -----------------------------------------------------
-  // ACTIONS
-  // -----------------------------------------------------
 
   document
     .querySelectorAll(
@@ -3586,7 +3351,6 @@ async function loadAdminReservationsList() {
                 false;
 
               return;
-
             }
 
 
@@ -3600,6 +3364,468 @@ async function loadAdminReservationsList() {
 
       }
     );
+
+}
+
+
+// =========================================================
+// AJOUT JEU
+// =========================================================
+
+async function handleAddGame(e) {
+
+  e.preventDefault();
+
+
+  const form =
+    e.currentTarget;
+
+  const msg =
+    $('addGameMsg');
+
+
+  if (
+    !(form instanceof HTMLFormElement)
+  ) {
+
+    console.error(
+      'Le formulaire d’ajout de jeu est invalide.'
+    );
+
+    return;
+  }
+
+
+  if (
+    !isAdminEmail(
+      currentUser?.email
+    )
+  ) {
+
+    if (msg) {
+
+      msg.textContent =
+        'Accès réservé aux administrateurs.';
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+    return;
+  }
+
+
+  const submitBtn =
+    form.querySelector(
+      'button[type="submit"]'
+    );
+
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+
+  try {
+
+    const formData =
+      new FormData(form);
+
+
+    const newGame = {
+
+      id:
+        crypto.randomUUID(),
+
+      name:
+        String(
+          formData.get('name') || ''
+        ).trim(),
+
+      publisher:
+        String(
+          formData.get('publisher') || ''
+        ).trim(),
+
+      category:
+        String(
+          formData.get('category') || ''
+        ).trim() ||
+        null,
+
+      cover_image:
+        String(
+          formData.get('cover_image') || ''
+        ).trim() ||
+        null,
+
+      players_min:
+        Number(
+          formData.get('players_min')
+        ) || null,
+
+      players_max:
+        Number(
+          formData.get('players_max')
+        ) || null,
+
+      duration:
+        Number(
+          formData.get('duration')
+        ) || null,
+
+      description:
+        String(
+          formData.get('description') || ''
+        ).trim() ||
+        null,
+
+      is_active:
+        true
+
+    };
+
+
+    if (!newGame.name) {
+
+      throw new Error(
+        'Le nom du jeu est obligatoire.'
+      );
+
+    }
+
+
+    const {
+      error
+    } =
+      await supabase
+        .from('games')
+        .insert(
+          newGame
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        '✓ Jeu ajouté !';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
+
+    form.reset();
+
+
+    await loadAdminGamesList();
+
+    await loadGames();
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur ajout jeu :',
+      error
+    );
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Erreur : ' +
+        error.message;
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+  } finally {
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+
+  }
+
+}
+
+
+// =========================================================
+// CONNEXION
+// =========================================================
+
+async function handleLogin(e) {
+
+  e.preventDefault();
+
+
+  const form =
+    e.currentTarget;
+
+  const msg =
+    $('loginMsg');
+
+  const submitBtn =
+    form.querySelector(
+      'button[type="submit"]'
+    );
+
+
+  if (msg) {
+
+    msg.textContent =
+      'Connexion en cours…';
+
+    msg.style.color =
+      'var(--muted)';
+
+  }
+
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+
+  try {
+
+    const email =
+      String(
+        $('loginEmail')?.value || ''
+      ).trim();
+
+
+    const password =
+      $('loginPassword')?.value || '';
+
+
+    const {
+      error
+    } =
+      await supabase.auth
+        .signInWithPassword({
+
+          email,
+          password
+
+        });
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    form.reset();
+
+
+    $('authModal')
+      ?.classList.add('hidden');
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur connexion :',
+      error
+    );
+
+
+    if (msg) {
+
+      msg.textContent =
+        error.message ===
+        'Invalid login credentials'
+
+          ? 'E-mail ou mot de passe incorrect.'
+
+          : 'Erreur de connexion : ' +
+            error.message;
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+  } finally {
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+
+  }
+
+}
+
+
+// =========================================================
+// INSCRIPTION
+// =========================================================
+
+async function handleSignup(e) {
+
+  e.preventDefault();
+
+
+  const form =
+    e.currentTarget;
+
+  const msg =
+    $('signupMsg');
+
+  const submitBtn =
+    form.querySelector(
+      'button[type="submit"]'
+    );
+
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+
+  if (msg) {
+
+    msg.textContent =
+      'Création du compte…';
+
+    msg.style.color =
+      'var(--muted)';
+
+  }
+
+
+  try {
+
+    const firstName =
+      String(
+        $('signupFirst')?.value || ''
+      ).trim();
+
+
+    const lastName =
+      String(
+        $('signupLast')?.value || ''
+      ).trim();
+
+
+    const promotion =
+      String(
+        $('signupPromotion')?.value || ''
+      ).trim();
+
+
+    const email =
+      String(
+        $('signupEmail')?.value || ''
+      ).trim();
+
+
+    const password =
+      $('signupPassword')?.value || '';
+
+
+    if (
+      !firstName ||
+      !lastName ||
+      !promotion
+    ) {
+
+      throw new Error(
+        'Le prénom, le nom et la promotion sont obligatoires.'
+      );
+
+    }
+
+
+    const {
+      data,
+      error
+    } =
+      await supabase.auth
+        .signUp({
+
+          email,
+
+          password,
+
+          options: {
+
+            data: {
+
+              first_name:
+                firstName,
+
+              last_name:
+                lastName,
+
+              promotion:
+                promotion
+
+            }
+
+          }
+
+        });
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        data?.session
+          ? '✓ Compte créé et connecté !'
+          : '✓ Compte créé ! Vérifiez votre boîte mail si une confirmation est requise.';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
+
+    form.reset();
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur inscription :',
+      error
+    );
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Erreur : ' +
+        error.message;
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+  } finally {
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+
+  }
 
 }
 
@@ -3654,11 +3880,8 @@ function setupEventListeners() {
             const targetId =
               button.dataset.close;
 
-
             $(targetId)
-              ?.classList.add(
-                'hidden'
-              );
+              ?.classList.add('hidden');
 
           };
 
@@ -3726,9 +3949,7 @@ function setupEventListeners() {
         if (!currentUser) {
 
           $('authModal')
-            ?.classList.remove(
-              'hidden'
-            );
+            ?.classList.remove('hidden');
 
           return;
 
@@ -3736,10 +3957,7 @@ function setupEventListeners() {
 
 
         $('notifModal')
-          ?.classList.remove(
-            'hidden'
-          );
-
+          ?.classList.remove('hidden');
 
         await loadUserNotifications();
 
@@ -3764,9 +3982,7 @@ function setupEventListeners() {
       () => {
 
         $('authModal')
-          ?.classList.remove(
-            'hidden'
-          );
+          ?.classList.remove('hidden');
 
       }
     );
@@ -3813,188 +4029,7 @@ function setupEventListeners() {
   $('addGameForm')
     ?.addEventListener(
       'submit',
-      async e => {
-
-        e.preventDefault();
-
-
-        const msg =
-          $('addGameMsg');
-
-
-        if (
-          !isAdminEmail(
-            currentUser?.email
-          )
-        ) {
-
-          if (msg) {
-
-            msg.textContent =
-              'Accès réservé aux administrateurs.';
-
-            msg.style.color =
-              'var(--danger)';
-
-          }
-
-          return;
-
-        }
-
-
-        const submitBtn =
-          e.currentTarget.querySelector(
-            'button[type="submit"]'
-          );
-
-
-        if (submitBtn) {
-          submitBtn.disabled = true;
-        }
-
-
-        try {
-
-          const form =
-            new FormData(
-              e.currentTarget
-            );
-
-
-          const newGame = {
-
-            id:
-              crypto.randomUUID(),
-
-            name:
-              String(
-                form.get('name') ||
-                ''
-              ).trim(),
-
-            publisher:
-              String(
-                form.get('publisher') ||
-                ''
-              ).trim(),
-
-            category:
-              String(
-                form.get('category') ||
-                ''
-              ).trim() ||
-              null,
-
-            cover_image:
-              String(
-                form.get('cover_image') ||
-                ''
-              ).trim() ||
-              null,
-
-            players_min:
-              Number(
-                form.get('players_min')
-              ) ||
-              null,
-
-            players_max:
-              Number(
-                form.get('players_max')
-              ) ||
-              null,
-
-            duration:
-              Number(
-                form.get('duration')
-              ) ||
-              null,
-
-            description:
-              String(
-                form.get('description') ||
-                ''
-              ).trim() ||
-              null,
-
-            is_active:
-              true
-
-          };
-
-
-          if (!newGame.name) {
-
-            throw new Error(
-              'Le nom du jeu est obligatoire.'
-            );
-
-          }
-
-
-          const {
-            error
-          } =
-            await supabase
-              .from('games')
-              .insert(
-                newGame
-              );
-
-
-          if (error) {
-            throw error;
-          }
-
-
-          if (msg) {
-
-            msg.textContent =
-              '✓ Jeu ajouté !';
-
-            msg.style.color =
-              'var(--success)';
-
-          }
-
-
-          e.currentTarget.reset();
-
-
-          await loadAdminGamesList();
-
-          await loadGames();
-
-
-        } catch (error) {
-
-          console.error(
-            'Erreur ajout jeu :',
-            error
-          );
-
-
-          if (msg) {
-
-            msg.textContent =
-              'Erreur : ' +
-              error.message;
-
-            msg.style.color =
-              'var(--danger)';
-
-          }
-
-        } finally {
-
-          if (submitBtn) {
-            submitBtn.disabled = false;
-          }
-
-        }
-
-      }
+      handleAddGame
     );
 
 
@@ -4005,111 +4040,7 @@ function setupEventListeners() {
   $('loginForm')
     ?.addEventListener(
       'submit',
-      async e => {
-
-        e.preventDefault();
-
-
-        const msg =
-          $('loginMsg');
-
-
-        const submitBtn =
-          e.currentTarget.querySelector(
-            'button[type="submit"]'
-          );
-
-
-        if (msg) {
-
-          msg.textContent =
-            'Connexion en cours…';
-
-          msg.style.color =
-            'var(--muted)';
-
-        }
-
-
-        if (submitBtn) {
-          submitBtn.disabled = true;
-        }
-
-
-        try {
-
-          const email =
-            String(
-              $('loginEmail')
-                .value ||
-              ''
-            ).trim();
-
-
-          const password =
-            $('loginPassword')
-              .value;
-
-
-          const {
-            error
-          } =
-            await supabase.auth
-              .signInWithPassword({
-
-                email,
-                password
-
-              });
-
-
-          if (error) {
-            throw error;
-          }
-
-
-          e.currentTarget.reset();
-
-
-          $('authModal')
-            ?.classList.add(
-              'hidden'
-            );
-
-
-        } catch (error) {
-
-          console.error(
-            'Erreur connexion :',
-            error
-          );
-
-
-          if (msg) {
-
-            msg.textContent =
-              error.message ===
-              'Invalid login credentials'
-
-                ? 'E-mail ou mot de passe incorrect.'
-
-                : 'Erreur de connexion : ' +
-                  error.message;
-
-            msg.style.color =
-              'var(--danger)';
-
-          }
-
-        } finally {
-
-          if (submitBtn) {
-            submitBtn.disabled = false;
-          }
-
-        }
-
-      }
+      handleLogin
     );
 
 
@@ -4120,148 +4051,7 @@ function setupEventListeners() {
   $('signupForm')
     ?.addEventListener(
       'submit',
-      async e => {
-
-        e.preventDefault();
-
-
-        const msg =
-          $('signupMsg');
-
-
-        const submitBtn =
-          e.currentTarget.querySelector(
-            'button[type="submit"]'
-          );
-
-
-        if (submitBtn) {
-          submitBtn.disabled = true;
-        }
-
-
-        if (msg) {
-
-          msg.textContent =
-            'Création du compte…';
-
-          msg.style.color =
-            'var(--muted)';
-
-        }
-
-
-        try {
-
-          const firstName =
-            $('signupFirst')
-              .value
-              .trim();
-
-
-          const lastName =
-            $('signupLast')
-              .value
-              .trim();
-
-
-          const email =
-            $('signupEmail')
-              .value
-              .trim();
-
-
-          const password =
-            $('signupPassword')
-              .value;
-
-
-          if (!firstName || !lastName) {
-
-            throw new Error(
-              'Le prénom et le nom sont obligatoires.'
-            );
-
-          }
-
-
-          const {
-            data,
-            error
-          } =
-            await supabase.auth
-              .signUp({
-
-                email,
-
-                password,
-
-                options: {
-
-                  data: {
-
-                    first_name:
-                      firstName,
-
-                    last_name:
-                      lastName
-
-                  }
-
-                }
-
-              });
-
-
-          if (error) {
-            throw error;
-          }
-
-
-          if (msg) {
-
-            msg.textContent =
-              data?.session
-                ? '✓ Compte créé et connecté !'
-                : '✓ Compte créé ! Vérifiez votre boîte mail si une confirmation est requise.';
-
-            msg.style.color =
-              'var(--success)';
-
-          }
-
-
-          e.currentTarget.reset();
-
-
-        } catch (error) {
-
-          console.error(
-            'Erreur inscription :',
-            error
-          );
-
-
-          if (msg) {
-
-            msg.textContent =
-              'Erreur : ' +
-              error.message;
-
-            msg.style.color =
-              'var(--danger)';
-
-          }
-
-        } finally {
-
-          if (submitBtn) {
-            submitBtn.disabled = false;
-          }
-
-        }
-
-      }
+      handleSignup
     );
 
 }
