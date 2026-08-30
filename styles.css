@@ -239,3 +239,32 @@ footer { display: flex; justify-content: space-between; padding: 20px 5vw; borde
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+/* Style du Calendrier */
+.cal-day {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 80px;
+  padding: 6px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cal-day-header {
+  font-weight: 700;
+  color: var(--muted);
+  text-align: center;
+  padding: 4px;
+}
+.cal-event {
+  background: var(--accent);
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
