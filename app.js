@@ -449,19 +449,71 @@ function setupEventListeners() {
 
   $('loginForm')?.addEventListener('submit', async e => {
     e.preventDefault();
+    const msg = $('loginMsg');
+    const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+
+    if (msg) {
+      msg.textContent = 'Connexion en cours…';
+      msg.style.color = 'var(--muted)';
+    }
+    if (submitBtn) submitBtn.disabled = true;
+
     const { error } = await supabase.auth.signInWithPassword({
       email: $('loginEmail').value.trim(),
       password: $('loginPassword').value
     });
-    if (!error) $('authModal')?.classList.add('hidden');
+
+    if (submitBtn) submitBtn.disabled = false;
+
+    if (error) {
+      if (msg) {
+        msg.textContent = error.message === 'Invalid login credentials'
+          ? 'E-mail ou mot de passe incorrect.'
+          : 'Erreur de connexion : ' + error.message;
+        msg.style.color = 'var(--danger)';
+      }
+      return;
+    }
+
+    if (msg) {
+      msg.textContent = '';
+      msg.style.color = '';
+    }
+    e.currentTarget.reset();
+    $('authModal')?.classList.add('hidden');
   });
 
   $('signupForm')?.addEventListener('submit', async e => {
     e.preventDefault();
-    await supabase.auth.signUp({
+    const msg = $('signupMsg');
+    const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+
+    if (msg) {
+      msg.textContent = 'Création du compte…';
+      msg.style.color = 'var(--muted)';
+    }
+    if (submitBtn) submitBtn.disabled = true;
+
+    const { error } = await supabase.auth.signUp({
       email: $('signupEmail').value.trim(),
       password: $('signupPassword').value,
       options: { data: { first_name: $('signupFirst').value.trim(), last_name: $('signupLast').value.trim() } }
     });
+
+    if (submitBtn) submitBtn.disabled = false;
+
+    if (error) {
+      if (msg) {
+        msg.textContent = 'Erreur : ' + error.message;
+        msg.style.color = 'var(--danger)';
+      }
+      return;
+    }
+
+    if (msg) {
+      msg.textContent = '✓ Compte créé ! Vérifiez votre boîte mail si une confirmation est requise.';
+      msg.style.color = 'var(--success)';
+    }
+    e.currentTarget.reset();
   });
 }
