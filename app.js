@@ -1069,7 +1069,581 @@ function openDayModal(
 // =========================================================
 // CATALOGUE
 // =========================================================
+// =========================================================
+// PROCHAIN ÉVÉNEMENT — ACCUEIL
+// =========================================================
 
+async function loadNextEvent() {
+
+  try {
+
+    const {
+      data: events,
+      error
+    } = await supabase
+      .from('events')
+      .select('*')
+      .order('date', {
+        ascending: true
+      });
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    allEvents =
+      Array.isArray(events)
+        ? events
+        : [];
+
+
+    renderNextEvent();
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur chargement événements :',
+      error
+    );
+
+  }
+
+}
+
+
+// =========================================================
+// TROUVER LE PROCHAIN ÉVÉNEMENT
+// =========================================================
+
+function getNextEvent() {
+
+  const today =
+    new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+
+  const upcomingEvents =
+    allEvents
+      .filter(event => {
+
+        if (!event.date) {
+          return false;
+        }
+
+
+        const eventDate =
+          new Date(
+            `${event.date}T00:00:00`
+          );
+
+
+        return (
+          !isNaN(eventDate.getTime()) &&
+          eventDate >= today
+        );
+
+      })
+      .sort(
+        (a, b) =>
+          new Date(`${a.date}T00:00:00`) -
+          new Date(`${b.date}T00:00:00`)
+      );
+
+
+  return upcomingEvents[0] || null;
+
+}
+
+
+// =========================================================
+// FORMATAGE DATE ÉVÉNEMENT
+// =========================================================
+
+function formatEventDate(dateString) {
+
+  if (!dateString) {
+    return '';
+  }
+
+
+  const date =
+    new Date(
+      `${dateString}T00:00:00`
+    );
+
+
+  if (isNaN(date.getTime())) {
+    return dateString;
+  }
+
+
+  return date.toLocaleDateString(
+    'fr-FR',
+    {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }
+  );
+
+}
+
+
+// =========================================================
+// CRÉATION DU CADRE DANS LE HERO
+// =========================================================
+
+function renderNextEvent() {
+
+  const hero =
+    document.querySelector('.hero');
+
+
+  if (!hero) {
+    return;
+  }
+
+
+  // On supprime une éventuelle ancienne version
+  document
+    .querySelector(
+      '#nextEventCard'
+    )
+    ?.remove();
+
+
+  const nextEvent =
+    getNextEvent();
+
+
+  // Aucun événement à venir
+  if (!nextEvent) {
+    return;
+  }
+
+
+  const card =
+    document.createElement('div');
+
+
+  card.id =
+    'nextEventCard';
+
+  card.className =
+    'next-event-card';
+
+
+  const formattedDate =
+    formatEventDate(
+      nextEvent.date
+    );
+
+
+  card.innerHTML = `
+
+    <div class="next-event-label">
+      PROCHAIN ÉVÉNEMENT
+    </div>
+
+
+    ${
+      nextEvent.photo_url
+        ? `
+          <div class="next-event-image">
+
+            <img
+              src="${esc(nextEvent.photo_url)}"
+              alt="${esc(nextEvent.name)}"
+            >
+
+          </div>
+        `
+        : `
+          <div class="next-event-image next-event-no-image">
+            ✦
+          </div>
+        `
+    }
+
+
+    <div class="next-event-content">
+
+      <p class="next-event-date">
+        📅 ${esc(formattedDate)}
+      </p>
+
+
+      <h3>
+        ${esc(nextEvent.name)}
+      </h3>
+
+
+      ${
+        nextEvent.short_description
+          ? `
+            <p class="next-event-description">
+              ${esc(
+                nextEvent.short_description
+              )}
+            </p>
+          `
+          : ''
+      }
+
+
+      <a
+        href="events.html"
+        class="next-event-link"
+      >
+        Voir tous les événements →
+      </a>
+
+    </div>
+
+  `;
+
+
+  /*
+   * On place le cadre dans le hero.
+   *
+   * Le hero actuel possède déjà le contenu principal
+   * et l'orb décoratif.
+   */
+  hero.appendChild(card);
+
+
+  injectNextEventStyles();
+
+}
+
+
+// =========================================================
+// STYLE DU CADRE — INJECTÉ PAR APP.JS
+// =========================================================
+
+function injectNextEventStyles() {
+
+  if (
+    $('nextEventStyles')
+  ) {
+    return;
+  }
+
+
+  const style =
+    document.createElement('style');
+
+
+  style.id =
+    'nextEventStyles';
+
+
+  style.textContent = `
+
+    /* =========================================
+       CADRE PROCHAIN ÉVÉNEMENT
+       ========================================= */
+
+    .next-event-card {
+
+      width: min(
+        380px,
+        100%
+      );
+
+      flex-shrink: 0;
+
+      background:
+        var(--panel);
+
+      border:
+        1px solid var(--line);
+
+      border-radius:
+        12px;
+
+      overflow:
+        hidden;
+
+      box-shadow:
+        0 18px 50px
+        rgba(0, 0, 0, 0.25);
+
+      transition:
+        transform .2s ease,
+        border-color .2s ease;
+
+      position:
+        relative;
+
+      z-index:
+        2;
+
+    }
+
+
+    .next-event-card:hover {
+
+      transform:
+        translateY(-3px);
+
+      border-color:
+        var(--accent);
+
+    }
+
+
+    .next-event-label {
+
+      padding:
+        11px 14px;
+
+      background:
+        var(--accent);
+
+      color:
+        #fff;
+
+      font-size:
+        10px;
+
+      font-weight:
+        900;
+
+      letter-spacing:
+        .14em;
+
+      text-transform:
+        uppercase;
+
+    }
+
+
+    .next-event-image {
+
+      width:
+        100%;
+
+      height:
+        150px;
+
+      overflow:
+        hidden;
+
+      background:
+        var(--bg);
+
+    }
+
+
+    .next-event-image img {
+
+      width:
+        100%;
+
+      height:
+        100%;
+
+      object-fit:
+        cover;
+
+      display:
+        block;
+
+    }
+
+
+    .next-event-no-image {
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      font-size:
+        48px;
+
+      color:
+        var(--muted);
+
+    }
+
+
+    .next-event-content {
+
+      padding:
+        16px;
+
+    }
+
+
+    .next-event-date {
+
+      margin:
+        0 0 7px;
+
+      color:
+        var(--accent);
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-transform:
+        capitalize;
+
+    }
+
+
+    .next-event-content h3 {
+
+      margin:
+        0;
+
+      font-size:
+        21px;
+
+      line-height:
+        1.2;
+
+      color:
+        var(--text);
+
+    }
+
+
+    .next-event-description {
+
+      margin:
+        10px 0 0;
+
+      color:
+        var(--muted);
+
+      font-size:
+        13px;
+
+      line-height:
+        1.55;
+
+      display:
+        -webkit-box;
+
+      -webkit-line-clamp:
+        3;
+
+      -webkit-box-orient:
+        vertical;
+
+      overflow:
+        hidden;
+
+    }
+
+
+    .next-event-link {
+
+      display:
+        inline-block;
+
+      margin-top:
+        14px;
+
+      color:
+        var(--accent);
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-decoration:
+        none;
+
+    }
+
+
+    .next-event-link:hover {
+      text-decoration:
+        underline;
+    }
+
+
+    /* =========================================
+       HERO
+       ========================================= */
+
+    .hero {
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        space-between;
+
+      gap:
+        40px;
+
+    }
+
+
+    /* =========================================
+       MOBILE
+       ========================================= */
+
+    @media (max-width: 800px) {
+
+      .hero {
+
+        flex-direction:
+          column;
+
+        align-items:
+          stretch;
+
+      }
+
+
+      .next-event-card {
+
+        width:
+          100%;
+
+        max-width:
+          100%;
+
+      }
+
+    }
+
+  `;
+
+
+  document.head.appendChild(
+    style
+  );
+
+}
 async function loadGames() {
 
   const container =
