@@ -342,175 +342,152 @@
   </h2>
 
 
-  <form
-    id="addEventForm"
-    style="margin-top:20px;"
-  >
+  <form id="addEventForm" style="margin-top:20px;">
 
-    <!-- NOM -->
+  <div class="form-group">
+    <label for="eventName">
+      Nom de l'événement
+    </label>
 
-    <div class="form-group">
-
-      <label for="eventName">
-        Nom de l'événement
-      </label>
-
-      <input
-        id="eventName"
-        name="name"
-        placeholder="Ex. Soirée jeux de rôle"
-        required
-      >
-
-    </div>
+    <input
+      id="eventName"
+      name="name"
+      placeholder="Ex. Soirée jeux de rôle"
+      required
+    >
+  </div>
 
 
-    <!-- DATE -->
+  <div class="form-group">
+    <label for="eventDate">
+      Date de l'événement
+    </label>
 
-    <div class="form-group">
-
-      <label for="eventDate">
-        Date de l'événement
-      </label>
-
-      <input
-        id="eventDate"
-        name="date"
-        type="date"
-        required
-      >
-
-    </div>
+    <input
+      id="eventDate"
+      name="date"
+      type="date"
+      required
+    >
+  </div>
 
 
-    <!-- ORGANISATEURS -->
+  <div class="form-group">
+    <label for="eventOrganizers">
+      Organisateur(s)
+    </label>
 
-    <div class="form-group">
-
-      <label for="eventOrganizers">
-        Organisateur(s)
-      </label>
-
-      <input
-        id="eventOrganizers"
-        name="organizers"
-        placeholder="Ex. Jean Dupont, Marie Martin"
-        required
-      >
-
-    </div>
+    <input
+      id="eventOrganizers"
+      name="organizers"
+      placeholder="Ex. Jean Dupont, Marie Martin"
+      required
+    >
+  </div>
 
 
-    <!-- PHOTO -->
+  <div class="form-group">
+    <label for="eventPhoto">
+      URL de la photo
+    </label>
 
-    <div class="form-group">
-
-      <label for="eventPhoto">
-        URL de la photo
-      </label>
-
-      <input
-        id="eventPhoto"
-        name="photo_url"
-        placeholder="https://…"
-      >
-
-    </div>
+    <input
+      id="eventPhoto"
+      name="photo_url"
+      placeholder="https://…"
+    >
+  </div>
 
 
-    <!-- DESCRIPTION BRÈVE -->
+  <!-- NOUVEAU -->
+  <div class="form-group">
 
-    <div class="form-group">
+    <label for="eventShortDescription">
+      Description brève
+    </label>
 
-      <label for="eventBriefDescription">
-        Description brève
-      </label>
-
-      <textarea
-        id="eventBriefDescription"
-        name="brief_description"
-        rows="2"
-        maxlength="300"
-        style="
-          background:var(--bg);
-          border:1px solid var(--line);
-          color:var(--text);
-          padding:10px 12px;
-          border-radius:6px;
-          outline:none;
-          width:100%;
-          resize:vertical;
-        "
-        placeholder="Quelques mots pour présenter rapidement l'événement…"
-        required
-      ></textarea>
-
-      <small
-        style="
-          color:var(--muted);
-          font-size:11px;
-        "
-      >
-        Cette description apparaîtra dans le cadre
-        « Prochain événement ».
-      </small>
-
-    </div>
-
-
-    <!-- DESCRIPTION COMPLÈTE -->
-
-    <div class="form-group">
-
-      <label for="eventDescription">
-        Description complète
-      </label>
-
-      <textarea
-        id="eventDescription"
-        name="description"
-        rows="5"
-        style="
-          background:var(--bg);
-          border:1px solid var(--line);
-          color:var(--text);
-          padding:10px 12px;
-          border-radius:6px;
-          outline:none;
-          width:100%;
-          resize:vertical;
-        "
-        placeholder="Détails de l'événement…"
-        required
-      ></textarea>
-
-    </div>
-
-
-    <button
-      class="button primary"
-      type="submit"
+    <textarea
+      id="eventShortDescription"
+      name="short_description"
+      rows="2"
+      maxlength="180"
       style="
+        background:var(--bg);
+        border:1px solid var(--line);
+        color:var(--text);
+        padding:10px 12px;
+        border-radius:6px;
+        outline:none;
         width:100%;
-        margin-top:8px;
-        padding:12px;
+        resize:vertical;
+      "
+      placeholder="Ex. Une soirée conviviale autour de jeux de stratégie."
+      required
+    ></textarea>
+
+    <small
+      style="
+        color:var(--muted);
+        font-size:11px;
       "
     >
-      Publier l'événement →
-    </button>
+      Cette description apparaîtra dans le cadre « Prochain événement » sur l'accueil.
+    </small>
+
+  </div>
 
 
-    <p
-      id="addEventMsg"
-      class="form-message"
+  <div class="form-group">
+
+    <label for="eventDescription">
+      Description complète
+    </label>
+
+    <textarea
+      id="eventDescription"
+      name="description"
+      rows="5"
       style="
-        margin-top:10px;
-        text-align:center;
-        font-size:13px;
+        background:var(--bg);
+        border:1px solid var(--line);
+        color:var(--text);
+        padding:10px 12px;
+        border-radius:6px;
+        outline:none;
+        width:100%;
+        resize:vertical;
       "
-    ></p>
+      placeholder="Détails de l'événement…"
+      required
+    ></textarea>
 
-  </form>
+  </div>
+
+
+  <button
+    class="button primary"
+    type="submit"
+    style="
+      width:100%;
+      margin-top:8px;
+      padding:12px;
+    "
+  >
+    Publier l'événement →
+  </button>
+
+
+  <p
+    id="addEventMsg"
+    class="form-message"
+    style="
+      margin-top:10px;
+      text-align:center;
+      font-size:13px;
+    "
+  ></p>
+
+</form>
 
 </div>
 ```
