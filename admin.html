@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KBG — Administration</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html"><span class="brand-mark">K</span><span>KBG<span class="muted">/</span> ADMIN</span></a>
+    <nav>
+      <a href="index.html">← Retour au catalogue</a>
+      <div id="userNav" class="user-nav"></div>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="orb"></div>
+      <div>
+        <p class="eyebrow">GESTION · BACKOFFICE</p>
+        <h1>Espace <span>administration.</span></h1>
+        <p class="hero-copy">Gérez le catalogue de jeux et traitez les demandes de réservation des membres.</p>
+      </div>
+    </section>
+    <!-- SECTION GESTION DU CATALOGUE -->
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">ADMINISTRATION · 01</p>
+          <h2>Ajouter un jeu au catalogue</h2>
+        </div>
+      </div>
+      <form id="addGameForm" class="panel">
+        <div class="admin-form-grid">
+          <input name="name" placeholder="Nom du jeu" required>
+          <input name="publisher" placeholder="Éditeur" required>
+          <input name="category" placeholder="Catégorie (ex. Stratégie)">
+          <input name="cover_image" placeholder="URL de la couverture (https://...)">
+        </div>
+        <div class="admin-form-grid">
+          <input name="players_min" type="number" placeholder="Joueurs min" min="1">
+          <input name="players_max" type="number" placeholder="Joueurs max" min="1">
+          <input name="duration" type="number" placeholder="Durée (minutes)">
+        </div>
+        <textarea name="description" class="admin-form-textarea" placeholder="Description courte..." style="min-height:80px; margin-bottom:12px;"></textarea>
+        <button type="submit" class="button primary">+ Ajouter ce jeu</button>
+        <p id="addGameMsg" class="form-message" style="margin-top:8px;"></p>
+      </form>
+      <div class="section-head" style="margin-top:40px;">
+        <div>
+          <p class="eyebrow">ADMINISTRATION · 02</p>
+          <h2>Jeux en base de données</h2>
+        </div>
+      </div>
+      <div id="adminGamesList" class="grid">
+        <div class="loading">Chargement des jeux…</div>
+      </div>
+    </section>
+    <!-- SECTION GESTION DES RÉSERVATIONS -->
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">ADMINISTRATION · 03</p>
+          <h2>Demandes de réservation</h2>
+        </div>
+        <div class="toolbar-inline">
+          <select id="filterStatus">
+            <option value="">Tous les statuts</option>
+            <option value="pending" selected>En attente</option>
+            <option value="approved">Validées</option>
+            <option value="rejected">Refusées</option>
+          </select>
+        </div>
+      </div>
+      <div id="adminReservationsList" class="grid">
+        <div class="loading">Chargement des réservations…</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODALE ÉDITION D'UN JEU -->
+  <div id="editGameModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="editGameModal">×</button>
+      <p class="eyebrow">MODIFIER</p>
+      <h2>Modifier la fiche du jeu</h2>
+
+      <form id="editGameForm" style="margin-top:20px;">
+        <input type="hidden" name="id">
+        <div class="admin-form-grid">
+          <input name="name" placeholder="Nom du jeu" required>
+          <input name="publisher" placeholder="Éditeur" required>
+          <input name="category" placeholder="Catégorie (ex. Stratégie)">
+          <input name="cover_image" placeholder="URL de la couverture (https://...)">
+        </div>
+        <div class="admin-form-grid">
+          <input name="players_min" type="number" placeholder="Joueurs min" min="1">
+          <input name="players_max" type="number" placeholder="Joueurs max" min="1">
+          <input name="duration" type="number" placeholder="Durée (minutes)">
+        </div>
+        <textarea name="description" class="admin-form-textarea" placeholder="Description courte..." style="min-height:80px; margin-bottom:12px; width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); padding:10px; border-radius:6px; resize:vertical;"></textarea>
+        <button type="submit" class="button primary" style="width:100%;">Enregistrer les modifications →</button>
+        <p id="editGameMsg" class="form-message" style="margin-top:8px;"></p>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <span>KBG / Association ludique</span>
+    <span>Panneau d'administration</span>
+  </footer>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
