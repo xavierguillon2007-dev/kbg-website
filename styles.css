@@ -146,6 +146,11 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .form-message.error { color: var(--danger); }
 .form-message.success { color: var(--success); }
 
+/* CATALOGUE — BOUTON "AFFICHER TOUS LES JEUX" */
+#catalogueToggle { display: none; justify-content: center; margin-top: 24px; }
+#showAllGamesBtn { display: inline-flex; align-items: center; gap: 8px; }
+#showAllGamesArrow { display: inline-block; transition: transform 0.15s; }
+
 /* CALENDRIER STRUCTURE & DESIGN */
 .calendar-wrapper { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; }
 .calendar-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
