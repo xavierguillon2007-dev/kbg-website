@@ -66,13 +66,74 @@
     </section>
 
     <!-- FORMULAIRE DE RÉSERVATION -->
+    <!-- FORMULAIRE DE RÉSERVATION EN 2 COLONNES -->
     <section id="reservation" class="section">
-      <div class="section-head">
-        <div>
+      <div class="reservation-layout">
+        
+        <!-- Colonne Gauche : Présentation & Consignes -->
+        <div class="reservation-info">
           <p class="eyebrow">RÉSERVATION · 02</p>
-          <h2>Demander un jeu</h2>
+          <h2>Demander à emprunter un jeu</h2>
+          <p>Sélectionnez le jeu de votre choix, vos dates d'emprunt et vos informations personnelles. L'équipe du KBG traitera votre demande sous 24h à 48h.</p>
+          
+          <ul class="reservation-rules">
+            <li>Emprunt réservé aux membres de l'association.</li>
+            <li>Durée maximale d'emprunt : 7 jours renouvelables.</li>
+            <li>Merci de vérifier que le matériel est complet au retour.</li>
+          </ul>
+
+          <!-- Avertissement si déconnecté -->
+          <div id="authWarning" class="panel hidden" style="border-color: var(--warning);">
+            <p class="eyebrow" style="color:var(--warning);">CONNEXION REQUISE</p>
+            <p style="font-size:13px; margin-top:4px;">Vous devez être connecté à votre compte pour effectuer une demande.</p>
+            <button class="button primary" id="noticeAuthBtn" style="margin-top:12px; width:100%;">Se connecter / S'inscrire →</button>
+          </div>
         </div>
+
+        <!-- Colonne Droite : Formulaire Soigné -->
+        <div class="form-card">
+          <form id="reservationForm">
+            <div class="form-group">
+              <label for="gameSelect">Jeu souhaité</label>
+              <select id="gameSelect" name="game_id" required>
+                <option value="">Sélectionnez un jeu dans la liste…</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="dateStart">Date de début</label>
+                <input id="dateStart" name="date_start" type="date" required>
+              </div>
+              <div class="form-group">
+                <label for="dateEnd">Date de fin</label>
+                <input id="dateEnd" name="date_end" type="date" required>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="firstName">Prénom</label>
+                <input id="firstName" name="first_name" placeholder="Ex. Jean" required>
+              </div>
+              <div class="form-group">
+                <label for="lastName">Nom</label>
+                <input id="lastName" name="last_name" placeholder="Ex. Dupont" required>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="promotion">Promotion / Filière</label>
+              <input id="promotion" name="promotion" placeholder="Ex. DFGSM2, Master 1..." required>
+            </div>
+
+            <button id="submitBookingBtn" class="button primary" type="submit" style="width:100%; margin-top:8px; padding:12px;">Envoyer la demande →</button>
+            <p id="formMessage" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;"></p>
+          </form>
+        </div>
+
       </div>
+    </section>
       
       <!-- Avertissement si déconnecté -->
       <div id="authWarning" class="panel hidden">
