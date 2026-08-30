@@ -2898,36 +2898,52 @@ function setupEventListeners() {
               .trim();
 
           const lastName =
-            $('signupLast')
-              .value
-              .trim();
+  $('signupLast')
+    .value
+    .trim();
 
-          const {
-            error
-          } = await supabase.auth
-            .signUp({
+const promotion =
+  $('signupPromotion')
+    .value
+    .trim();
 
-              email:
-                email,
+if (!firstName || !lastName || !promotion) {
 
-              password:
-                password,
+  throw new Error(
+    'Le prénom, le nom et la promotion sont obligatoires.'
+  );
 
-              options: {
+}
 
-                data: {
+const {
+  error
+} = await supabase.auth
+  .signUp({
 
-                  first_name:
-                    firstName,
+    email:
+      email,
 
-                  last_name:
-                    lastName
+    password:
+      password,
 
-                }
+    options: {
 
-              }
+      data: {
 
-            });
+        first_name:
+          firstName,
+
+        last_name:
+          lastName,
+
+        promotion:
+          promotion
+
+      }
+
+    }
+
+  });
 
           if (error) throw error;
 
