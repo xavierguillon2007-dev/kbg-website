@@ -116,7 +116,8 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .toolbar { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
 .toolbar input, .toolbar select { background: var(--panel); border: 1px solid var(--line); color: var(--text); padding: 10px 14px; border-radius: 6px; outline: none; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(61, 42, 109, 0.08); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(61, 42, 109, 0.08); transition: 0.15s; }
+.card[data-event-id]:hover { border-color: var(--accent); transform: translateY(-2px); }
 .card .cover { height: 160px; background: #f3ddb0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
 .card .cover img { width: 100%; height: 100%; object-fit: cover; }
 .card-body { padding: 16px; flex: 1; display: flex; flex-direction: column; }
