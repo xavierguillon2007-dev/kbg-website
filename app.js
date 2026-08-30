@@ -46,14 +46,1041 @@ let currentCalendarDate = new Date();
 
 let selectedReviewGame = null;
 let selectedRating = 0;
+
+// =========================================================
+// PROCHAIN ÉVÉNEMENT — ACCUEIL
+// =========================================================
+
+async function loadNextEvent() {
+
+  // La page d'accueil possède le catalogue (#games).
+  // events.html ne doit jamais recevoir ce cadre.
+  if (!$('games')) {
+    return;
+  }
+
+  const hero = document.querySelector('.hero');
+
+  if (!hero) {
+    return;
+  }
+
+  // Nettoyage d'une ancienne version éventuelle.
+  document.querySelector('#homeNextEventCard')?.remove();
+
+  try {
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(
+      () => controller.abort(),
+      5000
+    );
+
+    const {
+      data,
+      error
+    } = await supabase
+      .from('events')
+      .select('id,name,date,photo_url,brief_description,short_description,description')
+      .abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      throw error;
+    }
+
+    const today = new Date();
+    const todayString =
+      `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    const upcoming = (data || [])
+      .filter(event => {
+        const date = String(event.date || '').slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(date) && date >= todayString;
+      })
+      .sort((a, b) =>
+        String(a.date).slice(0, 10).localeCompare(
+          String(b.date).slice(0, 10)
+        )
+      );
+
+    const event = upcoming[0];
+
+    // Aucun événement à venir : rien à afficher.
+    if (!event) {
+      return;
+    }
+
+    const dateObject =
+      new Date(`${String(event.date).slice(0, 10)}T00:00:00`);
+
+    const formattedDate =
+      Number.isNaN(dateObject.getTime())
+        ? String(event.date)
+        : dateObject.toLocaleDateString(
+            'fr-FR',
+            {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric'
+            }
+          );
+
+    const brief =
+      event.short_description ||
+      event.brief_description ||
+      event.description ||
+      '';
+
+    const card = document.createElement('article');
+    card.id = 'homeNextEventCard';
+    card.className = 'home-next-event-card';
+
+    card.innerHTML = `
+      <div class="home-next-event-label">
+        PROCHAIN ÉVÉNEMENT
+      </div>
+
+      <div class="home-next-event-media">
+        ${
+          event.photo_url
+            ? `
+              <img
+                src="${esc(event.photo_url)}"
+                alt="${esc(event.name || 'Événement')}"
+              >
+            `
+            : `
+              <div class="home-next-event-placeholder">✦</div>
+            `
+        }
+      </div>
+
+      <div class="home-next-event-body">
+        <p class="home-next-event-date">
+          ${esc(formattedDate)}
+        </p>
+
+        <h2>
+          ${esc(event.name || 'Événement')}
+        </h2>
+
+        ${
+          brief
+            ? `
+              <p class="home-next-event-description">
+                ${esc(brief)}
+              </p>
+            `
+            : ''
+        }
+
+        <a
+          href="events.html"
+          class="home-next-event-link"
+        >
+          Voir l'événement →
+        </a>
+      </div>
+    `;
+
+    hero.appendChild(card);
+
+    injectNextEventStyles();
+
+  } catch (error) {
+
+    // Une panne du module événements ne doit jamais empêcher le catalogue.
+    console.error(
+      'Erreur chargement prochain événement :',
+      error
+    );
+
+  }
+
+}
+
+
+function injectNextEventStyles() {
+
+  if ($('homeNextEventStyles')) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = 'homeNextEventStyles';
+
+  style.textContent = `
+
+    .hero {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(300px,380px);
+      align-items:center;
+      gap:42px;
+    }
+
+    .hero > .orb {
+      display:none !important;
+    }
+
+    .home-next-event-card {
+      grid-column:2;
+      grid-row:1;
+      width:100%;
+      overflow:hidden;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:12px;
+      box-shadow:0 10px 35px rgba(61,42,109,.12);
+      position:relative;
+      z-index:2;
+      transition:transform .18s ease,border-color .18s ease;
+    }
+
+    .home-next-event-card:hover {
+      transform:translateY(-3px);
+      border-color:var(--accent);
+    }
+
+    .home-next-event-label {
+      padding:10px 14px;
+      background:var(--accent);
+      color:#fff;
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:1.4px;
+    }
+
+    .home-next-event-media {
+      width:100%;
+      height:155px;
+      overflow:hidden;
+      background:var(--bg);
+    }
+
+    .home-next-event-media img {
+      width:100%;
+      height:100%;
+      display:block;
+      object-fit:cover;
+    }
+
+    .home-next-event-placeholder {
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--muted);
+      font-size:46px;
+    }
+
+    .home-next-event-body {
+      padding:16px;
+    }
+
+    .home-next-event-date {
+      margin:0 0 6px;
+      color:var(--accent);
+      font-size:12px;
+      font-weight:800;
+      text-transform:capitalize;
+    }
+
+    .home-next-event-body h2 {
+      margin:0;
+      font-size:22px;
+      line-height:1.2;
+    }
+
+    .home-next-event-description {
+      margin-top:9px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.55;
+      display:-webkit-box;
+      -webkit-box-orient:vertical;
+      -webkit-line-clamp:3;
+      overflow:hidden;
+    }
+
+    .home-next-event-link {
+      display:inline-block;
+      margin-top:12px;
+      color:var(--accent);
+      font-size:12px;
+      font-weight:800;
+      text-decoration:none;
+    }
+
+    .home-next-event-link:hover {
+      text-decoration:underline;
+    }
+
+    @media (max-width:850px) {
+      .hero {
+        grid-template-columns:1fr;
+        gap:28px;
+      }
+
+      .home-next-event-card {
+        grid-column:1;
+        grid-row:auto;
+      }
+    }
+
+  `;
+
+  document.head.appendChild(style);
+
+}
+
+
 // =========================================================
 // CALENDRIER DE DISPONIBILITÉ PAR JEU
 // =========================================================
+
+function parseISODate(dateStr) {
+  return new Date(`${dateStr}T00:00:00`);
+}
+
+
+function isDateBeforeToday(dateStr) {
+
+  const today = new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  return parseISODate(dateStr) < today;
+
+}
+
+
+function isDateReserved(dateStr) {
+
+  return gameAvailabilityReservations.some(
+    reservation =>
+      dateStr >= reservation.date_start &&
+      dateStr <= reservation.date_end
+  );
+
+}
+
+
+function rangeContainsReservation(start, end) {
+
+  return gameAvailabilityReservations.some(
+    reservation =>
+      reservation.date_start <= end &&
+      reservation.date_end >= start
+  );
+
+}
+
+
+function isDateInSelectedRange(dateStr) {
+
+  if (!gameAvailabilityStart) {
+    return false;
+  }
+
+  if (!gameAvailabilityEnd) {
+    return dateStr === gameAvailabilityStart;
+  }
+
+  return (
+    dateStr >= gameAvailabilityStart &&
+    dateStr <= gameAvailabilityEnd
+  );
+
+}
+
+
+function injectGameCalendarStyles() {
+
+  if ($('gameAvailabilityStyles')) {
+    return;
+  }
+
+  const style =
+    document.createElement('style');
+
+  style.id =
+    'gameAvailabilityStyles';
+
+  style.textContent = `
+
+    .game-cal-shell {
+      border:1px solid var(--line);
+      border-radius:10px;
+      overflow:hidden;
+      background:var(--bg);
+    }
+
+    .game-cal-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid var(--line);
+    }
+
+    .game-cal-title {
+      font-size:14px;
+      font-weight:800;
+      text-transform:capitalize;
+    }
+
+    .game-cal-nav {
+      width:32px;
+      height:32px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:transparent;
+      color:var(--text);
+      cursor:pointer;
+      font-size:18px;
+    }
+
+    .game-cal-nav:hover {
+      border-color:#2583ff;
+      color:#2583ff;
+    }
+
+    .game-cal-grid {
+      display:grid;
+      grid-template-columns:
+        repeat(7,minmax(0,1fr));
+      gap:4px;
+      padding:10px;
+    }
+
+    .game-cal-weekday {
+      text-align:center;
+      color:var(--muted);
+      font-size:10px;
+      font-weight:800;
+      padding:4px 0 6px;
+    }
+
+    .game-cal-day {
+      min-height:42px;
+      border:1px solid var(--line);
+      border-radius:7px;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      transition:
+        transform .12s,
+        border-color .12s;
+    }
+
+    .game-cal-day:hover:not(.disabled) {
+      transform:translateY(-1px);
+      border-color:#2583ff;
+    }
+
+    .game-cal-day.empty {
+      visibility:hidden;
+      cursor:default;
+    }
+
+    .game-cal-day.available {
+      background:rgba(34,197,94,.16);
+      border-color:rgba(34,197,94,.65);
+    }
+
+    .game-cal-day.reserved {
+      background:rgba(239,68,68,.16);
+      border-color:rgba(239,68,68,.65);
+      cursor:not-allowed;
+    }
+
+    .game-cal-day.past {
+      opacity:.35;
+      cursor:not-allowed;
+    }
+
+    .game-cal-day.selected {
+      outline:2px solid #2583ff;
+      outline-offset:-2px;
+      background:rgba(37,131,255,.20);
+    }
+
+    .game-cal-loading {
+      padding:22px;
+      text-align:center;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    @media(max-width:520px) {
+
+      .game-cal-grid {
+        gap:3px;
+        padding:7px;
+      }
+
+      .game-cal-day {
+        min-height:38px;
+        font-size:11px;
+      }
+
+    }
+
+  `;
+
+  document.head.appendChild(style);
+
+}
+
+
+async function loadGameAvailability(
+  game,
+  monthDate = gameAvailabilityMonth
+) {
+
+  const container =
+    $('gameAvailabilityCalendar');
+
+  if (!container || !game) {
+    return;
+  }
+
+  injectGameCalendarStyles();
+
+  container.innerHTML = `
+    <div class="game-cal-loading">
+      Chargement des disponibilités…
+    </div>
+  `;
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('reservations')
+        .select(
+          'id,date_start,date_end,status'
+        )
+        .eq(
+          'game_id',
+          game.id
+        )
+        .eq(
+          'status',
+          'approved'
+        )
+        .order(
+          'date_start',
+          {
+            ascending:true
+          }
+        );
+
+    if (error) {
+      throw error;
+    }
+
+    gameAvailabilityReservations =
+      data || [];
+
+    gameAvailabilityMonth =
+      new Date(
+        monthDate.getFullYear(),
+        monthDate.getMonth(),
+        1
+      );
+
+    renderGameAvailabilityCalendar(
+      game
+    );
+
+  } catch (error) {
+
+    console.error(
+      'Erreur calendrier du jeu :',
+      error
+    );
+
+    container.innerHTML = `
+      <div class="empty panel">
+
+        Impossible de charger
+        les disponibilités.
+
+        <br>
+
+        <small>
+          ${esc(error.message)}
+        </small>
+
+      </div>
+    `;
+
+  }
+
+}
+
+
+function renderGameAvailabilityCalendar(game) {
+
+  const container =
+    $('gameAvailabilityCalendar');
+
+  if (!container || !game) {
+    return;
+  }
+
+  const year =
+    gameAvailabilityMonth
+      .getFullYear();
+
+  const month =
+    gameAvailabilityMonth
+      .getMonth();
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    );
+
+  const lastDay =
+    new Date(
+      year,
+      month + 1,
+      0
+    );
+
+  let offset =
+    firstDay.getDay() - 1;
+
+  if (offset === -1) {
+    offset = 6;
+  }
+
+  const label =
+    gameAvailabilityMonth
+      .toLocaleDateString(
+        'fr-FR',
+        {
+          month:'long',
+          year:'numeric'
+        }
+      );
+
+  let html = `
+
+    <div class="game-cal-shell">
+
+      <div class="game-cal-header">
+
+        <button
+          type="button"
+          class="game-cal-nav"
+          id="gameCalPrev"
+          aria-label="Mois précédent"
+        >
+          ‹
+        </button>
+
+        <span class="game-cal-title">
+          ${esc(label)}
+        </span>
+
+        <button
+          type="button"
+          class="game-cal-nav"
+          id="gameCalNext"
+          aria-label="Mois suivant"
+        >
+          ›
+        </button>
+
+      </div>
+
+      <div class="game-cal-grid">
+
+  `;
+
+
+  for (
+    const dayName of
+    ['L','M','M','J','V','S','D']
+  ) {
+
+    html += `
+      <div class="game-cal-weekday">
+        ${dayName}
+      </div>
+    `;
+
+  }
+
+
+  for (
+    let i = 0;
+    i < offset;
+    i++
+  ) {
+
+    html += `
+      <div class="game-cal-day empty">
+      </div>
+    `;
+
+  }
+
+
+  for (
+    let day = 1;
+    day <= lastDay.getDate();
+    day++
+  ) {
+
+    const dateStr =
+      `${year}-${String(month + 1)
+        .padStart(2,'0')}-${String(day)
+        .padStart(2,'0')}`;
+
+    const reserved =
+      isDateReserved(dateStr);
+
+    const past =
+      isDateBeforeToday(dateStr);
+
+    const selected =
+      isDateInSelectedRange(
+        dateStr
+      );
+
+    const disabled =
+      reserved || past;
+
+    const classes =
+      [
+        'game-cal-day',
+
+        reserved
+          ? 'reserved'
+          : 'available',
+
+        past
+          ? 'past'
+          : '',
+
+        selected
+          ? 'selected'
+          : '',
+
+        disabled
+          ? 'disabled'
+          : ''
+
+      ]
+      .filter(Boolean)
+      .join(' ');
+
+
+    html += `
+
+      <button
+        type="button"
+        class="${classes}"
+        data-game-cal-date="${dateStr}"
+        ${disabled ? 'disabled' : ''}
+        title="${
+          reserved
+            ? 'Réservé'
+            : past
+              ? 'Date passée'
+              : 'Libre — cliquer pour sélectionner'
+        }"
+      >
+        ${day}
+      </button>
+
+    `;
+
+  }
+
+
+  html += `
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  container.innerHTML =
+    html;
+
+
+  $('gameCalPrev')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        gameAvailabilityMonth =
+          new Date(
+            year,
+            month - 1,
+            1
+          );
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+    );
+
+
+  $('gameCalNext')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        gameAvailabilityMonth =
+          new Date(
+            year,
+            month + 1,
+            1
+          );
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+    );
+
+
+  container
+    .querySelectorAll(
+      '[data-game-cal-date]:not([disabled])'
+    )
+    .forEach(
+      button => {
+
+        button.addEventListener(
+          'click',
+          () => {
+
+            selectGameAvailabilityDate(
+              button.dataset.gameCalDate,
+              game
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function selectGameAvailabilityDate(
+  dateStr,
+  game
+) {
+
+  if (
+    isDateBeforeToday(dateStr) ||
+    isDateReserved(dateStr)
+  ) {
+    return;
+  }
+
+
+  const startInput =
+    $('dateStart');
+
+  const endInput =
+    $('dateEnd');
+
+  const gameSelect =
+    $('gameSelect');
+
+  const msg =
+    $('formMessage');
+
+
+  if (gameSelect) {
+
+    gameSelect.value =
+      String(game.id);
+
+  }
+
+
+  /*
+   * Premier clic :
+   * sélection de la date de début.
+   *
+   * Deuxième clic :
+   * sélection de la date de fin.
+   */
+
+  if (
+    !gameAvailabilityStart ||
+    gameAvailabilityEnd ||
+    dateStr < gameAvailabilityStart
+  ) {
+
+    gameAvailabilityStart =
+      dateStr;
+
+    gameAvailabilityEnd =
+      null;
+
+
+    if (startInput) {
+      startInput.value =
+        dateStr;
+    }
+
+    if (endInput) {
+      endInput.value =
+        '';
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Date de début sélectionnée. ' +
+        'Cliquez sur une autre date verte ' +
+        'pour choisir la fin.';
+
+      msg.style.color =
+        'var(--muted)';
+
+    }
+
+  } else {
+
+    /*
+     * Vérifie que toute la période
+     * est libre.
+     */
+
+    if (
+      rangeContainsReservation(
+        gameAvailabilityStart,
+        dateStr
+      )
+    ) {
+
+      if (msg) {
+
+        msg.textContent =
+          'Cette période contient une date déjà réservée. ' +
+          'Choisissez une autre date de fin.';
+
+        msg.style.color =
+          'var(--danger)';
+
+      }
+
+      return;
+
+    }
+
+
+    gameAvailabilityEnd =
+      dateStr;
+
+
+    if (startInput) {
+
+      startInput.value =
+        gameAvailabilityStart;
+
+    }
+
+    if (endInput) {
+
+      endInput.value =
+        gameAvailabilityEnd;
+
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Période sélectionnée. ' +
+        'Vous pouvez envoyer la demande de réservation.';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
+  }
+
+
+  renderGameAvailabilityCalendar(
+    game
+  );
+
+
+  if (
+    gameAvailabilityStart &&
+    gameAvailabilityEnd
+  ) {
+
+    $('reservationForm')
+      ?.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+
+  }
+
+}
+
+
+function resetGameAvailabilitySelection() {
+
+  gameAvailabilityStart =
+    null;
+
+  gameAvailabilityEnd =
+    null;
+
+}
+
 
 let gameAvailabilityMonth = new Date();
 let gameAvailabilityReservations = [];
 let gameAvailabilityStart = null;
 let gameAvailabilityEnd = null;
+
 // Affichage limité du catalogue
 const GAMES_PREVIEW_LIMIT = 8;
 let showAllGames = false;
@@ -184,28 +1211,43 @@ document.addEventListener(
 
     setupEventListeners();
 
-    // Le prochain événement est public : il démarre immédiatement et
-    // ne dépend ni de l'authentification ni des notifications.
+    // Chargement public indépendant de l'authentification et du catalogue.
     loadNextEvent();
 
     try {
-      const { data, error } = await supabase.auth.getSession();
+
+      const {
+        data,
+        error
+      } =
+        await supabase.auth.getSession();
 
       if (error) {
-        console.error('Erreur récupération session :', error);
+        console.error(
+          'Erreur récupération session :',
+          error
+        );
       }
 
-      currentUser = data?.session?.user || null;
-      await handleAuthChange(currentUser);
+      currentUser =
+        data?.session?.user || null;
+
+      await handleAuthChange(
+        currentUser
+      );
 
     } catch (error) {
-      console.error('Erreur initialisation Auth :', error);
+
+      console.error(
+        'Erreur initialisation Auth :',
+        error
+      );
+
     }
 
-    await Promise.allSettled([
-      loadGames(),
-      renderCalendar()
-    ]);
+    await loadGames();
+
+    await renderCalendar();
 
   }
 );
@@ -1057,470 +2099,24 @@ function openDayModal(
 // =========================================================
 // CATALOGUE
 // =========================================================
-// =========================================================
-// PROCHAIN ÉVÉNEMENT — ACCUEIL
-// =========================================================
 
-async function loadNextEvent() {
-
-  // Ce bloc est volontairement totalement indépendant de l'authentification.
-  // L'événement affiché sur l'accueil doit fonctionner pour un visiteur non connecté.
-  const card = $('featuredEvent');
-
-  if (!card) {
-    return;
-  }
-
-  const title = $('featuredEventTitle');
-  const date = $('featuredEventDate');
-  const description = $('featuredEventDescription');
-  const image = $('featuredEventImage');
-  const placeholder = $('featuredEventPlaceholder');
-
-  const showFallback = (titleText, descriptionText) => {
-    if (title) {
-      title.textContent = titleText;
-    }
-
-    if (date) {
-      date.textContent = '';
-    }
-
-    if (description) {
-      description.textContent = descriptionText;
-    }
-
-    if (image) {
-      image.removeAttribute('src');
-      image.style.display = 'none';
-    }
-
-    if (placeholder) {
-      placeholder.style.display = 'flex';
-    }
-  };
-
-  // Évite de laisser « Chargement… » affiché si la requête Supabase
-  // rencontre un problème réseau ou une policy RLS.
-  if (title) {
-    title.textContent = 'Chargement…';
-  }
-
-  if (date) {
-    date.textContent = '';
-  }
-
-  if (description) {
-    description.textContent = 'Recherche du prochain événement…';
-  }
-
-  if (image) {
-    image.style.display = 'none';
-  }
-
-  if (placeholder) {
-    placeholder.style.display = 'flex';
-  }
-
-  let controller = null;
-  let timeoutId = null;
-
-  try {
-    controller = new AbortController();
-
-    timeoutId = setTimeout(() => {
-      controller.abort();
-    }, 5000);
-
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .abortSignal(controller.signal);
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-
-    if (error) {
-      throw error;
-    }
-
-    const events = Array.isArray(data) ? data : [];
-
-    // On considère comme date de début la première colonne disponible.
-    // Cela rend le code compatible avec les différentes versions de la table events.
-    const parseEventDate = event => {
-      const rawDate =
-        event.date_start ||
-        event.event_date ||
-        event.start_date ||
-        event.date ||
-        null;
-
-      if (!rawDate) {
-        return null;
-      }
-
-      const value = String(rawDate).slice(0, 10);
-      const parsed = new Date(`${value}T00:00:00`);
-
-      return Number.isNaN(parsed.getTime())
-        ? null
-        : parsed;
-    };
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const datedEvents = events
-      .map(event => ({
-        event,
-        date: parseEventDate(event)
-      }))
-      .filter(item => item.date && item.date >= today)
-      .sort((a, b) => a.date - b.date);
-
-    // Si les événements n'ont pas de date exploitable, on ne bloque pas
-    // l'accueil : on prend le plus récent comme solution de secours.
-    const selected = datedEvents[0] ||
-      (events.length
-        ? { event: events[0], date: parseEventDate(events[0]) }
-        : null);
-
-    if (!selected) {
-      showFallback(
-        'Aucun événement prévu',
-        'Aucun prochain événement n’est actuellement annoncé.'
-      );
-      return;
-    }
-
-    const event = selected.event;
-
-    if (date) {
-      if (selected.date) {
-        date.textContent = `📅 ${selected.date.toLocaleDateString('fr-FR', {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        })}`;
-      } else {
-        date.textContent = '';
-      }
-    }
-
-    if (title) {
-      title.textContent = event.name || 'Événement';
-    }
-
-    if (description) {
-      description.textContent =
-        event.short_description ||
-        event.brief_description ||
-        event.description_brief ||
-        event.description ||
-        'Découvrez les prochains événements du KBG.';
-    }
-
-    const photo =
-      event.photo_url ||
-      event.photo ||
-      event.image_url ||
-      '';
-
-    if (image && placeholder) {
-      if (photo) {
-        image.src = photo;
-        image.alt = event.name || 'Événement';
-        image.style.display = 'block';
-        placeholder.style.display = 'none';
-      } else {
-        image.removeAttribute('src');
-        image.style.display = 'none';
-        placeholder.style.display = 'flex';
-      }
-    }
-
-    // Le clic renvoie vers la page événements uniquement si un ID existe.
-    if (event.id) {
-      card.style.cursor = 'pointer';
-      card.onclick = () => {
-        window.location.href =
-          `events.html#event-${encodeURIComponent(event.id)}`;
-      };
-    } else {
-      card.style.cursor = '';
-      card.onclick = null;
-    }
-
-  } catch (error) {
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      timeoutId = null;
-    }
-
-    console.error(
-      'Erreur chargement prochain événement :',
-      error
-    );
-
-    showFallback(
-      'Événements',
-      'Impossible de charger le prochain événement pour le moment.'
-    );
-  }
-}
-
-
-// =========================================================
-// FORMATAGE DATE ÉVÉNEMENT
-// =========================================================
-
-function formatEventDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return dateString;
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
-}
-
-
-// =========================================================
-// CALENDRIER DE DISPONIBILITÉ PAR JEU
-// =========================================================
-
-function parseISODate(dateStr) {
-  return new Date(`${dateStr}T00:00:00`);
-}
-
-
-function isDateBeforeToday(dateStr) {
-
-  const today = new Date();
-
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
-
-  return parseISODate(dateStr) < today;
-
-}
-
-
-function isDateReserved(dateStr) {
-
-  return gameAvailabilityReservations.some(
-    reservation =>
-      dateStr >= reservation.date_start &&
-      dateStr <= reservation.date_end
-  );
-
-}
-
-
-function rangeContainsReservation(start, end) {
-
-  return gameAvailabilityReservations.some(
-    reservation =>
-      reservation.date_start <= end &&
-      reservation.date_end >= start
-  );
-
-}
-
-
-function isDateInSelectedRange(dateStr) {
-
-  if (!gameAvailabilityStart) {
-    return false;
-  }
-
-  if (!gameAvailabilityEnd) {
-    return dateStr === gameAvailabilityStart;
-  }
-
-  return (
-    dateStr >= gameAvailabilityStart &&
-    dateStr <= gameAvailabilityEnd
-  );
-
-}
-
-
-function injectGameCalendarStyles() {
-
-  if ($('gameAvailabilityStyles')) {
-    return;
-  }
-
-  const style =
-    document.createElement('style');
-
-  style.id =
-    'gameAvailabilityStyles';
-
-  style.textContent = `
-
-    .game-cal-shell {
-      border:1px solid var(--line);
-      border-radius:10px;
-      overflow:hidden;
-      background:var(--bg);
-    }
-
-    .game-cal-header {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:10px 12px;
-      border-bottom:1px solid var(--line);
-    }
-
-    .game-cal-title {
-      font-size:14px;
-      font-weight:800;
-      text-transform:capitalize;
-    }
-
-    .game-cal-nav {
-      width:32px;
-      height:32px;
-      border:1px solid var(--line);
-      border-radius:7px;
-      background:transparent;
-      color:var(--text);
-      cursor:pointer;
-      font-size:18px;
-    }
-
-    .game-cal-nav:hover {
-      border-color:#2583ff;
-      color:#2583ff;
-    }
-
-    .game-cal-grid {
-      display:grid;
-      grid-template-columns:
-        repeat(7,minmax(0,1fr));
-      gap:4px;
-      padding:10px;
-    }
-
-    .game-cal-weekday {
-      text-align:center;
-      color:var(--muted);
-      font-size:10px;
-      font-weight:800;
-      padding:4px 0 6px;
-    }
-
-    .game-cal-day {
-      min-height:42px;
-      border:1px solid var(--line);
-      border-radius:7px;
-      background:var(--bg);
-      color:var(--text);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:12px;
-      font-weight:700;
-      cursor:pointer;
-      transition:
-        transform .12s,
-        border-color .12s;
-    }
-
-    .game-cal-day:hover:not(.disabled) {
-      transform:translateY(-1px);
-      border-color:#2583ff;
-    }
-
-    .game-cal-day.empty {
-      visibility:hidden;
-      cursor:default;
-    }
-
-    .game-cal-day.available {
-      background:rgba(34,197,94,.16);
-      border-color:rgba(34,197,94,.65);
-    }
-
-    .game-cal-day.reserved {
-      background:rgba(239,68,68,.16);
-      border-color:rgba(239,68,68,.65);
-      cursor:not-allowed;
-    }
-
-    .game-cal-day.past {
-      opacity:.35;
-      cursor:not-allowed;
-    }
-
-    .game-cal-day.selected {
-      outline:2px solid #2583ff;
-      outline-offset:-2px;
-      background:rgba(37,131,255,.20);
-    }
-
-    .game-cal-loading {
-      padding:22px;
-      text-align:center;
-      color:var(--muted);
-      font-size:13px;
-    }
-
-    @media(max-width:520px) {
-
-      .game-cal-grid {
-        gap:3px;
-        padding:7px;
-      }
-
-      .game-cal-day {
-        min-height:38px;
-        font-size:11px;
-      }
-
-    }
-
-  `;
-
-  document.head.appendChild(style);
-
-}
-
-
-async function loadGameAvailability(
-  game,
-  monthDate = gameAvailabilityMonth
-) {
+async function loadGames() {
 
   const container =
-    $('gameAvailabilityCalendar');
+    $('games');
 
-  if (!container || !game) {
+
+  if (!container) {
     return;
   }
 
-  injectGameCalendarStyles();
 
   container.innerHTML = `
-    <div class="game-cal-loading">
-      Chargement des disponibilités…
+    <div class="loading">
+      Connexion au catalogue…
     </div>
   `;
+
 
   try {
 
@@ -1529,324 +2125,577 @@ async function loadGameAvailability(
       error
     } =
       await supabase
-        .from('reservations')
-        .select(
-          'id,date_start,date_end,status'
-        )
-        .eq(
-          'game_id',
-          game.id
-        )
-        .eq(
-          'status',
-          'approved'
-        )
-        .order(
-          'date_start',
-          {
-            ascending:true
-          }
-        );
+        .from('games')
+        .select('*')
+        .order('name');
+
 
     if (error) {
       throw error;
     }
 
-    gameAvailabilityReservations =
-      data || [];
 
-    gameAvailabilityMonth =
-      new Date(
-        monthDate.getFullYear(),
-        monthDate.getMonth(),
-        1
-      );
+    allGames =
+      Array.isArray(data)
+        ? data
+        : [];
 
-    renderGameAvailabilityCalendar(
-      game
-    );
+
+    const categories =
+      [
+        ...new Set(
+          allGames
+            .map(
+              game => game.category
+            )
+            .filter(Boolean)
+        )
+      ].sort();
+
+
+    if ($('category')) {
+
+      $('category').innerHTML = `
+        <option value="">
+          Toutes les catégories
+        </option>
+      ` +
+      categories.map(
+        category => `
+          <option value="${esc(category)}">
+            ${esc(category)}
+          </option>
+        `
+      ).join('');
+
+    }
+
+
+    if ($('gameSelect')) {
+
+      $('gameSelect').innerHTML = `
+        <option value="">
+          Sélectionnez un jeu…
+        </option>
+      ` +
+      allGames.map(
+        game => `
+          <option value="${esc(game.id)}">
+            ${esc(game.name)}
+          </option>
+        `
+      ).join('');
+
+    }
+
+
+    await loadAllReviews();
+
+    renderGames();
+
 
   } catch (error) {
 
     console.error(
-      'Erreur calendrier du jeu :',
+      'Erreur chargement catalogue :',
       error
     );
 
+
     container.innerHTML = `
-      <div class="empty panel">
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
 
-        Impossible de charger
-        les disponibilités.
+        <strong>
+          Impossible de charger le catalogue.
+        </strong>
 
-        <br>
+        <br><br>
 
         <small>
-          ${esc(error.message)}
+          ${esc(
+            error.message ||
+            'Erreur inconnue'
+          )}
         </small>
 
       </div>
     `;
+
+
+    if ($('count')) {
+      $('count').textContent =
+        'Erreur';
+    }
 
   }
 
 }
 
 
-function renderGameAvailabilityCalendar(game) {
+// =========================================================
+// AVIS
+// =========================================================
+
+async function loadAllReviews() {
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('game_reviews')
+        .select('*')
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    allReviews =
+      data || [];
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur chargement avis :',
+      error
+    );
+
+    allReviews = [];
+
+  }
+
+}
+
+
+function getGameReviews(gameId) {
+
+  return allReviews.filter(
+    review =>
+      String(review.game_id) ===
+      String(gameId)
+  );
+
+}
+
+
+function getAverageRating(gameId) {
+
+  const reviews =
+    getGameReviews(gameId);
+
+
+  if (!reviews.length) {
+    return 0;
+  }
+
+
+  return (
+    reviews.reduce(
+      (sum, review) =>
+        sum +
+        Number(review.rating || 0),
+      0
+    ) /
+    reviews.length
+  );
+
+}
+
+
+// =========================================================
+// RENDU CATALOGUE
+// =========================================================
+
+function renderGames() {
 
   const container =
-    $('gameAvailabilityCalendar');
+    $('games');
 
-  if (!container || !game) {
+
+  if (!container) {
     return;
   }
 
-  const year =
-    gameAvailabilityMonth
-      .getFullYear();
 
-  const month =
-    gameAvailabilityMonth
-      .getMonth();
+  const query =
+    $('search')?.value
+      .toLowerCase()
+      .trim() || '';
 
-  const firstDay =
-    new Date(
-      year,
-      month,
-      1
+
+  const category =
+    $('category')?.value || '';
+
+
+  const minPlayers =
+    Number(
+      $('players')?.value || 0
     );
 
-  const lastDay =
-    new Date(
-      year,
-      month + 1,
-      0
+
+  const sortBy =
+    $('sort')?.value || 'name';
+
+
+  let games =
+    allGames.filter(
+      game => {
+
+        const searchText = `
+          ${game.name || ''}
+          ${game.publisher || ''}
+          ${game.category || ''}
+        `.toLowerCase();
+
+
+        return (
+          (!query ||
+            searchText.includes(query))
+          &&
+          (!category ||
+            game.category === category)
+          &&
+          (!minPlayers ||
+            Number(game.players_max || 0) >= minPlayers)
+        );
+
+      }
     );
 
-  let offset =
-    firstDay.getDay() - 1;
 
-  if (offset === -1) {
-    offset = 6;
-  }
+  if (sortBy === 'duration') {
 
-  const label =
-    gameAvailabilityMonth
-      .toLocaleDateString(
-        'fr-FR',
-        {
-          month:'long',
-          year:'numeric'
-        }
-      );
+    games.sort(
+      (a, b) =>
+        Number(a.duration || 0) -
+        Number(b.duration || 0)
+    );
 
-  let html = `
+  } else if (sortBy === 'players') {
 
-    <div class="game-cal-shell">
+    games.sort(
+      (a, b) =>
+        Number(b.players_max || 0) -
+        Number(a.players_max || 0)
+    );
 
-      <div class="game-cal-header">
+  } else if (sortBy === 'newest') {
 
-        <button
-          type="button"
-          class="game-cal-nav"
-          id="gameCalPrev"
-          aria-label="Mois précédent"
-        >
-          ‹
-        </button>
+    games.sort(
+      (a, b) =>
+        new Date(b.created_at || 0) -
+        new Date(a.created_at || 0)
+    );
 
-        <span class="game-cal-title">
-          ${esc(label)}
-        </span>
+  } else {
 
-        <button
-          type="button"
-          class="game-cal-nav"
-          id="gameCalNext"
-          aria-label="Mois suivant"
-        >
-          ›
-        </button>
-
-      </div>
-
-      <div class="game-cal-grid">
-
-  `;
-
-
-  for (
-    const dayName of
-    ['L','M','M','J','V','S','D']
-  ) {
-
-    html += `
-      <div class="game-cal-weekday">
-        ${dayName}
-      </div>
-    `;
+    games.sort(
+      (a, b) =>
+        String(a.name || '')
+          .localeCompare(
+            String(b.name || ''),
+            'fr'
+          )
+    );
 
   }
 
 
-  for (
-    let i = 0;
-    i < offset;
-    i++
-  ) {
-
-    html += `
-      <div class="game-cal-day empty">
-      </div>
-    `;
-
+  if ($('count')) {
+    $('count').textContent =
+      `${games.length} jeu(x)`;
   }
 
 
-  for (
-    let day = 1;
-    day <= lastDay.getDate();
-    day++
-  ) {
+  if (!games.length) {
 
-    const dateStr =
-      `${year}-${String(month + 1)
-        .padStart(2,'0')}-${String(day)
-        .padStart(2,'0')}`;
-
-    const reserved =
-      isDateReserved(dateStr);
-
-    const past =
-      isDateBeforeToday(dateStr);
-
-    const selected =
-      isDateInSelectedRange(
-        dateStr
-      );
-
-    const disabled =
-      reserved || past;
-
-    const classes =
-      [
-        'game-cal-day',
-
-        reserved
-          ? 'reserved'
-          : 'available',
-
-        past
-          ? 'past'
-          : '',
-
-        selected
-          ? 'selected'
-          : '',
-
-        disabled
-          ? 'disabled'
-          : ''
-
-      ]
-      .filter(Boolean)
-      .join(' ');
-
-
-    html += `
-
-      <button
-        type="button"
-        class="${classes}"
-        data-game-cal-date="${dateStr}"
-        ${disabled ? 'disabled' : ''}
-        title="${
-          reserved
-            ? 'Réservé'
-            : past
-              ? 'Date passée'
-              : 'Libre — cliquer pour sélectionner'
-        }"
+    container.innerHTML = `
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
       >
-        ${day}
-      </button>
-
+        Aucun jeu trouvé.
+      </div>
     `;
+
+    $('catalogueToggle')
+      ?.style.setProperty('display', 'none');
+
+    return;
 
   }
 
 
-  html += `
+  const hasMore =
+    games.length > GAMES_PREVIEW_LIMIT;
 
-      </div>
+  const displayGames =
+    (!hasMore || showAllGames)
+      ? games
+      : games.slice(0, GAMES_PREVIEW_LIMIT);
 
-    </div>
 
-  `;
+  const toggleWrapper =
+    $('catalogueToggle');
+
+  const toggleBtn =
+    $('showAllGamesBtn');
+
+  const toggleArrow =
+    $('showAllGamesArrow');
+
+  const toggleText =
+    $('showAllGamesText');
+
+
+  if (toggleWrapper) {
+
+    toggleWrapper.style.display =
+      hasMore ? 'flex' : 'none';
+
+  }
+
+
+  if (hasMore && toggleBtn) {
+
+    toggleBtn.setAttribute(
+      'aria-expanded',
+      String(showAllGames)
+    );
+
+    if (toggleArrow) {
+      toggleArrow.textContent =
+        showAllGames ? '↑' : '↓';
+    }
+
+    if (toggleText) {
+      toggleText.textContent =
+        showAllGames
+          ? 'Réduire la liste'
+          : `Afficher tous les jeux (${games.length})`;
+    }
+
+    toggleBtn.onclick = () => {
+      showAllGames = !showAllGames;
+      renderGames();
+
+      if (!showAllGames) {
+        container.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    };
+
+  }
 
 
   container.innerHTML =
-    html;
+    displayGames.map(
+      game => {
+
+        const reviews =
+          getGameReviews(game.id);
+
+        const average =
+          getAverageRating(game.id);
 
 
-  $('gameCalPrev')
-    ?.addEventListener(
-      'click',
-      async () => {
+        let ratingHTML = '';
 
-        gameAvailabilityMonth =
-          new Date(
-            year,
-            month - 1,
-            1
-          );
 
-        await loadGameAvailability(
-          game,
-          gameAvailabilityMonth
-        );
+        if (reviews.length) {
+
+          const rounded =
+            Math.max(
+              0,
+              Math.min(
+                5,
+                Math.round(average)
+              )
+            );
+
+
+          ratingHTML = `
+            <div
+              style="
+                display:flex;
+                align-items:center;
+                gap:7px;
+                margin-top:8px;
+              "
+            >
+
+              <span class="review-stars">
+                ${'★'.repeat(rounded)}
+
+                <span style="color:var(--line);">
+                  ${'★'.repeat(5 - rounded)}
+                </span>
+              </span>
+
+              <span
+                style="
+                  color:var(--muted);
+                  font-size:12px;
+                "
+              >
+                ${average.toFixed(1)}/5
+                · ${reviews.length} avis
+              </span>
+
+            </div>
+          `;
+
+        } else {
+
+          ratingHTML = `
+            <div
+              style="
+                color:var(--muted);
+                font-size:12px;
+                margin-top:8px;
+              "
+            >
+              Aucun avis
+            </div>
+          `;
+
+        }
+
+
+        return `
+
+          <article
+            class="card"
+            data-review-game="${esc(game.id)}"
+            style="cursor:pointer;"
+            title="Voir le jeu et les avis"
+          >
+
+            <div class="cover">
+
+              ${
+                game.cover_image
+                  ? `
+                    <img
+                      src="${esc(game.cover_image)}"
+                      alt="${esc(game.name)}"
+                    >
+                  `
+                  : '<span>✦</span>'
+              }
+
+            </div>
+
+            <div class="card-body">
+
+              <p class="tag">
+                ${esc(
+                  game.category || 'Jeu'
+                )}
+              </p>
+
+              <h3>
+                ${esc(game.name)}
+              </h3>
+
+              <p class="publisher">
+                ${esc(game.publisher || '')}
+              </p>
+
+              <div class="meta">
+
+                <span>
+                  ♙
+                  ${game.players_min || '?'}-
+                  ${game.players_max || '?'}
+                  joueurs
+                </span>
+
+                <span>
+                  ◷
+                  ${game.duration || '?'}
+                  min
+                </span>
+
+              </div>
+
+              ${ratingHTML}
+
+              <p
+                class="desc"
+                style="
+                  display:-webkit-box;
+                  -webkit-line-clamp:3;
+                  -webkit-box-orient:vertical;
+                  overflow:hidden;
+                "
+              >
+                ${esc(
+                  game.description ||
+                  'Aucune description disponible.'
+                )}
+              </p>
+
+              <p
+                style="
+                  color:#2583ff;
+                  font-size:12px;
+                  margin-top:10px;
+                  font-weight:700;
+                "
+              >
+                Voir la fiche complète et les avis →
+              </p>
+
+            </div>
+
+          </article>
+
+        `;
 
       }
-    );
-
-
-  $('gameCalNext')
-    ?.addEventListener(
-      'click',
-      async () => {
-
-        gameAvailabilityMonth =
-          new Date(
-            year,
-            month + 1,
-            1
-          );
-
-        await loadGameAvailability(
-          game,
-          gameAvailabilityMonth
-        );
-
-      }
-    );
+    ).join('');
 
 
   container
     .querySelectorAll(
-      '[data-game-cal-date]:not([disabled])'
+      '[data-review-game]'
     )
     .forEach(
-      button => {
+      card => {
 
-        button.addEventListener(
+        card.addEventListener(
           'click',
           () => {
 
-            selectGameAvailabilityDate(
-              button.dataset.gameCalDate,
-              game
-            );
+            const game =
+              allGames.find(
+                g =>
+                  String(g.id) ===
+                  String(
+                    card.dataset.reviewGame
+                  )
+              );
+
+            if (game) {
+              openReviewModal(game);
+            }
 
           }
         );
@@ -1857,177 +2706,6 @@ function renderGameAvailabilityCalendar(game) {
 }
 
 
-function selectGameAvailabilityDate(
-  dateStr,
-  game
-) {
-
-  if (
-    isDateBeforeToday(dateStr) ||
-    isDateReserved(dateStr)
-  ) {
-    return;
-  }
-
-
-  const startInput =
-    $('dateStart');
-
-  const endInput =
-    $('dateEnd');
-
-  const gameSelect =
-    $('gameSelect');
-
-  const msg =
-    $('formMessage');
-
-
-  if (gameSelect) {
-
-    gameSelect.value =
-      String(game.id);
-
-  }
-
-
-  /*
-   * Premier clic :
-   * sélection de la date de début.
-   *
-   * Deuxième clic :
-   * sélection de la date de fin.
-   */
-
-  if (
-    !gameAvailabilityStart ||
-    gameAvailabilityEnd ||
-    dateStr < gameAvailabilityStart
-  ) {
-
-    gameAvailabilityStart =
-      dateStr;
-
-    gameAvailabilityEnd =
-      null;
-
-
-    if (startInput) {
-      startInput.value =
-        dateStr;
-    }
-
-    if (endInput) {
-      endInput.value =
-        '';
-    }
-
-
-    if (msg) {
-
-      msg.textContent =
-        'Date de début sélectionnée. ' +
-        'Cliquez sur une autre date verte ' +
-        'pour choisir la fin.';
-
-      msg.style.color =
-        'var(--muted)';
-
-    }
-
-  } else {
-
-    /*
-     * Vérifie que toute la période
-     * est libre.
-     */
-
-    if (
-      rangeContainsReservation(
-        gameAvailabilityStart,
-        dateStr
-      )
-    ) {
-
-      if (msg) {
-
-        msg.textContent =
-          'Cette période contient une date déjà réservée. ' +
-          'Choisissez une autre date de fin.';
-
-        msg.style.color =
-          'var(--danger)';
-
-      }
-
-      return;
-
-    }
-
-
-    gameAvailabilityEnd =
-      dateStr;
-
-
-    if (startInput) {
-
-      startInput.value =
-        gameAvailabilityStart;
-
-    }
-
-    if (endInput) {
-
-      endInput.value =
-        gameAvailabilityEnd;
-
-    }
-
-
-    if (msg) {
-
-      msg.textContent =
-        'Période sélectionnée. ' +
-        'Vous pouvez envoyer la demande de réservation.';
-
-      msg.style.color =
-        'var(--success)';
-
-    }
-
-  }
-
-
-  renderGameAvailabilityCalendar(
-    game
-  );
-
-
-  if (
-    gameAvailabilityStart &&
-    gameAvailabilityEnd
-  ) {
-
-    $('reservationForm')
-      ?.scrollIntoView({
-        behavior:'smooth',
-        block:'center'
-      });
-
-  }
-
-}
-
-
-function resetGameAvailabilitySelection() {
-
-  gameAvailabilityStart =
-    null;
-
-  gameAvailabilityEnd =
-    null;
-
-}
 // =========================================================
 // MODALE JEU
 // =========================================================
@@ -2251,17 +2929,16 @@ function openReviewModal(game) {
 
   renderReviews(game);
 
-resetGameAvailabilitySelection();
+  resetGameAvailabilitySelection();
 
-gameAvailabilityMonth =
-  new Date();
+  gameAvailabilityMonth = new Date();
 
-loadGameAvailability(
-  game,
-  gameAvailabilityMonth
-);
+  loadGameAvailability(
+    game,
+    gameAvailabilityMonth
+  );
 
-modal.classList.remove('hidden');
+  modal.classList.remove('hidden');
 
 }
 
@@ -3829,20 +4506,18 @@ async function loadAdminReservationsList() {
             }
 
 
-           await loadAdminReservationsList();
+            await loadAdminReservationsList();
 
-await renderCalendar();
+            await renderCalendar();
 
-if (selectedReviewGame) {
+            if (selectedReviewGame) {
+              await loadGameAvailability(
+                selectedReviewGame,
+                gameAvailabilityMonth
+              );
+            }
 
-  await loadGameAvailability(
-    selectedReviewGame,
-    gameAvailabilityMonth
-  );
-
-}
-
-await loadUserNotifications();
+            await loadUserNotifications();
 
           };
 
@@ -4450,14 +5125,10 @@ function setupEventListeners() {
 
 
   // -------------------------------------------------------
-  // RÉSERVATION
+  // CALENDRIER DE DISPONIBILITÉ DU JEU
   // -------------------------------------------------------
-// -------------------------------------------------------
-// CALENDRIER DE DISPONIBILITÉ DU JEU
-// -------------------------------------------------------
 
-$('gameSelect')
-  ?.addEventListener(
+  $('gameSelect')?.addEventListener(
     'change',
     async () => {
 
@@ -4466,31 +5137,26 @@ $('gameSelect')
 
       const game =
         allGames.find(
-          g =>
-            String(g.id) ===
+          item =>
+            String(item.id) ===
             String(gameId)
         );
 
       resetGameAvailabilitySelection();
 
       if (game) {
-
-        gameAvailabilityMonth =
-          new Date();
-
+        gameAvailabilityMonth = new Date();
         await loadGameAvailability(
           game,
           gameAvailabilityMonth
         );
-
       }
 
     }
   );
 
 
-$('dateStart')
-  ?.addEventListener(
+  $('dateStart')?.addEventListener(
     'change',
     () => {
 
@@ -4498,44 +5164,29 @@ $('dateStart')
         $('dateStart')?.value || '';
 
       if (!value) {
-
         resetGameAvailabilitySelection();
-
         return;
-
       }
 
-      gameAvailabilityStart =
-        value;
-
-      gameAvailabilityEnd =
-        null;
-
+      gameAvailabilityStart = value;
+      gameAvailabilityEnd = null;
 
       const game =
         allGames.find(
-          g =>
-            String(g.id) ===
-            String(
-              $('gameSelect')?.value || ''
-            )
+          item =>
+            String(item.id) ===
+            String($('gameSelect')?.value || '')
         );
-
 
       if (game) {
-
-        renderGameAvailabilityCalendar(
-          game
-        );
-
+        renderGameAvailabilityCalendar(game);
       }
 
     }
   );
 
 
-$('dateEnd')
-  ?.addEventListener(
+  $('dateEnd')?.addEventListener(
     'change',
     () => {
 
@@ -4545,17 +5196,9 @@ $('dateEnd')
       const end =
         $('dateEnd')?.value || '';
 
-
-      if (
-        !start ||
-        !end ||
-        end < start
-      ) {
-
+      if (!start || !end || end < start) {
         return;
-
       }
-
 
       if (
         rangeContainsReservation(
@@ -4564,57 +5207,43 @@ $('dateEnd')
         )
       ) {
 
-        $('dateEnd').value =
-          '';
-
+        $('dateEnd').value = '';
 
         const msg =
           $('formMessage');
 
-
         if (msg) {
-
           msg.textContent =
-            'La période choisie contient ' +
-            'une date déjà réservée pour ce jeu.';
-
+            'La période choisie contient une date déjà réservée pour ce jeu.';
           msg.style.color =
             'var(--danger)';
-
         }
 
         return;
-
       }
 
-
-      gameAvailabilityStart =
-        start;
-
-      gameAvailabilityEnd =
-        end;
-
+      gameAvailabilityStart = start;
+      gameAvailabilityEnd = end;
 
       const game =
         allGames.find(
-          g =>
-            String(g.id) ===
-            String(
-              $('gameSelect')?.value || ''
-            )
+          item =>
+            String(item.id) ===
+            String($('gameSelect')?.value || '')
         );
-
 
       if (game) {
-
-        renderGameAvailabilityCalendar(
-          game
-        );
-
+        renderGameAvailabilityCalendar(game);
       }
 
     }
   );
+
+
+  // -------------------------------------------------------
+  // RÉSERVATION
+  // -------------------------------------------------------
+
   $('reservationForm')
     ?.addEventListener(
       'submit',
