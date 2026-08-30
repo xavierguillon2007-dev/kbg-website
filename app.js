@@ -230,52 +230,290 @@ function openDayModal(dateStr, events) {
 
 async function loadGames() {
   try {
-    const { data, error } = await supabase.from('games').select('*').order('name');
+
+    const { data, error } = await supabase
+      .from('games')
+      .select('*')
+      .order('name');
+
     if (error) throw error;
 
     allGames = data || [];
-    const cats = [...new Set(allGames.map(g => g.category).filter(Boolean))].sort();
-    
+
+    const cats = [
+      ...new Set(
+        allGames
+          .map(g => g.category)
+          .filter(Boolean)
+      )
+    ].sort();
+
     if ($('category')) {
-      $('category').innerHTML = '<option value="">Toutes les catégories</option>' + cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-    }
-    if ($('gameSelect')) {
-      $('gameSelect').innerHTML = '<option value="">Sélectionnez un jeu…</option>' + allGames.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join('');
+      $('category').innerHTML =
+        '<option value="">Toutes les catégories</option>' +
+        cats.map(c =>
+          `<option value="${esc(c)}">${esc(c)}</option>`
+        ).join('');
     }
 
+    if ($('gameSelect')) {
+      $('gameSelect').innerHTML =
+        '<option value="">Sélectionnez un jeu…</option>' +
+        allGames.map(g =>
+          `<option value="${esc(g.id)}">${esc(g.name)}</option>`
+        ).join('');
+    }
+
+    // Charger les avis
+    await loadAllReviews();
+
     renderGames();
+
   } catch (e) {
+
     console.error("Erreur jeux:", e);
-    if ($('games')) $('games').innerHTML = '<div class="empty">Erreur de chargement des jeux.</div>';
+
+    if ($('games')) {
+      $('games').innerHTML =
+        '<div class="empty">Erreur de chargement des jeux.</div>';
+    }
   }
+}
+async function loadAllReviews() {
+
+  const { data, error } = await supabase
+    .from('game_reviews')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Erreur chargement avis :", error);
+    allReviews = [];
+    return;
+  }
+
+  allReviews = data || [];
 }
 
 function renderGames() {
+
   const container = $('games');
+
   if (!container) return;
 
-  const q = $('search')?.value.toLowerCase().trim() || '';
-  const cat = $('category')?.value || '';
-  const minPlayers = Number($('players')?.value || 0);
-  const sortBy = $('sort')?.value || 'name';
+  const q =
+    $('search')?.value.toLowerCase().trim() || '';
 
-  let games = allGames.filter(g => 
-    (!q || `${g.name} ${g.publisher}`.toLowerCase().includes(q)) &&
+  const cat =
+    $('category')?.value || '';
+
+  const minPlayers =
+    Number($('players')?.value || 0);
+
+  const sortBy =
+    $('sort')?.value || 'name';
+
+
+  let games = allGames.filter(g =>
+    (!q ||
+      `${g.name} ${g.publisher}`
+        .toLowerCase()
+        .includes(q)
+    ) &&
     (!cat || g.category === cat) &&
-    (!minPlayers || (g.players_max || 0) >= minPlayers)
+    (!minPlayers ||
+      (g.players_max || 0) >= minPlayers
+    )
   );
 
-  if (sortBy === 'duration') games.sort((a, b) => (a.duration || 0) - (b.duration || 0));
-  else if (sortBy === 'players') games.sort((a, b) => (b.players_max || 0) - (a.players_max || 0));
-  else if (sortBy === 'newest') games.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-  else games.sort((a, b) => a.name.localeCompare(b.name));
 
-  if ($('count')) $('count').textContent = `${games.length} jeu(x)`;
+  if (sortBy === 'duration') {
+    games.sort(
+      (a, b) =>
+        (a.duration || 0) -
+        (b.duration || 0)
+    );
+
+  } else if (sortBy === 'players') {
+    games.sort(
+      (a, b) =>
+        (b.players_max || 0) -
+        (a.players_max || 0)
+    );
+
+  } else if (sortBy === 'newest') {
+    games.sort(
+      (a, b) =>
+        new Date(b.created_at || 0) -
+        new Date(a.created_at || 0)
+    );
+
+  } else {
+    games.sort(
+      (a, b) =>
+        a.name.localeCompare(b.name)
+    );
+  }
+
+
+  if ($('count')) {
+    $('count').textContent =
+      `${games.length} jeu(x)`;
+  }
+
 
   if (!games.length) {
-    container.innerHTML = '<div class="empty panel">Aucun jeu trouvé.</div>';
+
+    container.innerHTML =
+      '<div class="empty panel">Aucun jeu trouvé.</div>';
+
     return;
   }
+
+
+  container.innerHTML = games.map(g => {
+
+    const reviews =
+      allReviews.filter(
+        r => String(r.game_id) === String(g.id)
+      );
+
+    const average =
+      reviews.length
+        ? reviews.reduce(
+            (sum, r) => sum + Number(r.rating),
+            0
+          ) / reviews.length
+        : 0;
+
+    const averageDisplay =
+      average
+        ? `
+          <div style="
+            display:flex;
+            align-items:center;
+            gap:7px;
+            margin-top:8px;
+          ">
+            <span class="review-stars">
+              ${'★'.repeat(Math.round(average))}
+            </span>
+
+            <span style="
+              color:var(--muted);
+              font-size:12px;
+            ">
+              ${average.toFixed(1)}/5
+              · ${reviews.length} avis
+            </span>
+          </div>
+        `
+        : `
+          <div style="
+            color:var(--muted);
+            font-size:12px;
+            margin-top:8px;
+          ">
+            Aucun avis
+          </div>
+        `;
+
+
+    return `
+
+      <article
+        class="card"
+        data-review-game="${esc(g.id)}"
+        style="cursor:pointer;"
+        title="Voir les avis"
+      >
+
+        <div class="cover">
+
+          ${
+            g.cover_image
+              ? `
+                <img
+                  src="${esc(g.cover_image)}"
+                  alt="${esc(g.name)}"
+                >
+              `
+              : '<span>✦</span>'
+          }
+
+        </div>
+
+        <div class="card-body">
+
+          <p class="tag">
+            ${esc(g.category || 'Jeu')}
+          </p>
+
+          <h3>
+            ${esc(g.name)}
+          </h3>
+
+          <p class="publisher">
+            ${esc(g.publisher || '')}
+          </p>
+
+          <div class="meta">
+
+            <span>
+              ♙ ${g.players_min || '?'}-${g.players_max || '?'} joueurs
+            </span>
+
+            <span>
+              ◷ ${g.duration || '?'} min
+            </span>
+
+          </div>
+
+          ${averageDisplay}
+
+          <p class="desc">
+            ${esc(g.description || '')}
+          </p>
+
+          <p style="
+            color:#2583ff;
+            font-size:12px;
+            margin-top:10px;
+            font-weight:700;
+          ">
+            Voir les avis →
+          </p>
+
+        </div>
+
+      </article>
+
+    `;
+
+  }).join('');
+
+
+  container
+    .querySelectorAll('[data-review-game]')
+    .forEach(card => {
+
+      card.addEventListener('click', () => {
+
+        const game =
+          allGames.find(
+            g =>
+              String(g.id) ===
+              card.dataset.reviewGame
+          );
+
+        if (game) {
+          openReviewModal(game);
+        }
+
+      });
+
+    });
+}
 
   container.innerHTML = games.map(g => `
     <article class="card">
@@ -432,7 +670,580 @@ async function loadAdminReservationsList() {
 }
 
 // --- ÉVÉNEMENTS & LISTENERS ---
+// =========================================================
+// AVIS ET NOTATION
+// =========================================================
 
+function openReviewModal(game) {
+
+  selectedReviewGame = game;
+  selectedRating = 0;
+
+  const modal = $('reviewModal');
+  const header = $('reviewGameHeader');
+  const ratingInput = $('reviewRating');
+  const ratingHelp = $('ratingHelp');
+
+  if (!modal || !header) return;
+
+
+  if (ratingInput) {
+    ratingInput.value = '0';
+  }
+
+  if (ratingHelp) {
+    ratingHelp.textContent =
+      'Sélectionnez une note de 1 à 5 étoiles.';
+  }
+
+
+  document
+    .querySelectorAll('.star-button')
+    .forEach(star =>
+      star.classList.remove('active')
+    );
+
+
+  header.innerHTML = `
+
+    <div style="
+      display:flex;
+      gap:16px;
+      align-items:center;
+    ">
+
+      ${
+        game.cover_image
+          ? `
+            <img
+              src="${esc(game.cover_image)}"
+              alt="${esc(game.name)}"
+              style="
+                width:90px;
+                height:90px;
+                object-fit:cover;
+                border-radius:8px;
+              "
+            >
+          `
+          : `
+            <div style="
+              width:90px;
+              height:90px;
+              border-radius:8px;
+              background:var(--bg);
+              border:1px solid var(--line);
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-size:30px;
+            ">
+              ✦
+            </div>
+          `
+      }
+
+      <div>
+
+        <p class="eyebrow">
+          AVIS DU JEU
+        </p>
+
+        <h2 style="margin-top:4px;">
+          ${esc(game.name)}
+        </h2>
+
+        <div id="reviewAverage" style="margin-top:6px;"></div>
+
+      </div>
+
+    </div>
+
+  `;
+
+
+  renderReviews(game);
+
+  $('reviewModal')
+    ?.classList.remove('hidden');
+}
+
+
+function renderReviews(game) {
+
+  const list = $('reviewsList');
+
+  if (!list) return;
+
+
+  const reviews =
+    allReviews.filter(
+      r =>
+        String(r.game_id) ===
+        String(game.id)
+    );
+
+
+  const average =
+    reviews.length
+      ? reviews.reduce(
+          (sum, r) =>
+            sum + Number(r.rating),
+          0
+        ) / reviews.length
+      : 0;
+
+
+  const averageContainer =
+    $('reviewAverage');
+
+  if (averageContainer) {
+
+    averageContainer.innerHTML =
+      reviews.length
+        ? `
+          <span class="review-stars">
+            ${'★'.repeat(Math.round(average))}
+          </span>
+
+          <span style="
+            color:var(--muted);
+            font-size:13px;
+            margin-left:6px;
+          ">
+            ${average.toFixed(1)}/5
+            · ${reviews.length} avis
+          </span>
+        `
+        : `
+          <span style="
+            color:var(--muted);
+            font-size:13px;
+          ">
+            Aucun avis pour le moment
+          </span>
+        `;
+  }
+
+
+  if (!reviews.length) {
+
+    list.innerHTML = `
+      <div class="empty panel">
+        Aucun avis pour le moment.
+        Soyez le premier à donner votre avis !
+      </div>
+    `;
+
+    return;
+  }
+
+
+  list.innerHTML = reviews.map(review => {
+
+    const isOwner =
+      currentUser &&
+      String(review.user_id) ===
+      String(currentUser.id);
+
+    const admin =
+      isAdminEmail(currentUser?.email);
+
+
+    return `
+
+      <div class="review-card">
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          gap:10px;
+        ">
+
+          <div>
+
+            <strong>
+              ${esc(review.first_name)}
+              ${esc(review.last_name)}
+            </strong>
+
+            <span style="
+              color:var(--muted);
+              font-size:12px;
+              margin-left:5px;
+            ">
+              ${esc(review.promotion)}
+            </span>
+
+          </div>
+
+          <span class="review-stars">
+            ${'★'.repeat(Number(review.rating))}
+            <span style="color:var(--line);">
+              ${'★'.repeat(5 - Number(review.rating))}
+            </span>
+          </span>
+
+        </div>
+
+
+        ${
+          review.review
+            ? `
+              <p style="
+                margin-top:10px;
+                font-size:14px;
+                white-space:pre-wrap;
+              ">
+                ${esc(review.review)}
+              </p>
+            `
+            : ''
+        }
+
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-top:10px;
+        ">
+
+          <span style="
+            color:var(--muted);
+            font-size:11px;
+          ">
+            ${formatReviewDate(review.created_at)}
+          </span>
+
+
+          ${
+            admin
+              ? `
+                <button
+                  class="button danger"
+                  data-delete-review="${esc(review.id)}"
+                  style="
+                    padding:4px 8px;
+                    font-size:11px;
+                  "
+                >
+                  Supprimer
+                </button>
+              `
+              : ''
+          }
+
+        </div>
+
+      </div>
+
+    `;
+
+  }).join('');
+
+
+  list
+    .querySelectorAll('[data-delete-review]')
+    .forEach(btn => {
+
+      btn.onclick = async e => {
+
+        e.stopPropagation();
+
+        if (
+          !confirm(
+            'Supprimer définitivement cet avis ?'
+          )
+        ) {
+          return;
+        }
+
+
+        const { error } =
+          await supabase
+            .from('game_reviews')
+            .delete()
+            .eq('id', btn.dataset.deleteReview);
+
+
+        if (error) {
+
+          console.error(
+            "Erreur suppression avis :",
+            error
+          );
+
+          alert(
+            "Impossible de supprimer l'avis : " +
+            error.message
+          );
+
+          return;
+        }
+
+
+        allReviews =
+          allReviews.filter(
+            r =>
+              String(r.id) !==
+              String(btn.dataset.deleteReview)
+          );
+
+
+        renderReviews(game);
+        renderGames();
+
+      };
+
+    });
+}
+
+
+function formatReviewDate(date) {
+
+  if (!date) return '';
+
+  return new Date(date)
+    .toLocaleDateString(
+      'fr-FR',
+      {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }
+    );
+}
+
+
+function setReviewRating(rating) {
+
+  selectedRating = Number(rating);
+
+  const input =
+    $('reviewRating');
+
+  const help =
+    $('ratingHelp');
+
+
+  if (input) {
+    input.value =
+      String(selectedRating);
+  }
+
+
+  document
+    .querySelectorAll('.star-button')
+    .forEach(star => {
+
+      const starRating =
+        Number(star.dataset.rating);
+
+      star.classList.toggle(
+        'active',
+        starRating <= selectedRating
+      );
+
+    });
+
+
+  if (help) {
+
+    help.textContent =
+      `${selectedRating}/5 étoiles`;
+
+  }
+}
+
+
+async function submitReview(e) {
+
+  e.preventDefault();
+
+  const msg = $('reviewMsg');
+  const submitBtn =
+    e.currentTarget.querySelector(
+      'button[type="submit"]'
+    );
+
+
+  if (!currentUser) {
+
+    if (msg) {
+      msg.textContent =
+        'Vous devez être connecté pour laisser un avis.';
+      msg.style.color =
+        'var(--danger)';
+    }
+
+    $('authModal')
+      ?.classList.remove('hidden');
+
+    return;
+  }
+
+
+  if (!selectedReviewGame) return;
+
+
+  const firstName =
+    $('reviewFirstName')
+      .value
+      .trim();
+
+  const lastName =
+    $('reviewLastName')
+      .value
+      .trim();
+
+  const promotion =
+    $('reviewPromotion')
+      .value
+      .trim();
+
+  const reviewText =
+    $('reviewText')
+      .value
+      .trim();
+
+
+  if (
+    !firstName ||
+    !lastName ||
+    !promotion
+  ) {
+
+    if (msg) {
+      msg.textContent =
+        'Le prénom, le nom et la promotion sont obligatoires.';
+      msg.style.color =
+        'var(--danger)';
+    }
+
+    return;
+  }
+
+
+  if (
+    selectedRating < 1 ||
+    selectedRating > 5
+  ) {
+
+    if (msg) {
+      msg.textContent =
+        'Veuillez sélectionner une note de 1 à 5 étoiles.';
+      msg.style.color =
+        'var(--danger)';
+    }
+
+    return;
+  }
+
+
+  if (msg) {
+    msg.textContent =
+      'Publication de votre avis…';
+    msg.style.color =
+      'var(--muted)';
+  }
+
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
+
+  const { data, error } =
+    await supabase
+      .from('game_reviews')
+      .insert({
+
+        game_id:
+          selectedReviewGame.id,
+
+        user_id:
+          currentUser.id,
+
+        first_name:
+          firstName,
+
+        last_name:
+          lastName,
+
+        promotion:
+          promotion,
+
+        rating:
+          selectedRating,
+
+        review:
+          reviewText || null
+
+      })
+      .select()
+      .single();
+
+
+  if (submitBtn) {
+    submitBtn.disabled = false;
+  }
+
+
+  if (error) {
+
+    console.error(
+      "Erreur ajout avis :",
+      error
+    );
+
+
+    if (msg) {
+
+      msg.textContent =
+        error.code === '23505'
+          ? 'Vous avez déjà laissé un avis pour ce jeu.'
+          : 'Erreur : ' + error.message;
+
+      msg.style.color =
+        'var(--danger)';
+    }
+
+    return;
+  }
+
+
+  allReviews.unshift(data);
+
+
+  if (msg) {
+
+    msg.textContent =
+      '✓ Votre avis a été publié !';
+
+    msg.style.color =
+      'var(--success)';
+  }
+
+
+  e.currentTarget.reset();
+
+  selectedRating = 0;
+
+  $('reviewRating').value = '0';
+
+
+  document
+    .querySelectorAll('.star-button')
+    .forEach(star =>
+      star.classList.remove('active')
+    );
+
+
+  renderReviews(selectedReviewGame);
+  renderGames();
+
+}
 function setupEventListeners() {
   ['search', 'category', 'players', 'sort'].forEach(id => {
     $(id)?.addEventListener('input', renderGames);
@@ -456,6 +1267,25 @@ function setupEventListeners() {
     currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
     renderCalendar();
   });
+  // --- NOTATION PAR ÉTOILES ---
+
+document
+  .querySelectorAll('.star-button')
+  .forEach(star => {
+
+    star.addEventListener('click', () => {
+      setReviewRating(star.dataset.rating);
+    });
+
+  });
+
+
+// --- FORMULAIRE AVIS ---
+
+$('reviewForm')?.addEventListener(
+  'submit',
+  submitReview
+);
 
   // Ouverture Centre de Notifications
   const notifBtn = $('notifBtn');
