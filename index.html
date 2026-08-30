@@ -193,17 +193,34 @@
     </div>
 
 
-    <div
-      id="games"
-      class="grid"
-    >
+   <div
+  id="games"
+  class="grid"
+>
+  <div class="loading">
+    Connexion au catalogue…
+  </div>
+</div>
 
-      <div class="loading">
-        Connexion au catalogue…
-      </div>
-
-    </div>
-
+<!-- Bouton pour afficher tout le catalogue -->
+<div
+  id="catalogueToggle"
+  style="
+    display:none;
+    justify-content:center;
+    margin-top:24px;
+  "
+>
+  <button
+    id="showAllGamesBtn"
+    class="button"
+    type="button"
+    aria-expanded="false"
+  >
+    <span id="showAllGamesArrow">↓</span>
+    <span id="showAllGamesText">Afficher tous les jeux</span>
+  </button>
+</div>
   </section>
 
 
