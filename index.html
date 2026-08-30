@@ -666,6 +666,82 @@
     <div id="reviewGameHeader"></div>
 
 
+    <!-- =====================================================
+         CALENDRIER DE DISPONIBILITÉ DU JEU
+    ====================================================== -->
+
+    <div
+      id="gameAvailabilitySection"
+      style="
+        margin-top:24px;
+        border-top:1px solid var(--line);
+        padding-top:20px;
+      "
+    >
+
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:12px;
+          flex-wrap:wrap;
+        "
+      >
+        <div>
+          <p class="eyebrow">
+            DISPONIBILITÉ
+          </p>
+          <h3 style="margin-top:4px;">
+            Calendrier du jeu
+          </h3>
+        </div>
+
+        <div
+          style="
+            display:flex;
+            gap:12px;
+            align-items:center;
+            font-size:12px;
+            color:var(--muted);
+          "
+        >
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block;"></span>
+            Libre
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block;"></span>
+            Réservé
+          </span>
+        </div>
+      </div>
+
+      <div
+        id="gameAvailabilityCalendar"
+        class="game-availability-calendar"
+        style="margin-top:14px;"
+      >
+        <div class="loading">
+          Chargement des disponibilités…
+        </div>
+      </div>
+
+      <p
+        id="gameAvailabilityHelp"
+        style="
+          color:var(--muted);
+          font-size:12px;
+          margin-top:10px;
+          line-height:1.5;
+        "
+      >
+        Les dates vertes sont disponibles. Cliquez sur une date libre pour la sélectionner dans le formulaire de réservation.
+      </p>
+
+    </div>
+
+
     <div style="margin-top:24px;">
 
       <p class="eyebrow">
