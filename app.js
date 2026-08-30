@@ -1631,54 +1631,44 @@ async function loadAdminReservationsList() {
 
 function openReviewModal(game) {
 
-  selectedReviewGame =
-    game;
+  selectedReviewGame = game;
+  selectedRating = 0;
 
-  selectedRating =
-    0;
+  const modal = $('reviewModal');
+  const header = $('reviewGameHeader');
+  const ratingInput = $('reviewRating');
+  const ratingHelp = $('ratingHelp');
 
-  const modal =
-    $('reviewModal');
+  if (!modal || !header) return;
 
-  const header =
-    $('reviewGameHeader');
-
-  const ratingInput =
-    $('reviewRating');
-
-  const ratingHelp =
-    $('ratingHelp');
-
-  if (!modal || !header) {
-    return;
-  }
-
+  // Réinitialisation de la note
   if (ratingInput) {
     ratingInput.value = '0';
   }
 
   if (ratingHelp) {
-
     ratingHelp.textContent =
       'Sélectionnez une note de 1 à 5 étoiles.';
-
   }
 
   document
     .querySelectorAll('.star-button')
-    .forEach(star =>
-      star.classList.remove('active')
-    );
+    .forEach(star => {
+      star.classList.remove('active');
+    });
+
+  // Description complète du jeu
+  const description = game.description
+    ? esc(game.description)
+    : 'Aucune description disponible pour ce jeu.';
 
   header.innerHTML = `
 
-    <div
-      style="
-        display:flex;
-        gap:16px;
-        align-items:center;
-      "
-    >
+    <div style="
+      display:flex;
+      gap:16px;
+      align-items:center;
+    ">
 
       ${
         game.cover_image
@@ -1691,79 +1681,120 @@ function openReviewModal(game) {
                 height:90px;
                 object-fit:cover;
                 border-radius:8px;
+                flex-shrink:0;
               "
             >
           `
           : `
-            <div
-              style="
-                width:90px;
-                height:90px;
-                border-radius:8px;
-                background:var(--bg);
-                border:1px solid var(--line);
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                font-size:30px;
-              "
-            >
+            <div style="
+              width:90px;
+              height:90px;
+              border-radius:8px;
+              background:var(--bg);
+              border:1px solid var(--line);
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              font-size:30px;
+              flex-shrink:0;
+            ">
               ✦
             </div>
           `
       }
 
-      <div>
+      <div style="min-width:0;">
 
         <p class="eyebrow">
           AVIS DU JEU
         </p>
 
-        <h2
-          style="margin-top:4px;"
-        >
+        <h2 style="margin-top:4px;">
           ${esc(game.name)}
         </h2>
 
-        <div
-          id="reviewAverage"
-          style="margin-top:6px;"
-        ></div>
+        ${
+          game.publisher
+            ? `
+              <p style="
+                color:var(--muted);
+                font-size:13px;
+                margin-top:4px;
+              ">
+                ${esc(game.publisher)}
+              </p>
+            `
+            : ''
+        }
+
+        <div id="reviewAverage" style="margin-top:6px;"></div>
 
       </div>
 
     </div>
 
+    <!-- DESCRIPTION COMPLÈTE -->
+
+    <div style="
+      margin-top:22px;
+      padding:16px;
+      background:var(--bg);
+      border:1px solid var(--line);
+      border-radius:8px;
+    ">
+
+      <p class="eyebrow" style="margin-bottom:8px;">
+        DESCRIPTION
+      </p>
+
+      <p style="
+        font-size:14px;
+        line-height:1.7;
+        color:var(--text);
+        white-space:pre-wrap;
+        overflow-wrap:anywhere;
+      ">
+        ${description}
+      </p>
+
+    </div>
+
+    <!-- INFORMATIONS DU JEU -->
+
+    <div style="
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:12px;
+    ">
+
+      ${
+        game.category
+          ? `
+            <span class="badge">
+              ${esc(game.category)}
+            </span>
+          `
+          : ''
+      }
+
+      <span class="badge">
+        ♙ ${game.players_min || '?'}-${game.players_max || '?'} joueurs
+      </span>
+
+      <span class="badge">
+        ◷ ${game.duration || '?'} min
+      </span>
+
+    </div>
+
   `;
 
-  // Pré-remplir les informations du compte si disponibles
-
-  if (currentUser?.user_metadata) {
-
-    const first =
-      currentUser.user_metadata.first_name;
-
-    const last =
-      currentUser.user_metadata.last_name;
-
-    if ($('reviewFirstName') && first) {
-      $('reviewFirstName').value =
-        first;
-    }
-
-    if ($('reviewLastName') && last) {
-      $('reviewLastName').value =
-        last;
-    }
-
-  }
-
+  // Affichage des avis
   renderReviews(game);
 
   modal.classList.remove('hidden');
-
 }
-
 // =========================================================
 // AFFICHAGE DES AVIS
 // =========================================================
