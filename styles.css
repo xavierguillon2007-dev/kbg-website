@@ -164,3 +164,97 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .admin-form-grid input { background: #fff; border: 1px solid var(--line); color: var(--text); padding: 8px; border-radius: 4px; }
 
 footer { display: flex; justify-content: space-between; padding: 40px 20px; border-top: 1px solid var(--line); margin-top: 80px; font-size: 12px; color: var(--muted); }
+/* =========================================================
+   NOTATION PAR ÉTOILES
+   ========================================================= */
+
+.star-button {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--line);
+  cursor: pointer;
+  padding: 2px;
+  margin: 0;
+  font-size: 30px;
+  line-height: 1;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.star-button:hover {
+  color: var(--accent);
+  transform: scale(1.08);
+}
+
+.star-button.active {
+  color: var(--accent);
+}
+
+
+/* Étoiles affichées dans les avis */
+
+.review-stars {
+  color: var(--accent);
+  letter-spacing: 2px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+
+/* Carte d'un avis */
+
+.review-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.review-card:hover {
+  border-color: var(--accent);
+}
+
+
+/* Note moyenne */
+
+#reviewAverage {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+/* Zone de sélection des étoiles */
+
+#starRating {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+
+/* Texte sous les étoiles */
+
+#ratingHelp {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 7px;
+}
+
+
+/* Étoiles non sélectionnées */
+
+#starRating .star-button:not(.active) {
+  color: var(--line);
+}
+
+
+/* Étoiles sélectionnées */
+
+#starRating .star-button.active {
+  color: var(--accent);
+}
