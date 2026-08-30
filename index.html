@@ -398,9 +398,37 @@
 
         <form id="signupForm">
           <p class="eyebrow">S'INSCRIRE</p>
-          <input id="signupFirst" placeholder="Prénom" required style="width:100%; margin-bottom:8px;">
-          <input id="signupLast" placeholder="Nom" required style="width:100%; margin-bottom:8px;">
-          <input id="signupEmail" type="email" placeholder="E-mail" required style="width:100%; margin-bottom:8px;">
+         <input
+  id="signupFirst"
+  placeholder="Prénom"
+  required
+  maxlength="100"
+  style="width:100%; margin-bottom:8px;"
+>
+
+<input
+  id="signupLast"
+  placeholder="Nom"
+  required
+  maxlength="100"
+  style="width:100%; margin-bottom:8px;"
+>
+
+<input
+  id="signupPromotion"
+  placeholder="Promotion / Filière"
+  required
+  maxlength="100"
+  style="width:100%; margin-bottom:8px;"
+>
+
+<input
+  id="signupEmail"
+  type="email"
+  placeholder="E-mail"
+  required
+  style="width:100%; margin-bottom:8px;"
+>
           <input id="signupPassword" type="password" placeholder="Mot de passe" required style="width:100%; margin-bottom:12px;">
           <button class="button primary" type="submit">Créer compte</button>
           <p id="signupMsg" class="form-message" style="margin-top:6px;"></p>
