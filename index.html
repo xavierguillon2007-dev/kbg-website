@@ -65,8 +65,7 @@
       </div>
     </section>
 
-    <!-- FORMULAIRE DE RÉSERVATION -->
-    <!-- FORMULAIRE DE RÉSERVATION EN 2 COLONNES -->
+    <!-- FORMULAIRE DE RÉSERVATION UNIQUE (2 COLONNES) -->
     <section id="reservation" class="section">
       <div class="reservation-layout">
         
@@ -90,7 +89,7 @@
           </div>
         </div>
 
-        <!-- Colonne Droite : Formulaire Soigné -->
+        <!-- Colonne Droite : Formulaire -->
         <div class="form-card">
           <form id="reservationForm">
             <div class="form-group">
@@ -123,8 +122,8 @@
             </div>
 
             <div class="form-group">
-              <label for="promotion">Promotion</label>
-              <input id="promotion" name="promotion" placeholder="Ex. DFGSM2" required>
+              <label for="promotion">Promotion / Filière</label>
+              <input id="promotion" name="promotion" placeholder="Ex. DFGSM2, Master 1..." required>
             </div>
 
             <button id="submitBookingBtn" class="button primary" type="submit" style="width:100%; margin-top:8px; padding:12px;">Envoyer la demande →</button>
@@ -133,36 +132,6 @@
         </div>
 
       </div>
-    </section>
-      
-      <!-- Avertissement si déconnecté -->
-      <div id="authWarning" class="panel hidden">
-        <p class="eyebrow">CONNEXION REQUISE</p>
-        <p>Vous devez être connecté pour réserver un jeu.</p>
-        <button class="button primary" id="noticeAuthBtn" style="margin-top:10px;">Se connecter →</button>
-      </div>
-
-      <!-- Formulaire principal -->
-      <form id="reservationForm" class="panel">
-        <div style="display:grid; gap:12px;">
-          <label>Jeu
-            <select id="gameSelect" name="game_id" required>
-              <option value="">Sélectionnez un jeu…</option>
-            </select>
-          </label>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-            <label>Du <input id="dateStart" name="date_start" type="date" required></label>
-            <label>Au <input id="dateEnd" name="date_end" type="date" required></label>
-          </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-            <input name="first_name" required placeholder="Prénom">
-            <input name="last_name" required placeholder="Nom">
-          </div>
-          <input name="promotion" required placeholder="Promotion (ex. DFGSM2)">
-          <button id="submitBookingBtn" class="button primary" type="submit">Envoyer la demande →</button>
-          <p id="formMessage" class="form-message" style="margin-top:6px;"></p>
-        </div>
-      </form>
     </section>
   </main>
 
@@ -212,7 +181,7 @@
     </div>
   </div>
 
-  <!-- MODALE AUTHENTIFICATION (Connexion / Inscription) -->
+  <!-- MODALE AUTHENTIFICATION -->
   <div id="authModal" class="modal hidden">
     <div class="modal-card">
       <button class="modal-close" data-close="authModal">×</button>
