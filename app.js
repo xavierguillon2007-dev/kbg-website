@@ -158,13 +158,16 @@ async function renderCalendar() {
       html += `<div class="cal-day" style="opacity:0.15; background:transparent; border:1px dashed var(--line);"></div>`;
     }
 
+    const dayEventsMap = {};
+
     // Génération des jours du mois
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const currentDateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       const events = (res || []).filter(r => currentDateStr >= r.date_start && currentDateStr <= r.date_end);
+      dayEventsMap[currentDateStr] = events;
 
       html += `
-        <div class="cal-day">
+        <div class="cal-day${events.length ? ' has-events' : ''}" data-date="${currentDateStr}">
           <span class="cal-day-num">${day}</span>
           ${events.map(e => `<span class="cal-event" title="${esc(e.games?.name)} (${esc(e.first_name)})">📌 ${esc(e.games?.name)}</span>`).join('')}
         </div>
@@ -172,10 +175,44 @@ async function renderCalendar() {
     }
 
     container.innerHTML = html;
+
+    // Ouverture de la modale au clic sur un jour ayant des réservations
+    container.querySelectorAll('.cal-day.has-events').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        openDayModal(dayEl.dataset.date, dayEventsMap[dayEl.dataset.date] || []);
+      });
+    });
   } catch (err) {
     console.error("Erreur calendrier:", err);
     container.innerHTML = `<div class="empty">Impossible de charger le calendrier.</div>`;
   }
+}
+
+// --- MODALE JEUX RÉSERVÉS PAR JOUR ---
+
+function openDayModal(dateStr, events) {
+  const modal = $('dayModal');
+  const title = $('dayModalTitle');
+  const list = $('dayModalList');
+  if (!modal || !list) return;
+
+  if (title) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const label = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    title.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+  }
+
+  list.innerHTML = !events.length
+    ? '<div class="empty">Aucun jeu réservé ce jour-là.</div>'
+    : events.map(e => `
+      <div class="panel" style="padding:12px; font-size:13px;">
+        <strong>${esc(e.games?.name || 'Jeu')}</strong>
+        <p style="color:var(--muted); font-size:12px; margin-top:4px;">Du ${esc(e.date_start)} au ${esc(e.date_end)}</p>
+        <p style="margin-top:4px; font-size:12px;">${esc(e.first_name)} ${esc(e.last_name)}${e.promotion ? ' — ' + esc(e.promotion) : ''}</p>
+      </div>
+    `).join('');
+
+  modal.classList.remove('hidden');
 }
 
 // --- CATALOGUE DE JEUX ---
