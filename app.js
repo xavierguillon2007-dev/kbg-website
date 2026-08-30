@@ -1638,6 +1638,42 @@ function openReviewModal(game) {
   const header = $('reviewGameHeader');
   const ratingInput = $('reviewRating');
   const ratingHelp = $('ratingHelp');
+  const authorName = $('reviewAuthorName');
+const authorPromotion = $('reviewAuthorPromotion');
+
+if (authorName) {
+
+  const firstName =
+    currentUser?.user_metadata?.first_name || '';
+
+  const lastName =
+    currentUser?.user_metadata?.last_name || '';
+
+  if (firstName || lastName) {
+
+    authorName.textContent =
+      `${firstName} ${lastName}`.trim();
+
+  } else {
+
+    authorName.textContent =
+      currentUser?.email || 'Utilisateur';
+
+  }
+
+}
+
+if (authorPromotion) {
+
+  const promotion =
+    currentUser?.user_metadata?.promotion || '';
+
+  authorPromotion.textContent =
+    promotion
+      ? `— ${promotion}`
+      : '';
+
+}
 
   if (!modal || !header) return;
 
