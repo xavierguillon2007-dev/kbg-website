@@ -150,6 +150,8 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .calendar-grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding-bottom: 10px; border-bottom: 1px solid var(--line); }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
 .cal-day { background: #fff; border: 1px solid var(--line); border-radius: 6px; min-height: 90px; padding: 6px; font-size: 11px; display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.cal-day.has-events { cursor: pointer; transition: 0.15s; }
+.cal-day.has-events:hover { border-color: var(--accent); background: rgba(61, 42, 109, 0.06); }
 .cal-day-num { font-weight: 700; color: var(--muted); margin-bottom: 2px; }
 .cal-event { background: var(--accent); color: #fff; padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
