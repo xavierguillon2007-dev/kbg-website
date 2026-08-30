@@ -2154,8 +2154,7 @@ async function submitReview(e) {
 
   e.preventDefault();
 
-  const msg =
-    $('reviewMsg');
+  const msg = $('reviewMsg');
 
   const submitBtn =
     e.currentTarget.querySelector(
@@ -2197,36 +2196,33 @@ async function submitReview(e) {
 
   }
 
+  // -------------------------------------------------------
+  // RÉCUPÉRATION DU NOM ET PRÉNOM DEPUIS LE COMPTE SUPABASE
+  // -------------------------------------------------------
+
   const firstName =
     String(
-      $('reviewFirstName')?.value || ''
+      currentUser.user_metadata?.first_name || ''
     ).trim();
 
   const lastName =
     String(
-      $('reviewLastName')?.value || ''
+      currentUser.user_metadata?.last_name || ''
     ).trim();
 
+  // La promotion n'est plus demandée dans le formulaire.
+  // Si elle existe déjà dans les metadata du compte, on la récupère.
   const promotion =
     String(
-      $('reviewPromotion')?.value || ''
+      currentUser.user_metadata?.promotion || ''
     ).trim();
 
-  const reviewText =
-    String(
-      $('reviewText')?.value || ''
-    ).trim();
-
-  if (
-    !firstName ||
-    !lastName ||
-    !promotion
-  ) {
+  if (!firstName || !lastName) {
 
     if (msg) {
 
       msg.textContent =
-        'Le prénom, le nom et la promotion sont obligatoires.';
+        'Votre prénom et votre nom ne sont pas enregistrés dans votre compte. Veuillez contacter un administrateur.';
 
       msg.style.color =
         'var(--danger)';
@@ -2236,6 +2232,19 @@ async function submitReview(e) {
     return;
 
   }
+
+  // -------------------------------------------------------
+  // RÉCUPÉRATION DE L'AVIS
+  // -------------------------------------------------------
+
+  const reviewText =
+    String(
+      $('reviewText')?.value || ''
+    ).trim();
+
+  // -------------------------------------------------------
+  // VÉRIFICATION DE LA NOTE
+  // -------------------------------------------------------
 
   if (
     selectedRating < 1 ||
@@ -2292,7 +2301,7 @@ async function submitReview(e) {
           lastName,
 
         promotion:
-          promotion,
+          promotion || null,
 
         rating:
           selectedRating,
@@ -2322,10 +2331,10 @@ async function submitReview(e) {
 
     }
 
-    e.currentTarget.reset();
+    // Réinitialisation uniquement du texte et de la note.
+    $('reviewText').value = '';
 
-    selectedRating =
-      0;
+    selectedRating = 0;
 
     if ($('reviewRating')) {
       $('reviewRating').value = '0';
@@ -2336,6 +2345,13 @@ async function submitReview(e) {
       .forEach(star =>
         star.classList.remove('active')
       );
+
+    if ($('ratingHelp')) {
+
+      $('ratingHelp').textContent =
+        'Sélectionnez une note de 1 à 5 étoiles.';
+
+    }
 
     if (selectedReviewGame) {
 
