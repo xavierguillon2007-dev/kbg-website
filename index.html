@@ -263,31 +263,41 @@
 
         <input type="hidden" id="reviewGameId">
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+     <div
+  class="panel"
+  style="
+    margin-top:12px;
+    padding:12px;
+    font-size:13px;
+  "
+>
+  <p style="color:var(--muted); font-size:12px; margin-bottom:4px;">
+    AVIS PUBLIÉ SOUS
+  </p>
 
-          <input
-            id="reviewFirstName"
-            placeholder="Prénom"
-            required
-            maxlength="100"
-          >
+  <strong id="reviewAuthorName">
+    Chargement…
+  </strong>
 
-          <input
-            id="reviewLastName"
-            placeholder="Nom de famille"
-            required
-            maxlength="100"
-          >
+  <span
+    id="reviewAuthorPromotion"
+    style="
+      color:var(--muted);
+      margin-left:6px;
+      font-size:12px;
+    "
+  ></span>
 
-        </div>
-
-        <input
-          id="reviewPromotion"
-          placeholder="Promotion"
-          required
-          maxlength="100"
-          style="width:100%; margin-top:10px;"
-        >
+  <p
+    style="
+      color:var(--muted);
+      font-size:11px;
+      margin-top:6px;
+    "
+  >
+    Votre nom et prénom proviennent de votre compte.
+  </p>
+</div>
 
         <!-- ÉTOILES -->
         <div style="margin-top:18px;">
