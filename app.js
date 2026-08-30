@@ -10,7 +10,11 @@ const isAdminEmail = email => !!email && ADMIN_EMAILS.includes(email);
 
 let allGames = [];
 let currentUser = null;
-let currentCalendarDate = new Date(); // Suivi du mois affiché dans le calendrier
+let currentCalendarDate = new Date();
+
+let allReviews = [];
+let selectedReviewGame = null;
+let selectedRating = 0;
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[c]));
