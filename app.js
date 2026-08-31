@@ -4173,47 +4173,63 @@ async function handleBookingSubmit(e) {
 
 
 // =========================================================
-// ADMIN — DEMANDES DE VALIDATION DE COMPTES
+// ADMIN
+// =========================================================
+
+async function loadAdminPanel() {
+
+  if (!isAdminEmail(currentUser?.email)) {
+    $('adminModal')?.classList.add('hidden');
+    return;
+  }
+
+  // Chaque bloc est chargé indépendamment : une panne d'un bloc
+  // ne doit pas laisser les autres en chargement infini.
+  await loadAdminAccountRequests();
+  await loadAdminGamesList();
+  await loadAdminReservationsList();
+
+}
+
+
+// =========================================================
+// ADMIN — DEMANDES DE COMPTES
 // =========================================================
 
 let currentAccountRequests = [];
 
 async function loadAdminAccountRequests() {
   const container = $('accountRequestsList');
-
-  // Cette section peut être absente de certaines pages.
   if (!container) return;
-
-  if (!isAdminEmail(currentUser?.email)) {
-    container.innerHTML = `
-      <div class="empty panel">
-        Accès réservé aux administrateurs.
-      </div>
-    `;
-    return;
-  }
 
   container.innerHTML = `
     <div class="loading">Chargement des demandes de validation…</div>
   `;
 
   try {
-    const { data, error } = await supabase
+    const request = supabase
       .from('account_requests')
       .select('*')
       .order('created_at', { ascending: false });
+
+    // Évite un écran de chargement permanent si la requête réseau bloque.
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Délai dépassé lors du chargement des demandes de comptes.')), 10000)
+    );
+
+    const { data, error } = await Promise.race([request, timeout]);
 
     if (error) throw error;
 
     currentAccountRequests = Array.isArray(data) ? data : [];
     renderAdminAccountRequests();
   } catch (error) {
-    console.error('Erreur chargement demandes de comptes :', error);
+    console.error('Erreur demandes de comptes admin :', error);
     container.innerHTML = `
       <div class="empty panel">
-        <strong>Impossible de charger les demandes de comptes.</strong>
-        <br>
-        <small>${esc(error?.message || error)}</small>
+        <strong>Impossible de charger les demandes de validation.</strong>
+        <br><br>
+        <small>${esc(error?.message || 'Erreur inconnue')}</small>
       </div>
     `;
   }
@@ -4229,9 +4245,7 @@ function renderAdminAccountRequests() {
 
   if (!pending.length) {
     container.innerHTML = `
-      <div class="empty panel">
-        Aucune demande de compte en attente.
-      </div>
+      <div class="empty panel">Aucune demande de compte en attente.</div>
     `;
     return;
   }
@@ -4245,47 +4259,22 @@ function renderAdminAccountRequests() {
         </h3>
         <p class="publisher">${esc(request.email)}</p>
       </div>
-
       <div class="admin-card-body">
         <p><strong>Promotion :</strong> ${esc(request.promotion)}</p>
-        <p>
-          <strong>Demande créée :</strong>
-          ${formatAdminAccountRequestDate(request.created_at)}
-        </p>
+        <p><strong>Demande créée :</strong> ${formatAdminAccountRequestDate(request.created_at)}</p>
       </div>
-
       <div class="admin-card-actions">
-        <button
-          class="button primary"
-          data-approve-account="${esc(request.id)}"
-        >
-          ✓ Valider
-        </button>
-        <button
-          class="button danger"
-          data-reject-account="${esc(request.id)}"
-        >
-          ✕ Refuser
-        </button>
+        <button class="button primary" data-admin-account-action="approved" data-request-id="${esc(request.id)}">✓ Valider</button>
+        <button class="button danger" data-admin-account-action="rejected" data-request-id="${esc(request.id)}">✕ Refuser</button>
       </div>
     </article>
   `).join('');
 
-  container.querySelectorAll('[data-approve-account]').forEach(button => {
+  container.querySelectorAll('[data-admin-account-action]').forEach(button => {
     button.addEventListener('click', () =>
       handleAdminAccountDecision(
-        button.dataset.approveAccount,
-        'approved',
-        button
-      )
-    );
-  });
-
-  container.querySelectorAll('[data-reject-account]').forEach(button => {
-    button.addEventListener('click', () =>
-      handleAdminAccountDecision(
-        button.dataset.rejectAccount,
-        'rejected',
+        button.dataset.requestId,
+        button.dataset.adminAccountAction,
         button
       )
     );
@@ -4294,10 +4283,8 @@ function renderAdminAccountRequests() {
 
 function formatAdminAccountRequestDate(value) {
   if (!value) return 'Date inconnue';
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Date inconnue';
-
   return date.toLocaleString('fr-FR', {
     dateStyle: 'medium',
     timeStyle: 'short'
@@ -4305,34 +4292,23 @@ function formatAdminAccountRequestDate(value) {
 }
 
 async function handleAdminAccountDecision(requestId, decision, button) {
-  if (!isAdminEmail(currentUser?.email)) {
-    alert('Accès réservé aux administrateurs.');
-    return;
-  }
-
   const request = currentAccountRequests.find(
     item => String(item.id) === String(requestId)
   );
 
-  if (!request) {
-    alert('Demande de compte introuvable.');
+  if (!request || !['approved', 'rejected'].includes(decision)) {
+    alert('Demande de compte invalide.');
     return;
   }
 
   const verb = decision === 'approved' ? 'valider' : 'refuser';
-
-  if (!confirm(
-    `Voulez-vous vraiment ${verb} le compte de ` +
-    `${request.first_name} ${request.last_name} ?`
-  )) {
+  if (!confirm(`Voulez-vous vraiment ${verb} le compte de ${request.first_name} ${request.last_name} ?`)) {
     return;
   }
 
-  const originalText = button?.textContent || '';
-  if (button) {
-    button.disabled = true;
-    button.textContent = '…';
-  }
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = '…';
 
   try {
     const { data, error } = await supabase.functions.invoke(
@@ -4346,11 +4322,7 @@ async function handleAdminAccountDecision(requestId, decision, button) {
     );
 
     if (error) throw error;
-    if (!data?.ok) {
-      throw new Error(
-        data?.error || 'La validation du compte a échoué.'
-      );
-    }
+    if (data?.error) throw new Error(data.error);
 
     alert(
       decision === 'approved'
@@ -4362,40 +4334,9 @@ async function handleAdminAccountDecision(requestId, decision, button) {
   } catch (error) {
     console.error('Erreur validation compte :', error);
     alert('Erreur : ' + (error?.message || error));
-
-    if (button) {
-      button.disabled = false;
-      button.textContent = originalText;
-    }
+    button.disabled = false;
+    button.textContent = originalText;
   }
-}
-
-
-// =========================================================
-// ADMIN
-// =========================================================
-
-async function loadAdminPanel() {
-
-  if (
-    !isAdminEmail(
-      currentUser?.email
-    )
-  ) {
-
-    $('adminModal')
-      ?.classList.add('hidden');
-
-    return;
-  }
-
-
-  await loadAdminAccountRequests();
-
-  await loadAdminGamesList();
-
-  await loadAdminReservationsList();
-
 }
 
 
