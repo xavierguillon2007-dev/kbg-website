@@ -1679,5 +1679,30 @@
   src="app.js?v=4"
 ></script>
 
+<script>
+  // =========================================================
+  // MODE DIAGNOSTIC TEMPORAIRE (à retirer une fois le bug
+  // identifié) : si on arrive ici juste après avoir cliqué sur
+  // "Retour au catalogue" depuis la page de reset de mot de
+  // passe, on affiche ce qu'il reste dans le stockage local du
+  // navigateur pour ce domaine.
+  // =========================================================
+  if (
+    new URLSearchParams(window.location.search).get('loggedout') === '1'
+  ) {
+    setTimeout(function () {
+      var authKeys = Object.keys(localStorage).filter(function (k) {
+        return k.indexOf('auth-token') !== -1 || k.indexOf('sb-') === 0;
+      });
+
+      alert(
+        'DEBUG catalogue — clés liées à l\'auth encore présentes dans ' +
+        'localStorage : ' +
+        (authKeys.length ? authKeys.join(', ') : 'aucune')
+      );
+    }, 500);
+  }
+</script>
+
 </body>
 </html>
