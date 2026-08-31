@@ -310,6 +310,12 @@ async function handleAuthChange(user) {
           'click',
           async () => {
 
+            if (notificationsChannel) {
+              await supabase.removeChannel(notificationsChannel);
+              notificationsChannel = null;
+              notificationRealtimeStartedFor = null;
+            }
+
             const {
               error
             } =
@@ -348,7 +354,9 @@ async function handleAuthChange(user) {
     authWarning
       ?.classList.add('hidden');
 
-    await loadUserNotifications();
+    await loadUserNotifications(false);
+    startNotificationRealtime();
+    await refreshNotificationBadge();
 
   } else {
 
@@ -381,8 +389,8 @@ async function handleAuthChange(user) {
     authWarning
       ?.classList.remove('hidden');
 
-    notifBadge
-      ?.classList.add('hidden');
+    updateNotificationBadge(0);
+    notificationRealtimeStartedFor = null;
 
   }
 
@@ -531,201 +539,193 @@ async function submitProfile(e) {
 // NOTIFICATIONS
 // =========================================================
 
-async function loadUserNotifications() {
+let notificationsChannel = null;
+let notificationRealtimeStartedFor = null;
 
+function updateNotificationBadge(count) {
+  const badge = $('notifBadge');
+  if (!badge) return;
+
+  const safeCount = Math.max(0, Number(count) || 0);
+
+  if (safeCount > 0) {
+    badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+    badge.classList.remove('hidden');
+  } else {
+    badge.textContent = '0';
+    badge.classList.add('hidden');
+  }
+}
+
+async function refreshNotificationBadge() {
   if (!currentUser) {
+    updateNotificationBadge(0);
     return;
   }
 
   try {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .is('read_at', null);
 
-    const {
-      data: reservations,
-      error
-    } =
-      await supabase
-        .from('reservations')
-        .select('*, games(name)')
-        .eq(
-          'user_id',
-          currentUser.id
-        )
-        .order(
-          'created_at',
-          {
-            ascending: false
-          }
-        );
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    const list =
-      $('notifList');
-
-    const badge =
-      $('notifBadge');
-
-
-    if (!reservations?.length) {
-
-      if (list) {
-
-        list.innerHTML = `
-          <div class="empty">
-            Vous n'avez effectué aucune demande.
-          </div>
-        `;
-
-      }
-
-      badge?.classList.add('hidden');
-
-      return;
-
-    }
-
-
-    const processedCount =
-      reservations.filter(
-        r =>
-          r.status === 'approved' ||
-          r.status === 'rejected'
-      ).length;
-
-
-    if (badge) {
-
-      if (processedCount > 0) {
-
-        badge.textContent =
-          processedCount;
-
-        badge.classList.remove('hidden');
-
-      } else {
-
-        badge.classList.add('hidden');
-
-      }
-
-    }
-
-
-    if (list) {
-
-      list.innerHTML =
-        reservations.map(
-          r => {
-
-            let status = `
-              <span class="badge badge-warning">
-                En attente
-              </span>
-            `;
-
-            let message =
-              'Votre demande est en cours de traitement par l’administrateur.';
-
-
-            if (r.status === 'approved') {
-
-              status = `
-                <span class="badge badge-success">
-                  Acceptée
-                </span>
-              `;
-
-              message =
-                'Bonne nouvelle ! Votre réservation a été validée.';
-
-            }
-
-
-            if (r.status === 'rejected') {
-
-              status = `
-                <span class="badge badge-danger">
-                  Rejetée
-                </span>
-              `;
-
-              message =
-                'Désolé, votre demande a été refusée pour cette période.';
-
-            }
-
-
-            return `
-
-              <div
-                class="panel"
-                style="
-                  padding:12px;
-                  font-size:13px;
-                "
-              >
-
-                <div
-                  style="
-                    display:flex;
-                    justify-content:space-between;
-                    align-items:center;
-                    gap:10px;
-                  "
-                >
-
-                  <strong>
-                    ${esc(
-                      r.games?.name || 'Jeu'
-                    )}
-                  </strong>
-
-                  ${status}
-
-                </div>
-
-                <p
-                  style="
-                    color:var(--muted);
-                    font-size:12px;
-                    margin-top:4px;
-                  "
-                >
-                  Du ${esc(r.date_start)}
-                  au ${esc(r.date_end)}
-                </p>
-
-                <p
-                  style="
-                    margin-top:6px;
-                    font-size:12px;
-                  "
-                >
-                  ${message}
-                </p>
-
-              </div>
-
-            `;
-
-          }
-        ).join('');
-
-    }
-
+    if (error) throw error;
+    updateNotificationBadge(count || 0);
   } catch (error) {
+    console.error('Erreur compteur notifications :', error);
+    updateNotificationBadge(0);
+  }
+}
 
-    console.error(
-      'Erreur notifications :',
-      error
-    );
+function startNotificationRealtime() {
+  if (!currentUser) return;
 
+  if (notificationRealtimeStartedFor === currentUser.id) return;
+
+  if (notificationsChannel) {
+    supabase.removeChannel(notificationsChannel);
+    notificationsChannel = null;
   }
 
+  notificationRealtimeStartedFor = currentUser.id;
+
+  notificationsChannel = supabase
+    .channel(`user-notifications-${currentUser.id}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${currentUser.id}`
+      },
+      async () => {
+        // Une nouvelle action concernant l'utilisateur : le compteur
+        // est recalculé depuis Supabase plutôt que simplement incrémenté,
+        // ce qui évite les doubles comptages après un rafraîchissement.
+        await refreshNotificationBadge();
+        await loadUserNotifications(false);
+      }
+    )
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        refreshNotificationBadge();
+      }
+    });
+}
+
+async function loadUserNotifications(markAsRead = false) {
+  if (!currentUser) {
+    updateNotificationBadge(0);
+    return;
+  }
+
+  try {
+    const { data: notifications, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    const list = $('notifList');
+
+    if (!notifications?.length) {
+      if (list) {
+        list.innerHTML = `
+          <div class="empty">
+            Vous n'avez aucune notification.
+          </div>
+        `;
+      }
+      updateNotificationBadge(0);
+      return;
+    }
+
+    const unreadCount = notifications.filter(n => !n.read_at).length;
+
+    // Lorsqu'on ouvre la cloche, toutes les notifications actuellement
+    // présentes sont considérées comme vues.
+    if (markAsRead && unreadCount > 0) {
+      const { error: readError } = await supabase
+        .from('notifications')
+        .update({ read_at: new Date().toISOString() })
+        .eq('user_id', currentUser.id)
+        .is('read_at', null);
+
+      if (readError) throw readError;
+
+      notifications.forEach(n => {
+        if (!n.read_at) n.read_at = new Date().toISOString();
+      });
+    }
+
+    updateNotificationBadge(markAsRead ? 0 : unreadCount);
+
+    if (!list) return;
+
+    list.innerHTML = notifications.map(notification => {
+      const metadata = notification.metadata || {};
+      const type = notification.type || '';
+
+      let icon = '🔔';
+      if (type.startsWith('reservation')) icon = '🎲';
+      if (type === 'account_status') icon = '👤';
+
+      const isUnread = !notification.read_at && !markAsRead;
+
+      return `
+        <div
+          class="panel"
+          style="
+            padding:12px;
+            font-size:13px;
+            border-left:3px solid ${isUnread ? 'var(--accent)' : 'var(--line)'};
+            ${isUnread ? 'background:var(--surface,var(--bg));' : ''}
+          "
+        >
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="font-size:20px;line-height:1;">${icon}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                <strong>${esc(notification.title)}</strong>
+                ${isUnread ? '<span class="badge badge-warning">Nouveau</span>' : ''}
+              </div>
+              <p style="margin-top:6px;line-height:1.5;">${esc(notification.message)}</p>
+              <p style="color:var(--muted);font-size:11px;margin-top:7px;">
+                ${formatNotificationDate(notification.created_at)}
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  } catch (error) {
+    console.error('Erreur notifications :', error);
+
+    const list = $('notifList');
+    if (list) {
+      list.innerHTML = `
+        <div class="empty">
+          Impossible de charger les notifications.<br>
+          <small>${esc(error?.message || error)}</small>
+        </div>
+      `;
+    }
+  }
+}
+
+function formatNotificationDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  return date.toLocaleString('fr-FR', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
 }
 
 
@@ -5220,7 +5220,7 @@ function setupEventListeners() {
         $('notifModal')
           ?.classList.remove('hidden');
 
-        await loadUserNotifications();
+        await loadUserNotifications(true);
 
       }
     );
