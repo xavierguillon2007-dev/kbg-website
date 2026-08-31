@@ -278,28 +278,39 @@ function renderReservations() {
 async function loadAccountRequests() {
   const container = $('accountRequestsList');
 
-  if (!container) return;
+  if (!container) {
+    console.error('accountRequestsList introuvable');
+    return;
+  }
 
-  container.innerHTML =
-    '<div class="loading">Chargement des demandes de validation…</div>';
+  console.log('TEST 1 : loadAccountRequests appelée');
+
+  container.innerHTML = `
+    <div class="loading">
+      Test : chargement des demandes…
+    </div>
+  `;
 
   try {
-    const { data, error } = await supabase
+    console.log('TEST 2 : avant requête Supabase');
+
+    const result = await supabase
       .from('account_requests')
       .select('*')
       .order('created_at', { ascending: false });
 
+    console.log('TEST 3 : réponse Supabase', result);
+
+    const { data, error } = result;
+
     if (error) {
-      console.error(
-        'Erreur chargement demandes de comptes :',
-        error
-      );
+      console.error('TEST ERREUR SUPABASE :', error);
 
       container.innerHTML = `
         <div class="empty panel">
-          <strong>Erreur lors du chargement des demandes.</strong>
+          <strong>Erreur Supabase</strong>
           <br>
-          <small>${esc(error.message)}</small>
+          ${esc(error.message)}
         </div>
       `;
 
@@ -308,25 +319,26 @@ async function loadAccountRequests() {
 
     currentAccountRequests = data || [];
 
+    console.log(
+      'TEST 4 : demandes récupérées =',
+      currentAccountRequests.length
+    );
+
     renderAccountRequests();
 
   } catch (error) {
 
-    console.error(
-      'Erreur inattendue demandes de comptes :',
-      error
-    );
+    console.error('TEST ERREUR JS :', error);
 
     container.innerHTML = `
       <div class="empty panel">
-        <strong>Erreur inattendue.</strong>
+        <strong>Erreur JavaScript</strong>
         <br>
-        <small>${esc(error?.message || error)}</small>
+        ${esc(error?.message || String(error))}
       </div>
     `;
   }
 }
-
 
 // =========================================================
 // AFFICHAGE DES DEMANDES
