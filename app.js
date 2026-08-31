@@ -4125,16 +4125,31 @@ async function loadAdminGamesList() {
             </strong>
           </span>
 
-          <button
-            class="button danger"
-            data-delete-game="${esc(game.id)}"
-            style="
-              padding:2px 6px;
-              font-size:10px;
-            "
-          >
-            Supprimer
-          </button>
+          <div style="display:flex; gap:6px; align-items:center;">
+
+            <button
+              class="button"
+              data-edit-game="${esc(game.id)}"
+              style="
+                padding:2px 6px;
+                font-size:10px;
+              "
+            >
+              Modifier
+            </button>
+
+            <button
+              class="button danger"
+              data-delete-game="${esc(game.id)}"
+              style="
+                padding:2px 6px;
+                font-size:10px;
+              "
+            >
+              Supprimer
+            </button>
+
+          </div>
 
         </div>
 
@@ -4214,6 +4229,157 @@ async function loadAdminGamesList() {
       }
     );
 
+}
+
+
+  // -------------------------------------------------------
+  // MODIFICATION D'UN JEU
+  // -------------------------------------------------------
+
+  container
+    .querySelectorAll('[data-edit-game]')
+    .forEach(button => {
+
+      button.onclick = () => {
+
+        if (!isAdminEmail(currentUser?.email)) {
+          return;
+        }
+
+        const game =
+          games.find(
+            item => String(item.id) === String(button.dataset.editGame)
+          );
+
+        if (game) {
+          openEditGameModal(game);
+        }
+
+      };
+
+    });
+
+
+// =========================================================
+// ADMIN — MODIFICATION D'UN JEU
+// =========================================================
+
+function openEditGameModal(game) {
+
+  const modal = $('editGameAdminModal');
+  const form = $('editGameAdminForm');
+
+  if (!modal || !form) {
+    console.error('Modale de modification du jeu introuvable.');
+    return;
+  }
+
+  if (!isAdminEmail(currentUser?.email)) {
+    return;
+  }
+
+  const setValue = (name, value) => {
+    const field = form.querySelector(`[name="${name}"]`);
+    if (field) field.value = value ?? '';
+  };
+
+  setValue('id', game.id);
+  setValue('name', game.name);
+  setValue('publisher', game.publisher);
+  setValue('category', game.category);
+  setValue('cover_image', game.cover_image);
+  setValue('players_min', game.players_min);
+  setValue('players_max', game.players_max);
+  setValue('duration', game.duration);
+  setValue('description', game.description);
+
+  const msg = $('editGameAdminMsg');
+  if (msg) {
+    msg.textContent = '';
+    msg.style.color = 'var(--muted)';
+  }
+
+  modal.classList.remove('hidden');
+}
+
+async function handleEditGameAdmin(event) {
+
+  event.preventDefault();
+
+  if (!isAdminEmail(currentUser?.email)) {
+    return;
+  }
+
+  const form = event.currentTarget;
+  const msg = $('editGameAdminMsg');
+  const submitBtn = form.querySelector('button[type="submit"]');
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (msg) {
+    msg.textContent = 'Enregistrement…';
+    msg.style.color = 'var(--muted)';
+  }
+
+  try {
+
+    const formData = new FormData(form);
+    const gameId = String(formData.get('id') || '').trim();
+    const name = String(formData.get('name') || '').trim();
+
+    if (!gameId) {
+      throw new Error('Jeu introuvable.');
+    }
+
+    if (!name) {
+      throw new Error('Le nom du jeu est obligatoire.');
+    }
+
+    const updatedGame = {
+      name,
+      publisher: String(formData.get('publisher') || '').trim(),
+      category: String(formData.get('category') || '').trim() || null,
+      cover_image: String(formData.get('cover_image') || '').trim() || null,
+      players_min: Number(formData.get('players_min')) || null,
+      players_max: Number(formData.get('players_max')) || null,
+      duration: Number(formData.get('duration')) || null,
+      description: String(formData.get('description') || '').trim() || null
+    };
+
+    const { error } = await supabase
+      .from('games')
+      .update(updatedGame)
+      .eq('id', gameId);
+
+    if (error) {
+      throw error;
+    }
+
+    if (msg) {
+      msg.textContent = '✓ Fiche du jeu mise à jour.';
+      msg.style.color = 'var(--success)';
+    }
+
+    await loadAdminGamesList();
+    await loadGames();
+
+    setTimeout(() => {
+      $('editGameAdminModal')?.classList.add('hidden');
+    }, 500);
+
+  } catch (error) {
+
+    console.error('Erreur modification jeu :', error);
+
+    if (msg) {
+      msg.textContent = 'Erreur : ' + (error?.message || error);
+      msg.style.color = 'var(--danger)';
+    }
+
+  } finally {
+
+    if (submitBtn) submitBtn.disabled = false;
+
+  }
 }
 
 
@@ -5453,6 +5619,12 @@ $('dateEnd')
     ?.addEventListener(
       'submit',
       handleAddGame
+    );
+
+  $('editGameAdminForm')
+    ?.addEventListener(
+      'submit',
+      handleEditGameAdmin
     );
 
 
