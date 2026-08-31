@@ -56,8 +56,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.onclick = () => $(btn.dataset.close)?.classList.add('hidden');
   });
 
-  loadAdminGames();
-  loadAdminReservations();
+await loadAdminGames();
+await loadAdminReservations();
+await loadAccountRequests();
 });
 
 // --- GESTION DU CATALOGUE (AJOUT / ÉDITION / SUPPRESSION) ---
