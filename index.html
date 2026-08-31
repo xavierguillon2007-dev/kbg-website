@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KBG — Catalogue de jeux</title>
+  <link rel="stylesheet" href="styles.css?v=4">
+</head>
+
+<body>
+
+<header class="topbar">
+
+  <a class="brand" href="index.html">
+    <img
+      src="logo-kbg.png"
+      alt="Logo KBG"
+      class="brand-logo"
+    >
+    <span>KBG<span class="muted">/</span> GAMES</span>
+  </a>
+
+  <nav>
+
+    <a href="#catalogue">Catalogue</a>
+    <a href="#reservation">Réserver</a>
+    <a href="#calendrier">Planning</a>
+    <a href="events.html">Événements</a>
+
+    <button
+      id="notifBtn"
+      class="button"
+      style="position:relative; padding:6px 12px; margin-right:8px;"
+      title="Mes notifications"
+    >
+      🔔
+
+      <span
+        id="notifBadge"
+        class="badge badge-warning hidden"
+        style="
+          position:absolute;
+          top:-6px;
+          right:-6px;
+          border-radius:10px;
+          padding:2px 6px;
+          font-size:10px;
+        "
+      >
+        0
+      </span>
+
+    </button>
+
+    <div id="userNav" class="user-nav"></div>
+
+  </nav>
+
+</header>
+
+
+<main>
+
+  <!-- =====================================================
+       HERO
+  ====================================================== -->
+
+  <section class="hero home-hero">
+
+    <div>
+
+      <p class="eyebrow">
+        BIBLIOTHÈQUE LUDIQUE · 01
+      </p>
+
+      <h1>
+        Choisissez votre<br>
+        <span>prochaine partie.</span>
+      </h1>
+
+      <p class="hero-copy">
+        Le catalogue du KBG contient plus de 150 jeux ! Cliquez sur une fiche ou remplissez le formulaire pour les réserver.
+      </p>
+
+      <a
+        class="button primary"
+        href="#catalogue"
+      >
+        Explorer le catalogue ↘
+      </a>
+
+    </div>
+
+    <!-- =====================================================
+         PROCHAIN ÉVÉNEMENT
+    ====================================================== -->
+
+    <div
+      id="featuredEvent"
+      class="panel"
+      style="
+        padding:0;
+        overflow:hidden;
+        cursor:pointer;
+        border:1px solid var(--line);
+        background:var(--bg);
+        transition:transform .2s ease, border-color .2s ease;
+        width:min(430px,100%);
+        justify-self:end;
+      "
+    >
+      <div style="height:190px; position:relative; overflow:hidden; background:var(--surface,var(--bg));">
+        <img id="featuredEventImage" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+        <div id="featuredEventPlaceholder" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:40px;color:var(--muted);">✦</div>
+        <div style="position:absolute;left:12px;top:12px;">
+          <span class="badge" style="background:rgba(0,0,0,.75);backdrop-filter:blur(5px);">PROCHAIN ÉVÉNEMENT</span>
+        </div>
+      </div>
+      <div style="padding:18px;">
+        <p id="featuredEventDate" class="eyebrow" style="margin-bottom:6px;">À VENIR</p>
+        <h2 id="featuredEventTitle" style="margin:0;font-size:24px;">Recherche…</h2>
+        <p id="featuredEventDescription" style="margin-top:10px;color:var(--muted);font-size:13px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">Recherche du prochain événement…</p>
+        <p style="margin-top:14px;color:var(--accent);font-size:12px;font-weight:700;">Voir tous les événements →</p>
+      </div>
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       CATALOGUE
+  ====================================================== -->
+
+  <section id="catalogue" class="section">
+
+    <div class="section-head">
+
+      <div>
+
+        <p class="eyebrow">
+          CATALOGUE
+        </p>
+
+        <h2>
+          Les jeux disponibles
+        </h2>
+
+      </div>
+
+      <span
+        id="count"
+        class="counter"
+      >
+        Chargement…
+      </span>
+
+    </div>
+
+
+    <div class="toolbar">
+
+      <input
+        id="search"
+        type="search"
+        placeholder="Rechercher un jeu…"
+        autocomplete="off"
+      >
+
+      <select id="category">
+
+        <option value="">
+          Toutes les catégories
+        </option>
+
+      </select>
+
+
+      <select id="players">
+
+        <option value="">
+          Joueurs
+        </option>
+
+        <option value="2">
+          2+
+        </option>
+
+        <option value="4">
+          4+
+        </option>
+
+        <option value="6">
+          6+
+        </option>
+
+        <option value="8">
+          8+
+        </option>
+
+      </select>
+
+
+      <select id="sort">
+
+        <option value="name">
+          Nom A → Z
+        </option>
+
+        <option value="duration">
+          Durée croissante
+        </option>
+
+        <option value="players">
+          Nombre de joueurs
+        </option>
+
+        <option value="newest">
+          Nouveautés
+        </option>
+
+      </select>
+
+    </div>
+
+
+   <div
+  id="games"
+  class="grid"
+>
+  <div class="loading">
+    Connexion au catalogue…
+  </div>
+</div>
+
+<!-- Bouton pour afficher tout le catalogue -->
+<div
+  id="catalogueToggle"
+  style="
+    display:none;
+    justify-content:center;
+    margin-top:24px;
+  "
+>
+  <button
+    id="showAllGamesBtn"
+    class="button"
+    type="button"
+    aria-expanded="false"
+  >
+    <span id="showAllGamesArrow">↓</span>
+    <span id="showAllGamesText">Afficher tous les jeux</span>
+  </button>
+</div>
+  </section>
+
+
+  <!-- =====================================================
+       RÉSERVATION
+  ====================================================== -->
+
+  <section
+    id="reservation"
+    class="section"
+  >
+
+    <div class="reservation-layout">
+
+      <div class="reservation-info">
+
+        <p class="eyebrow">
+          RÉSERVATION · 02
+        </p>
+
+        <h2>
+          Demander à emprunter un jeu
+        </h2>
+
+        <p>
+          Sélectionnez le jeu souhaité, vos dates et vos
+          coordonnées. L'équipe du KBG traitera votre demande
+          rapidement.
+        </p>
+
+        <ul class="reservation-rules">
+
+          <li>
+            Emprunt réservé aux membres de l'association.
+          </li>
+
+          <li>
+            Durée maximale d’emprunt : 7 jours renouvelables.
+          </li>
+
+          <li>
+            Vérifiez l'intégralité du matériel avant retour.
+          </li>
+
+        </ul>
+
+
+        <div
+          id="authWarning"
+          class="panel hidden"
+          style="
+            border-color:var(--warning);
+            margin-top:16px;
+          "
+        >
+
+          <p
+            class="eyebrow"
+            style="color:var(--warning);"
+          >
+            CONNEXION REQUISE
+          </p>
+
+          <p
+            style="
+              font-size:13px;
+              margin-top:4px;
+            "
+          >
+            Vous devez être connecté à votre compte pour
+            effectuer une demande.
+          </p>
+
+          <button
+            class="button primary"
+            id="noticeAuthBtn"
+            style="
+              margin-top:12px;
+              width:100%;
+            "
+          >
+            Se connecter / S'inscrire →
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <div class="form-card">
+
+        <form id="reservationForm">
+
+          <div class="form-group">
+
+            <label for="gameSelect">
+              Jeu souhaité
+            </label>
+
+            <select
+              id="gameSelect"
+              name="game_id"
+              required
+            >
+
+              <option value="">
+                Sélectionnez un jeu…
+              </option>
+
+            </select>
+
+          </div>
+
+
+          <div class="form-row">
+
+            <div class="form-group">
+
+              <label for="dateStart">
+                Date de début
+              </label>
+
+              <input
+                id="dateStart"
+                name="date_start"
+                type="date"
+                required
+              >
+
+            </div>
+
+
+            <div class="form-group">
+
+              <label for="dateEnd">
+                Date de fin
+              </label>
+
+              <input
+                id="dateEnd"
+                name="date_end"
+                type="date"
+                required
+              >
+
+            </div>
+
+          </div>
+
+
+          <div class="form-row">
+
+            <div class="form-group">
+
+              <label for="firstName">
+                Prénom
+              </label>
+
+              <input
+                id="firstName"
+                name="first_name"
+                placeholder="Jean"
+                required
+              >
+
+            </div>
+
+
+            <div class="form-group">
+
+              <label for="lastName">
+                Nom
+              </label>
+
+              <input
+                id="lastName"
+                name="last_name"
+                placeholder="Dupont"
+                required
+              >
+
+            </div>
+
+          </div>
+
+
+          <div class="form-group">
+
+            <label for="promotion">
+              Promotion / Filière
+            </label>
+
+            <input
+              id="promotion"
+              name="promotion"
+              placeholder="Ex. DFGSM2, Master 1..."
+              required
+            >
+
+          </div>
+
+
+          <button
+            id="submitBookingBtn"
+            class="button primary"
+            type="submit"
+            style="
+              width:100%;
+              margin-top:8px;
+              padding:12px;
+            "
+          >
+            Envoyer la demande →
+          </button>
+
+
+          <p
+            id="formMessage"
+            class="form-message"
+            style="
+              margin-top:10px;
+              text-align:center;
+              font-size:13px;
+            "
+          ></p>
+
+        </form>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- =====================================================
+       CALENDRIER
+  ====================================================== -->
+
+  <section
+    id="calendrier"
+    class="section"
+  >
+
+    <div class="section-head">
+
+      <div>
+
+        <p class="eyebrow">
+          DISPONIBILITÉS · 03
+        </p>
+
+        <h2>
+          Calendrier des événements
+        </h2>
+
+      </div>
+
+    </div>
+
+
+    <div class="calendar-wrapper">
+
+      <div
+        class="calendar-nav"
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-bottom:16px;
+        "
+      >
+
+        <button
+          id="prevMonthBtn"
+          class="button"
+        >
+          ← Mois précédent
+        </button>
+
+        <h3
+          id="currentMonthLabel"
+          style="
+            font-size:18px;
+            font-weight:700;
+            text-transform:capitalize;
+          "
+        >
+          ---
+        </h3>
+
+        <button
+          id="nextMonthBtn"
+          class="button"
+        >
+          Mois suivant →
+        </button>
+
+      </div>
+
+
+      <div class="calendar-grid-header">
+
+        <div>Lun</div>
+        <div>Mar</div>
+        <div>Mer</div>
+        <div>Jeu</div>
+        <div>Ven</div>
+        <div>Sam</div>
+        <div>Dim</div>
+
+      </div>
+
+
+      <div
+        id="calendar"
+        class="calendar-grid"
+      >
+
+        <div class="loading">
+          Chargement du calendrier...
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<!-- =====================================================
+     NOTIFICATIONS
+====================================================== -->
+
+<div
+  id="notifModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="notifModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">
+      SUIVI
+    </p>
+
+    <h2>
+      Mes notifications
+    </h2>
+
+    <div
+      id="notifList"
+      style="
+        margin-top:16px;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      "
+    >
+
+      <div class="loading">
+        Chargement...
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODALE JOUR
+====================================================== -->
+
+<div
+  id="dayModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="dayModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">
+      PLANNING
+    </p>
+
+    <h2 id="dayModalTitle">
+      Événements
+    </h2>
+
+    <div
+      id="dayModalList"
+      style="
+        margin-top:16px;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+      "
+    ></div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODALE JEU / AVIS
+====================================================== -->
+
+<div
+  id="reviewModal"
+  class="modal hidden"
+>
+
+  <div
+    class="modal-card"
+    style="max-width:700px;"
+  >
+
+    <button
+      class="modal-close"
+      data-close="reviewModal"
+    >
+      ×
+    </button>
+
+
+    <div id="reviewGameHeader"></div>
+
+
+    <!-- =====================================================
+         CALENDRIER DE DISPONIBILITÉ DU JEU
+    ====================================================== -->
+
+    <div
+      id="gameAvailabilitySection"
+      style="
+        margin-top:24px;
+        border-top:1px solid var(--line);
+        padding-top:20px;
+      "
+    >
+
+      <div
+        style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          gap:12px;
+          flex-wrap:wrap;
+        "
+      >
+        <div>
+          <p class="eyebrow">
+            DISPONIBILITÉ
+          </p>
+          <h3 style="margin-top:4px;">
+            Calendrier du jeu
+          </h3>
+        </div>
+
+        <div
+          style="
+            display:flex;
+            gap:12px;
+            align-items:center;
+            font-size:12px;
+            color:var(--muted);
+          "
+        >
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--success);display:inline-block;"></span>
+            Libre
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:5px;">
+            <span style="width:10px;height:10px;border-radius:50%;background:var(--danger);display:inline-block;"></span>
+            Réservé
+          </span>
+        </div>
+      </div>
+
+      <div
+        id="gameAvailabilityCalendar"
+        class="game-availability-calendar"
+        style="margin-top:14px;"
+      >
+        <div class="loading">
+          Chargement des disponibilités…
+        </div>
+      </div>
+
+      <p
+        id="gameAvailabilityHelp"
+        style="
+          color:var(--muted);
+          font-size:12px;
+          margin-top:10px;
+          line-height:1.5;
+        "
+      >
+        Les dates vertes sont disponibles. Cliquez sur une date libre pour la sélectionner dans le formulaire de réservation.
+      </p>
+
+    </div>
+
+
+    <div style="margin-top:24px;">
+
+      <p class="eyebrow">
+        AVIS DES MEMBRES
+      </p>
+
+      <div
+        id="reviewsList"
+        style="margin-top:12px;"
+      >
+
+        <div class="loading">
+          Chargement des avis…
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- FORMULAIRE AVIS -->
+
+    <div
+      id="reviewFormContainer"
+      style="
+        margin-top:28px;
+        border-top:1px solid var(--line);
+        padding-top:20px;
+      "
+    >
+
+      <p class="eyebrow">
+        VOTRE AVIS
+      </p>
+
+
+      <form
+        id="reviewForm"
+        style="margin-top:12px;"
+      >
+
+        <input
+          type="hidden"
+          id="reviewGameId"
+        >
+
+
+        <!-- INFORMATIONS UTILISATEUR -->
+
+        <div
+          class="panel"
+          style="
+            padding:12px;
+            margin-bottom:14px;
+          "
+        >
+
+          <div
+            style="
+              font-size:12px;
+              color:var(--muted);
+            "
+          >
+            AVIS PUBLIÉ SOUS
+          </div>
+
+          <strong
+            id="reviewAuthorName"
+            style="
+              display:block;
+              margin-top:3px;
+            "
+          >
+            —
+          </strong>
+
+        </div>
+
+
+        <!-- ÉTOILES -->
+
+        <div style="margin-top:18px;">
+
+
+          <label
+            style="
+              display:block;
+              margin-bottom:8px;
+            "
+          >
+            Note
+          </label>
+
+
+          <div
+            id="starRating"
+            style="
+              display:flex;
+              gap:5px;
+              font-size:32px;
+              line-height:1;
+            "
+          >
+
+            <button
+              type="button"
+              class="star-button"
+              data-rating="1"
+            >
+              ★
+            </button>
+
+            <button
+              type="button"
+              class="star-button"
+              data-rating="2"
+            >
+              ★
+            </button>
+
+            <button
+              type="button"
+              class="star-button"
+              data-rating="3"
+            >
+              ★
+            </button>
+
+            <button
+              type="button"
+              class="star-button"
+              data-rating="4"
+            >
+              ★
+            </button>
+
+            <button
+              type="button"
+              class="star-button"
+              data-rating="5"
+            >
+              ★
+            </button>
+
+          </div>
+
+
+          <input
+            type="hidden"
+            id="reviewRating"
+            value="0"
+          >
+
+
+          <p
+            id="ratingHelp"
+            style="
+              color:var(--muted);
+              font-size:12px;
+              margin-top:6px;
+            "
+          >
+            Sélectionnez une note de 1 à 5 étoiles.
+          </p>
+
+        </div>
+
+
+        <!-- TEXTE -->
+
+        <textarea
+          id="reviewText"
+          rows="4"
+          maxlength="2000"
+          placeholder="Votre avis sur ce jeu…"
+          style="
+            width:100%;
+            margin-top:14px;
+            background:var(--bg);
+            border:1px solid var(--line);
+            color:var(--text);
+            padding:10px 12px;
+            border-radius:6px;
+            resize:vertical;
+          "
+        ></textarea>
+
+
+        <button
+          class="button primary"
+          type="submit"
+          style="
+            width:100%;
+            margin-top:12px;
+          "
+        >
+          Publier mon avis →
+        </button>
+
+
+        <p
+          id="reviewMsg"
+          class="form-message"
+          style="margin-top:8px;"
+          role="alert"
+          aria-live="polite"
+        ></p>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODALE PROFIL INCOMPLET
+====================================================== -->
+
+<div
+  id="profileModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="profileModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">
+      PROFIL
+    </p>
+
+    <h2>
+      Complétez votre profil
+    </h2>
+
+    <p
+      style="
+        color:var(--muted);
+        font-size:13px;
+        margin-top:8px;
+        line-height:1.6;
+      "
+    >
+      Votre ancien compte ne contient pas encore votre
+      prénom et votre nom. Ces informations seront utilisées
+      automatiquement lorsque vous publierez un avis.
+    </p>
+
+
+    <form
+      id="profileForm"
+      style="margin-top:20px;"
+    >
+
+      <div class="form-group">
+
+        <label for="profileFirstName">
+          Prénom
+        </label>
+
+        <input
+          id="profileFirstName"
+          required
+          maxlength="100"
+          placeholder="Jean"
+        >
+
+      </div>
+
+
+      <div
+        class="form-group"
+        style="margin-top:10px;"
+      >
+
+        <label for="profileLastName">
+          Nom
+        </label>
+
+        <input
+          id="profileLastName"
+          required
+          maxlength="100"
+          placeholder="Dupont"
+        >
+
+      </div>
+
+
+      <div
+        class="form-group"
+        style="margin-top:10px;"
+      >
+
+        <label for="profilePromotion">
+          Promotion / Filière
+        </label>
+
+        <input
+          id="profilePromotion"
+          required
+          maxlength="100"
+          placeholder="Ex. DFGSM2, Master 1..."
+        >
+
+      </div>
+
+
+      <button
+        class="button primary"
+        type="submit"
+        style="
+          width:100%;
+          margin-top:14px;
+        "
+      >
+        Enregistrer mes informations →
+      </button>
+
+
+      <p
+        id="profileMsg"
+        class="form-message"
+        style="margin-top:8px;"
+      ></p>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     ADMIN
+====================================================== -->
+
+<div
+  id="adminModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="adminModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">
+      ESPACE ADMIN
+    </p>
+
+    <h2>
+      Panneau de gestion
+    </h2>
+    <!-- =====================================================
+     VALIDATION DES COMPTES
+====================================================== -->
+
+<div
+  style="
+    margin-top:20px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+  "
+>
+
+  <p
+    class="eyebrow"
+    style="color:var(--warning);"
+  >
+    👤 VALIDATION DES COMPTES
+  </p>
+
+  <p
+    style="
+      margin-top:6px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    "
+  >
+    Les nouveaux comptes doivent être validés par un administrateur
+    avant de pouvoir utiliser le site.
+  </p>
+
+  <div
+    id="adminPendingAccounts"
+    class="grid"
+    style="
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:12px;
+    "
+  >
+    <div class="loading">
+      Chargement des demandes…
+    </div>
+  </div>
+
+</div>
+
+
+    <!-- AJOUT JEU -->
+
+    <form
+      id="addGameForm"
+      style="
+        margin-top:20px;
+        border-bottom:1px solid var(--line);
+        padding-bottom:20px;
+      "
+    >
+
+      <p class="eyebrow">
+        + AJOUTER UN JEU
+      </p>
+
+
+      <div class="admin-form-grid">
+
+        <input
+          name="name"
+          placeholder="Nom du jeu"
+          required
+        >
+
+        <input
+          name="publisher"
+          placeholder="Éditeur"
+          required
+        >
+
+        <input
+          name="category"
+          placeholder="Catégorie"
+        >
+
+      </div>
+
+
+      <div class="admin-form-grid">
+
+        <input
+          name="players_min"
+          type="number"
+          placeholder="Joueurs min"
+        >
+
+        <input
+          name="players_max"
+          type="number"
+          placeholder="Joueurs max"
+        >
+
+        <input
+          name="duration"
+          type="number"
+          placeholder="Durée (min)"
+        >
+
+      </div>
+
+
+      <input
+        name="cover_image"
+        placeholder="URL de l'image de couverture"
+        style="
+          width:100%;
+          margin-bottom:8px;
+          background:var(--bg);
+          border:1px solid var(--line);
+          padding:8px;
+          border-radius:4px;
+        "
+      >
+
+
+      <textarea
+        name="description"
+        class="admin-textarea"
+        placeholder="Description du jeu..."
+        style="
+          height:100px;
+          margin-bottom:12px;
+        "
+      ></textarea>
+
+
+      <button
+        type="submit"
+        class="button primary"
+      >
+        + Ajouter au catalogue
+      </button>
+
+
+      <p
+        id="addGameMsg"
+        class="form-message"
+        style="margin-top:6px;"
+      ></p>
+
+    </form>
+
+
+    <!-- CATALOGUE ADMIN -->
+
+    <div style="margin-top:20px;">
+
+      <p class="eyebrow">
+        GESTION DU CATALOGUE
+      </p>
+
+      <div
+        id="adminGamesList"
+        class="grid"
+        style="
+          grid-template-columns:1fr 1fr;
+          gap:10px;
+          margin-top:10px;
+        "
+      ></div>
+
+    </div>
+
+
+    <!-- DEMANDES EN ATTENTE -->
+
+    <div style="margin-top:30px;">
+
+      <p
+        class="eyebrow"
+        style="color:var(--warning);"
+      >
+        ⏳ DEMANDES EN COURS
+      </p>
+
+      <div
+        id="adminPendingReservations"
+        class="grid"
+        style="
+          grid-template-columns:1fr;
+          gap:10px;
+          margin-top:10px;
+        "
+      ></div>
+
+    </div>
+
+
+    <!-- HISTORIQUE -->
+
+    <div style="margin-top:30px;">
+
+      <p
+        class="eyebrow"
+        style="color:var(--muted);"
+      >
+        📁 DEMANDES DÉJÀ TRAITÉES
+      </p>
+
+      <div
+        id="adminProcessedReservations"
+        class="grid"
+        style="
+          grid-template-columns:1fr;
+          gap:10px;
+          margin-top:10px;
+        "
+      ></div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     MODIFICATION D'UN JEU — ADMIN
+====================================================== -->
+
+<div
+  id="editGameAdminModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="editGameAdminModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">ADMINISTRATION · JEU</p>
+
+    <h2>Modifier la fiche du jeu</h2>
+
+    <form
+      id="editGameAdminForm"
+      style="margin-top:20px;"
+    >
+
+      <input type="hidden" name="id">
+
+      <div class="admin-form-grid">
+
+        <input
+          name="name"
+          placeholder="Nom du jeu"
+          required
+        >
+
+        <input
+          name="publisher"
+          placeholder="Éditeur"
+        >
+
+        <input
+          name="category"
+          placeholder="Catégorie"
+        >
+
+        <input
+          name="cover_image"
+          placeholder="URL de l'image de couverture"
+        >
+
+      </div>
+
+      <div class="admin-form-grid">
+
+        <input
+          name="players_min"
+          type="number"
+          min="1"
+          placeholder="Joueurs min"
+        >
+
+        <input
+          name="players_max"
+          type="number"
+          min="1"
+          placeholder="Joueurs max"
+        >
+
+        <input
+          name="duration"
+          type="number"
+          min="1"
+          placeholder="Durée (min)"
+        >
+
+      </div>
+
+      <textarea
+        name="description"
+        class="admin-textarea"
+        placeholder="Description du jeu..."
+        style="height:100px; margin-bottom:12px;"
+      ></textarea>
+
+      <button
+        type="submit"
+        class="button primary"
+        style="width:100%;"
+      >
+        Enregistrer les modifications →
+      </button>
+
+      <p
+        id="editGameAdminMsg"
+        class="form-message"
+        style="margin-top:8px;"
+      ></p>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     AUTHENTIFICATION
+====================================================== -->
+
+<div
+  id="authModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="authModal"
+    >
+      ×
+    </button>
+
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:20px;
+      "
+    >
+
+      <!-- CONNEXION -->
+
+      <form id="loginForm">
+
+        <p class="eyebrow">
+          SE CONNECTER
+        </p>
+
+
+        <input
+          id="loginEmail"
+          type="email"
+          placeholder="E-mail"
+          required
+          style="
+            width:100%;
+            margin-bottom:8px;
+          "
+        >
+
+
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="Mot de passe"
+          required
+          style="
+            width:100%;
+            margin-bottom:12px;
+          "
+        >
+
+        <button
+          type="button"
+          id="forgotPasswordBtn"
+          style="
+            display:block;
+            margin:0 0 12px auto;
+            padding:0;
+            border:0;
+            background:none;
+            color:var(--accent);
+            font:inherit;
+            font-size:13px;
+            cursor:pointer;
+            text-decoration:underline;
+          "
+        >
+          Mot de passe oublié ?
+        </button>
+
+
+
+        <button
+          class="button primary"
+          type="submit"
+        >
+          Connexion
+        </button>
+
+
+        <p
+          id="loginMsg"
+          class="form-message"
+          style="margin-top:6px;"
+        ></p>
+
+      </form>
+
+
+      <!-- INSCRIPTION -->
+
+      <form id="signupForm">
+
+        <p class="eyebrow">
+          S'INSCRIRE
+        </p>
+
+
+        <input
+          id="signupFirst"
+          placeholder="Prénom"
+          required
+          maxlength="100"
+          style="
+            width:100%;
+            margin-bottom:8px;
+          "
+        >
+
+
+        <input
+          id="signupLast"
+          placeholder="Nom"
+          required
+          maxlength="100"
+          style="
+            width:100%;
+            margin-bottom:8px;
+          "
+        >
+
+
+        <input
+          id="signupPromotion"
+          placeholder="Promotion / Filière (ex. DFGSM2, Master 1...)"
+          required
+          maxlength="100"
+          style="
+            width:100%;
+            margin-bottom:8px;
+          "
+        >
+
+
+        <input
+          id="signupEmail"
+          type="email"
+          placeholder="E-mail"
+          required
+          style="
+            width:100%;
+            margin-bottom:8px;
+          "
+        >
+
+
+        <input
+          id="signupPassword"
+          type="password"
+          placeholder="Mot de passe"
+          required
+          minlength="6"
+          style="
+            width:100%;
+            margin-bottom:12px;
+          "
+        >
+
+
+        <button
+          class="button primary"
+          type="submit"
+        >
+          Créer compte
+        </button>
+
+
+        <p
+          id="signupMsg"
+          class="form-message"
+          style="margin-top:6px;"
+        ></p>
+
+      </form>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<footer>
+
+  <span>
+    KBG / Association ludique
+  </span>
+
+  <span>
+    Catalogue participatif
+  </span>
+
+</footer>
+
+
+<script
+  type="module"
+  src="app.js?v=4"
+></script>
+
+</body>
+</html>
