@@ -735,337 +735,143 @@ async function loadUserNotifications() {
 
 async function renderCalendar() {
 
-  const container =
-    $('calendar');
+  const container = $('calendar');
+  const label = $('currentMonthLabel');
 
-  const label =
-    $('currentMonthLabel');
+  if (!container) return;
 
-
-  if (!container) {
-    return;
-  }
-
-
-  const year =
-    currentCalendarDate.getFullYear();
-
-  const month =
-    currentCalendarDate.getMonth();
-
+  const year = currentCalendarDate.getFullYear();
+  const month = currentCalendarDate.getMonth();
 
   if (label) {
-
-    label.textContent =
-      currentCalendarDate.toLocaleDateString(
-        'fr-FR',
-        {
-          month: 'long',
-          year: 'numeric'
-        }
-      );
-
+    label.textContent = currentCalendarDate.toLocaleDateString('fr-FR', {
+      month: 'long',
+      year: 'numeric'
+    });
   }
 
-
   try {
+    // IMPORTANT : ce calendrier affiche uniquement les EVENEMENTS.
+    // Les réservations de jeux ne sont volontairement plus utilisées ici.
+    const { data: events, error } = await supabase
+      .from('events')
+      .select('*');
 
-    const {
-      data: reservations,
-      error
-    } =
-      await supabase
-        .from('reservations')
-        .select('*, games(name)')
-        .eq(
-          'status',
-          'approved'
-        );
+    if (error) throw error;
 
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
 
-    if (error) {
-      throw error;
-    }
+    // Lundi = 0 ... Dimanche = 6
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset === -1) startOffset = 6;
 
-
-    const firstDay =
-      new Date(
-        year,
-        month,
-        1
-      );
-
-    const lastDay =
-      new Date(
-        year,
-        month + 1,
-        0
-      );
-
-
-    let startOffset =
-      firstDay.getDay() - 1;
-
-    if (startOffset === -1) {
-      startOffset = 6;
-    }
-
+    const dayEventsMap = {};
+    const monthEvents = Array.isArray(events) ? events : [];
 
     let html = '';
 
-
-    for (
-      let i = 0;
-      i < startOffset;
-      i++
-    ) {
-
+    for (let i = 0; i < startOffset; i++) {
       html += `
-        <div
-          class="cal-day"
-          style="
-            opacity:0.15;
-            background:transparent;
-            border:1px dashed var(--line);
-          "
-        ></div>
+        <div class="cal-day" style="opacity:0.15;background:transparent;border:1px dashed var(--line);"></div>
       `;
-
     }
 
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-    const dayEventsMap = {};
+      const dayEvents = monthEvents.filter(event => {
+        const startValue = event.date || event.event_date || event.date_start || event.start_date;
+        const endValue = event.date_end || event.end_date || startValue;
 
+        if (!startValue) return false;
 
-    for (
-      let day = 1;
-      day <= lastDay.getDate();
-      day++
-    ) {
+        const start = String(startValue).slice(0, 10);
+        const end = String(endValue || startValue).slice(0, 10);
 
-      const dateStr =
-        `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        return dateStr >= start && dateStr <= end;
+      });
 
-
-      const events =
-        (reservations || []).filter(
-          reservation =>
-            dateStr >= reservation.date_start &&
-            dateStr <= reservation.date_end
-        );
-
-
-      dayEventsMap[dateStr] =
-        events;
-
+      dayEventsMap[dateStr] = dayEvents;
 
       html += `
-
-        <div
-          class="cal-day${events.length ? ' has-events' : ''}"
-          data-date="${dateStr}"
-        >
-
-          <span class="cal-day-num">
-            ${day}
-          </span>
-
-          ${
-            events.map(
-              event => `
-                <span
-                  class="cal-event"
-                  title="${esc(
-                    event.games?.name || 'Jeu'
-                  )}"
-                >
-                  📌 ${esc(
-                    event.games?.name || 'Jeu'
-                  )}
-                </span>
-              `
-            ).join('')
-          }
-
+        <div class="cal-day${dayEvents.length ? ' has-events' : ''}" data-date="${dateStr}">
+          <span class="cal-day-num">${day}</span>
+          ${dayEvents.map(event => `
+            <span class="cal-event" title="${esc(event.name || 'Événement')}">
+              📅 ${esc(event.name || 'Événement')}
+            </span>
+          `).join('')}
         </div>
-
       `;
-
     }
 
+    container.innerHTML = html;
 
-    container.innerHTML =
-      html;
-
-
-    container
-      .querySelectorAll(
-        '.cal-day.has-events'
-      )
-      .forEach(
-        dayEl => {
-
-          dayEl.addEventListener(
-            'click',
-            () => {
-
-              openDayModal(
-                dayEl.dataset.date,
-                dayEventsMap[
-                  dayEl.dataset.date
-                ] || []
-              );
-
-            }
-          );
-
-        }
-      );
-
+    container.querySelectorAll('.cal-day.has-events').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        openDayModal(dayEl.dataset.date, dayEventsMap[dayEl.dataset.date] || []);
+      });
+    });
 
   } catch (error) {
-
-    console.error(
-      'Erreur calendrier :',
-      error
-    );
-
+    console.error('Erreur calendrier événements :', error);
     container.innerHTML = `
-      <div class="empty panel">
-        Impossible de charger le calendrier.
+      <div class="empty panel" style="grid-column:1/-1;">
+        Impossible de charger les événements.
         <br>
-        <small>
-          ${esc(error.message)}
-        </small>
+        <small>${esc(error?.message || error)}</small>
       </div>
     `;
-
   }
 
 }
 
 
 // =========================================================
-// MODALE JOUR
+// MODALE JOUR — ÉVÉNEMENTS UNIQUEMENT
 // =========================================================
 
-function openDayModal(
-  dateStr,
-  events
-) {
+function openDayModal(dateStr, events) {
 
-  const modal =
-    $('dayModal');
+  const modal = $('dayModal');
+  const title = $('dayModalTitle');
+  const list = $('dayModalList');
 
-  const title =
-    $('dayModalTitle');
+  if (!modal || !list) return;
 
-  const list =
-    $('dayModalList');
-
-
-  if (!modal || !list) {
-    return;
-  }
-
-
-  const date =
-    new Date(
-      dateStr + 'T00:00:00'
-    );
-
+  const date = new Date(dateStr + 'T00:00:00');
 
   if (title) {
+    let label = date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
 
-    let label =
-      date.toLocaleDateString(
-        'fr-FR',
-        {
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        }
-      );
-
-    label =
-      label.charAt(0).toUpperCase() +
-      label.slice(1);
-
-    title.textContent =
-      label;
-
+    title.textContent = label.charAt(0).toUpperCase() + label.slice(1);
   }
-
 
   if (!events.length) {
-
-    list.innerHTML = `
-      <div class="empty">
-        Aucun jeu réservé ce jour-là.
-      </div>
-    `;
-
+    list.innerHTML = '<div class="empty">Aucun événement ce jour-là.</div>';
   } else {
-
-    list.innerHTML =
-      events.map(
-        event => `
-
-          <div
-            class="panel"
-            style="
-              padding:12px;
-              font-size:13px;
-            "
-          >
-
-            <strong>
-              ${esc(
-                event.games?.name || 'Jeu'
-              )}
-            </strong>
-
-            <p
-              style="
-                color:var(--muted);
-                font-size:12px;
-                margin-top:4px;
-              "
-            >
-              Du ${esc(event.date_start)}
-              au ${esc(event.date_end)}
-            </p>
-
-            <p
-              style="
-                margin-top:4px;
-                font-size:12px;
-              "
-            >
-              ${esc(event.first_name)}
-              ${esc(event.last_name)}
-
-              ${
-                event.promotion
-                  ? ` — ${esc(event.promotion)}`
-                  : ''
-              }
-
-            </p>
-
-          </div>
-
-        `
-      ).join('');
-
+    list.innerHTML = events.map(event => `
+      <div class="panel" style="padding:12px;font-size:13px;">
+        <strong>${esc(event.name || 'Événement')}</strong>
+        ${event.organizers ? `<p style="color:var(--muted);font-size:12px;margin-top:4px;">Organisé par : ${esc(event.organizers)}</p>` : ''}
+        ${event.short_description || event.description ? `<p style="margin-top:6px;font-size:12px;">${esc(event.short_description || event.description)}</p>` : ''}
+      </div>
+    `).join('');
   }
 
-
   modal.classList.remove('hidden');
-
 }
 
+
+// =========================================================
+// CATALOGUE
+// =========================================================
 
 // =========================================================
 // CATALOGUE
@@ -1121,47 +927,25 @@ async function loadNextEvent() {
 
 function getNextEvent() {
 
-  const today =
-    new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-  today.setHours(
-    0,
-    0,
-    0,
-    0
-  );
+  const upcomingEvents = allEvents
+    .filter(event => {
+      const value = event.date || event.event_date || event.date_start || event.start_date;
+      if (!value) return false;
 
-
-  const upcomingEvents =
-    allEvents
-      .filter(event => {
-
-        if (!event.date) {
-          return false;
-        }
-
-
-        const eventDate =
-          new Date(
-            `${event.date}T00:00:00`
-          );
-
-
-        return (
-          !isNaN(eventDate.getTime()) &&
-          eventDate >= today
-        );
-
-      })
-      .sort(
-        (a, b) =>
-          new Date(`${a.date}T00:00:00`) -
-          new Date(`${b.date}T00:00:00`)
-      );
-
+      const eventDate = new Date(String(value).slice(0, 10) + 'T00:00:00');
+      return !Number.isNaN(eventDate.getTime()) && eventDate >= today;
+    })
+    .sort((a, b) => {
+      const aValue = a.date || a.event_date || a.date_start || a.start_date;
+      const bValue = b.date || b.event_date || b.date_start || b.start_date;
+      return new Date(String(aValue).slice(0, 10) + 'T00:00:00') -
+             new Date(String(bValue).slice(0, 10) + 'T00:00:00');
+    });
 
   return upcomingEvents[0] || null;
-
 }
 
 
@@ -1206,131 +990,63 @@ function formatEventDate(dateString) {
 
 function renderNextEvent() {
 
-  const hero =
-    document.querySelector('.hero');
+  // Le cadre existe déjà dans index.html (#featuredEvent).
+  // On le remplit au lieu de créer un second cadre dans le hero.
+  const card = $('featuredEvent');
+  if (!card) return;
 
+  const image = $('featuredEventImage');
+  const placeholder = $('featuredEventPlaceholder');
+  const dateEl = $('featuredEventDate');
+  const titleEl = $('featuredEventTitle');
+  const descriptionEl = $('featuredEventDescription');
 
-  if (!hero) {
-    return;
-  }
+  const nextEvent = getNextEvent();
 
-
-  // On supprime une éventuelle ancienne version
-  document
-    .querySelector(
-      '#nextEventCard'
-    )
-    ?.remove();
-
-
-  const nextEvent =
-    getNextEvent();
-
-
-  // Aucun événement à venir
   if (!nextEvent) {
+    card.classList.add('hidden');
     return;
   }
 
+  card.classList.remove('hidden');
 
-  const card =
-    document.createElement('div');
+  const eventDate = nextEvent.date || nextEvent.event_date || nextEvent.date_start;
 
+  if (dateEl) {
+    dateEl.textContent = formatEventDate(eventDate);
+  }
 
-  card.id =
-    'nextEventCard';
+  if (titleEl) {
+    titleEl.textContent = nextEvent.name || 'Événement';
+  }
 
-  card.className =
-    'next-event-card';
+  if (descriptionEl) {
+    descriptionEl.textContent =
+      nextEvent.short_description ||
+      nextEvent.description ||
+      'Retrouvez toutes les informations sur cet événement.';
+  }
 
-
-  const formattedDate =
-    formatEventDate(
-      nextEvent.date
-    );
-
-
-  card.innerHTML = `
-
-    <div class="next-event-label">
-      PROCHAIN ÉVÉNEMENT
-    </div>
-
-
-    ${
-      nextEvent.photo_url
-        ? `
-          <div class="next-event-image">
-
-            <img
-              src="${esc(nextEvent.photo_url)}"
-              alt="${esc(nextEvent.name)}"
-            >
-
-          </div>
-        `
-        : `
-          <div class="next-event-image next-event-no-image">
-            ✦
-          </div>
-        `
+  if (image && placeholder) {
+    if (nextEvent.photo_url) {
+      image.src = nextEvent.photo_url;
+      image.alt = nextEvent.name || 'Événement';
+      image.style.display = 'block';
+      placeholder.style.display = 'none';
+    } else {
+      image.removeAttribute('src');
+      image.alt = '';
+      image.style.display = 'none';
+      placeholder.style.display = 'flex';
     }
+  }
 
-
-    <div class="next-event-content">
-
-      <p class="next-event-date">
-        📅 ${esc(formattedDate)}
-      </p>
-
-
-      <h3>
-        ${esc(nextEvent.name)}
-      </h3>
-
-
-      ${
-        nextEvent.short_description
-          ? `
-            <p class="next-event-description">
-              ${esc(
-                nextEvent.short_description
-              )}
-            </p>
-          `
-          : ''
-      }
-
-
-      <a
-        href="events.html"
-        class="next-event-link"
-      >
-        Voir tous les événements →
-      </a>
-
-    </div>
-
-  `;
-
-
-  /*
-   * On place le cadre dans le hero.
-   *
-   * Le hero actuel possède déjà le contenu principal
-   * et l'orb décoratif.
-   */
-  hero.appendChild(card);
-
-
-  injectNextEventStyles();
+  card.onclick = () => {
+    window.location.href = 'events.html';
+  };
 
 }
 
-
-// =========================================================
-// STYLE DU CADRE — INJECTÉ PAR APP.JS
-// =========================================================
 
 function injectNextEventStyles() {
 
