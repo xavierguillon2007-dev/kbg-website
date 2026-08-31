@@ -512,7 +512,7 @@ async function handleAccountDecision(
         {
           body: {
             request_id: request.id,
-            decision: decision
+            action: decision
           }
         }
       );
