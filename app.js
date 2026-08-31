@@ -39,6 +39,7 @@ function isAdminEmail(email) {
 
 let allGames = [];
 let allReviews = [];
+let allEvents = [];
 
 let currentUser = null;
 
@@ -4172,6 +4173,205 @@ async function handleBookingSubmit(e) {
 
 
 // =========================================================
+// ADMIN — DEMANDES DE VALIDATION DE COMPTES
+// =========================================================
+
+let currentAccountRequests = [];
+
+async function loadAdminAccountRequests() {
+  const container = $('accountRequestsList');
+
+  // Cette section peut être absente de certaines pages.
+  if (!container) return;
+
+  if (!isAdminEmail(currentUser?.email)) {
+    container.innerHTML = `
+      <div class="empty panel">
+        Accès réservé aux administrateurs.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="loading">Chargement des demandes de validation…</div>
+  `;
+
+  try {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    currentAccountRequests = Array.isArray(data) ? data : [];
+    renderAdminAccountRequests();
+  } catch (error) {
+    console.error('Erreur chargement demandes de comptes :', error);
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Impossible de charger les demandes de comptes.</strong>
+        <br>
+        <small>${esc(error?.message || error)}</small>
+      </div>
+    `;
+  }
+}
+
+function renderAdminAccountRequests() {
+  const container = $('accountRequestsList');
+  if (!container) return;
+
+  const pending = currentAccountRequests.filter(
+    request => request.status === 'pending'
+  );
+
+  if (!pending.length) {
+    container.innerHTML = `
+      <div class="empty panel">
+        Aucune demande de compte en attente.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = pending.map(request => `
+    <article class="panel admin-card">
+      <div>
+        <span class="badge badge-warning">En attente</span>
+        <h3 style="margin-top:8px;">
+          ${esc(request.first_name)} ${esc(request.last_name)}
+        </h3>
+        <p class="publisher">${esc(request.email)}</p>
+      </div>
+
+      <div class="admin-card-body">
+        <p><strong>Promotion :</strong> ${esc(request.promotion)}</p>
+        <p>
+          <strong>Demande créée :</strong>
+          ${formatAdminAccountRequestDate(request.created_at)}
+        </p>
+      </div>
+
+      <div class="admin-card-actions">
+        <button
+          class="button primary"
+          data-approve-account="${esc(request.id)}"
+        >
+          ✓ Valider
+        </button>
+        <button
+          class="button danger"
+          data-reject-account="${esc(request.id)}"
+        >
+          ✕ Refuser
+        </button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-approve-account]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleAdminAccountDecision(
+        button.dataset.approveAccount,
+        'approved',
+        button
+      )
+    );
+  });
+
+  container.querySelectorAll('[data-reject-account]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleAdminAccountDecision(
+        button.dataset.rejectAccount,
+        'rejected',
+        button
+      )
+    );
+  });
+}
+
+function formatAdminAccountRequestDate(value) {
+  if (!value) return 'Date inconnue';
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+
+  return date.toLocaleString('fr-FR', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+}
+
+async function handleAdminAccountDecision(requestId, decision, button) {
+  if (!isAdminEmail(currentUser?.email)) {
+    alert('Accès réservé aux administrateurs.');
+    return;
+  }
+
+  const request = currentAccountRequests.find(
+    item => String(item.id) === String(requestId)
+  );
+
+  if (!request) {
+    alert('Demande de compte introuvable.');
+    return;
+  }
+
+  const verb = decision === 'approved' ? 'valider' : 'refuser';
+
+  if (!confirm(
+    `Voulez-vous vraiment ${verb} le compte de ` +
+    `${request.first_name} ${request.last_name} ?`
+  )) {
+    return;
+  }
+
+  const originalText = button?.textContent || '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = '…';
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke(
+      'approve-account',
+      {
+        body: {
+          request_id: request.id,
+          action: decision
+        }
+      }
+    );
+
+    if (error) throw error;
+    if (!data?.ok) {
+      throw new Error(
+        data?.error || 'La validation du compte a échoué.'
+      );
+    }
+
+    alert(
+      decision === 'approved'
+        ? '✓ Compte validé avec succès.'
+        : '✓ Compte refusé.'
+    );
+
+    await loadAdminAccountRequests();
+  } catch (error) {
+    console.error('Erreur validation compte :', error);
+    alert('Erreur : ' + (error?.message || error));
+
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
+
+// =========================================================
 // ADMIN
 // =========================================================
 
@@ -4189,6 +4389,8 @@ async function loadAdminPanel() {
     return;
   }
 
+
+  await loadAdminAccountRequests();
 
   await loadAdminGamesList();
 
