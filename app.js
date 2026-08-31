@@ -215,14 +215,9 @@ document.addEventListener(
 
     }
 
-    // Les trois chargements sont indépendants : si le catalogue ou
-    // le calendrier rencontre un problème réseau, le prochain événement
-    // doit quand même pouvoir s'afficher immédiatement.
-    await Promise.allSettled([
-      loadGames(),
-      renderCalendar(),
-      loadNextEvent()
-    ]);
+   await loadGames();
+await renderCalendar();
+await loadNextEvent();
 
   }
 );
@@ -1080,79 +1075,92 @@ function openDayModal(
 
 async function loadNextEvent() {
 
-  const card = $('featuredEvent');
-
-  // Cette fonctionnalité n'existe que sur l'accueil.
-  // Sur events.html, on ne fait donc aucune requête inutile.
-  if (!card) return;
-
-  const title = $('featuredEventTitle');
-  const date = $('featuredEventDate');
-  const description = $('featuredEventDescription');
-  const image = $('featuredEventImage');
-  const placeholder = $('featuredEventPlaceholder');
-
   try {
-    const eventsRequest = supabase
+
+    const {
+      data: events,
+      error
+    } = await supabase
       .from('events')
-      .select('id,name,date,photo_url,short_description,description,organizers')
-      .order('date', { ascending: true });
+      .select('*')
+      .order('date', {
+        ascending: true
+      });
 
-    const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Délai dépassé lors du chargement des événements.')), 8000)
-    );
 
-    const { data: events, error } = await Promise.race([eventsRequest, timeout]);
-
-    if (error) throw error;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const nextEvent = (events || [])
-      .filter(event => {
-        if (!event.date) return false;
-        const d = new Date(`${event.date}T00:00:00`);
-        return !Number.isNaN(d.getTime()) && d >= today;
-      })
-      .sort((a, b) => new Date(`${a.date}T00:00:00`) - new Date(`${b.date}T00:00:00`))[0];
-
-    if (!nextEvent) {
-      title.textContent = 'Aucun événement prévu';
-      date.textContent = 'À VENIR';
-      description.textContent = 'Aucun prochain événement n’est actuellement annoncé.';
-      image.style.display = 'none';
-      placeholder.style.display = 'flex';
-      return;
+    if (error) {
+      throw error;
     }
 
-    date.textContent = `📅 ${formatEventDate(nextEvent.date)}`;
-    title.textContent = nextEvent.name || 'Événement';
-    description.textContent = nextEvent.short_description || nextEvent.description || 'Découvrez les prochains événements du KBG.';
 
-    if (nextEvent.photo_url) {
-      image.src = nextEvent.photo_url;
-      image.alt = nextEvent.name || 'Événement';
-      image.style.display = 'block';
-      placeholder.style.display = 'none';
-    } else {
-      image.removeAttribute('src');
-      image.style.display = 'none';
-      placeholder.style.display = 'flex';
-    }
+    allEvents =
+      Array.isArray(events)
+        ? events
+        : [];
 
-    card.onclick = () => {
-      window.location.href = `events.html#event-${encodeURIComponent(nextEvent.id)}`;
-    };
+
+    renderNextEvent();
+
 
   } catch (error) {
-    console.error('Erreur chargement prochain événement :', error);
-    title.textContent = 'Événements';
-    date.textContent = 'INFORMATION INDISPONIBLE';
-    description.textContent = 'Impossible de charger le prochain événement.';
-    image.style.display = 'none';
-    placeholder.style.display = 'flex';
+
+    console.error(
+      'Erreur chargement événements :',
+      error
+    );
+
   }
+
+}
+
+
+// =========================================================
+// TROUVER LE PROCHAIN ÉVÉNEMENT
+// =========================================================
+
+function getNextEvent() {
+
+  const today =
+    new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+
+  const upcomingEvents =
+    allEvents
+      .filter(event => {
+
+        if (!event.date) {
+          return false;
+        }
+
+
+        const eventDate =
+          new Date(
+            `${event.date}T00:00:00`
+          );
+
+
+        return (
+          !isNaN(eventDate.getTime()) &&
+          eventDate >= today
+        );
+
+      })
+      .sort(
+        (a, b) =>
+          new Date(`${a.date}T00:00:00`) -
+          new Date(`${b.date}T00:00:00`)
+      );
+
+
+  return upcomingEvents[0] || null;
+
 }
 
 
@@ -1161,17 +1169,1085 @@ async function loadNextEvent() {
 // =========================================================
 
 function formatEventDate(dateString) {
-  if (!dateString) return '';
-  const date = new Date(`${dateString}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return dateString;
-  return date.toLocaleDateString('fr-FR', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+
+  if (!dateString) {
+    return '';
+  }
+
+
+  const date =
+    new Date(
+      `${dateString}T00:00:00`
+    );
+
+
+  if (isNaN(date.getTime())) {
+    return dateString;
+  }
+
+
+  return date.toLocaleDateString(
+    'fr-FR',
+    {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    }
+  );
+
 }
 
+
+// =========================================================
+// CRÉATION DU CADRE DANS LE HERO
+// =========================================================
+
+function renderNextEvent() {
+
+  const hero =
+    document.querySelector('.hero');
+
+
+  if (!hero) {
+    return;
+  }
+
+
+  // On supprime une éventuelle ancienne version
+  document
+    .querySelector(
+      '#nextEventCard'
+    )
+    ?.remove();
+
+
+  const nextEvent =
+    getNextEvent();
+
+
+  // Aucun événement à venir
+  if (!nextEvent) {
+    return;
+  }
+
+
+  const card =
+    document.createElement('div');
+
+
+  card.id =
+    'nextEventCard';
+
+  card.className =
+    'next-event-card';
+
+
+  const formattedDate =
+    formatEventDate(
+      nextEvent.date
+    );
+
+
+  card.innerHTML = `
+
+    <div class="next-event-label">
+      PROCHAIN ÉVÉNEMENT
+    </div>
+
+
+    ${
+      nextEvent.photo_url
+        ? `
+          <div class="next-event-image">
+
+            <img
+              src="${esc(nextEvent.photo_url)}"
+              alt="${esc(nextEvent.name)}"
+            >
+
+          </div>
+        `
+        : `
+          <div class="next-event-image next-event-no-image">
+            ✦
+          </div>
+        `
+    }
+
+
+    <div class="next-event-content">
+
+      <p class="next-event-date">
+        📅 ${esc(formattedDate)}
+      </p>
+
+
+      <h3>
+        ${esc(nextEvent.name)}
+      </h3>
+
+
+      ${
+        nextEvent.short_description
+          ? `
+            <p class="next-event-description">
+              ${esc(
+                nextEvent.short_description
+              )}
+            </p>
+          `
+          : ''
+      }
+
+
+      <a
+        href="events.html"
+        class="next-event-link"
+      >
+        Voir tous les événements →
+      </a>
+
+    </div>
+
+  `;
+
+
+  /*
+   * On place le cadre dans le hero.
+   *
+   * Le hero actuel possède déjà le contenu principal
+   * et l'orb décoratif.
+   */
+  hero.appendChild(card);
+
+
+  injectNextEventStyles();
+
+}
+
+
+// =========================================================
+// STYLE DU CADRE — INJECTÉ PAR APP.JS
+// =========================================================
+
+function injectNextEventStyles() {
+
+  if (
+    $('nextEventStyles')
+  ) {
+    return;
+  }
+
+
+  const style =
+    document.createElement('style');
+
+
+  style.id =
+    'nextEventStyles';
+
+
+  style.textContent = `
+
+    /* =========================================
+       CADRE PROCHAIN ÉVÉNEMENT
+       ========================================= */
+
+    .next-event-card {
+
+      width: min(
+        380px,
+        100%
+      );
+
+      flex-shrink: 0;
+
+      background:
+        var(--panel);
+
+      border:
+        1px solid var(--line);
+
+      border-radius:
+        12px;
+
+      overflow:
+        hidden;
+
+      box-shadow:
+        0 18px 50px
+        rgba(0, 0, 0, 0.25);
+
+      transition:
+        transform .2s ease,
+        border-color .2s ease;
+
+      position:
+        relative;
+
+      z-index:
+        2;
+
+    }
+
+
+    .next-event-card:hover {
+
+      transform:
+        translateY(-3px);
+
+      border-color:
+        var(--accent);
+
+    }
+
+
+    .next-event-label {
+
+      padding:
+        11px 14px;
+
+      background:
+        var(--accent);
+
+      color:
+        #fff;
+
+      font-size:
+        10px;
+
+      font-weight:
+        900;
+
+      letter-spacing:
+        .14em;
+
+      text-transform:
+        uppercase;
+
+    }
+
+
+    .next-event-image {
+
+      width:
+        100%;
+
+      height:
+        150px;
+
+      overflow:
+        hidden;
+
+      background:
+        var(--bg);
+
+    }
+
+
+    .next-event-image img {
+
+      width:
+        100%;
+
+      height:
+        100%;
+
+      object-fit:
+        cover;
+
+      display:
+        block;
+
+    }
+
+
+    .next-event-no-image {
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        center;
+
+      font-size:
+        48px;
+
+      color:
+        var(--muted);
+
+    }
+
+
+    .next-event-content {
+
+      padding:
+        16px;
+
+    }
+
+
+    .next-event-date {
+
+      margin:
+        0 0 7px;
+
+      color:
+        var(--accent);
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-transform:
+        capitalize;
+
+    }
+
+
+    .next-event-content h3 {
+
+      margin:
+        0;
+
+      font-size:
+        21px;
+
+      line-height:
+        1.2;
+
+      color:
+        var(--text);
+
+    }
+
+
+    .next-event-description {
+
+      margin:
+        10px 0 0;
+
+      color:
+        var(--muted);
+
+      font-size:
+        13px;
+
+      line-height:
+        1.55;
+
+      display:
+        -webkit-box;
+
+      -webkit-line-clamp:
+        3;
+
+      -webkit-box-orient:
+        vertical;
+
+      overflow:
+        hidden;
+
+    }
+
+
+    .next-event-link {
+
+      display:
+        inline-block;
+
+      margin-top:
+        14px;
+
+      color:
+        var(--accent);
+
+      font-size:
+        12px;
+
+      font-weight:
+        800;
+
+      text-decoration:
+        none;
+
+    }
+
+
+    .next-event-link:hover {
+      text-decoration:
+        underline;
+    }
+
+
+    /* =========================================
+       HERO
+       ========================================= */
+
+    .hero {
+
+      display:
+        flex;
+
+      align-items:
+        center;
+
+      justify-content:
+        space-between;
+
+      gap:
+        40px;
+
+    }
+
+
+    /* =========================================
+       MOBILE
+       ========================================= */
+
+    @media (max-width: 800px) {
+
+      .hero {
+
+        flex-direction:
+          column;
+
+        align-items:
+          stretch;
+
+      }
+
+
+      .next-event-card {
+
+        width:
+          100%;
+
+        max-width:
+          100%;
+
+      }
+
+    }
+
+  `;
+
+
+  document.head.appendChild(
+    style
+  );
+
+}
+async function loadGames() {
+
+  const container =
+    $('games');
+
+
+  if (!container) {
+    return;
+  }
+
+
+  container.innerHTML = `
+    <div class="loading">
+      Connexion au catalogue…
+    </div>
+  `;
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('games')
+        .select('*')
+        .order('name');
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    allGames =
+      Array.isArray(data)
+        ? data
+        : [];
+
+
+    const categories =
+      [
+        ...new Set(
+          allGames
+            .map(
+              game => game.category
+            )
+            .filter(Boolean)
+        )
+      ].sort();
+
+
+    if ($('category')) {
+
+      $('category').innerHTML = `
+        <option value="">
+          Toutes les catégories
+        </option>
+      ` +
+      categories.map(
+        category => `
+          <option value="${esc(category)}">
+            ${esc(category)}
+          </option>
+        `
+      ).join('');
+
+    }
+
+
+    if ($('gameSelect')) {
+
+      $('gameSelect').innerHTML = `
+        <option value="">
+          Sélectionnez un jeu…
+        </option>
+      ` +
+      allGames.map(
+        game => `
+          <option value="${esc(game.id)}">
+            ${esc(game.name)}
+          </option>
+        `
+      ).join('');
+
+    }
+
+
+    await loadAllReviews();
+
+    renderGames();
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur chargement catalogue :',
+      error
+    );
+
+
+    container.innerHTML = `
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
+
+        <strong>
+          Impossible de charger le catalogue.
+        </strong>
+
+        <br><br>
+
+        <small>
+          ${esc(
+            error.message ||
+            'Erreur inconnue'
+          )}
+        </small>
+
+      </div>
+    `;
+
+
+    if ($('count')) {
+      $('count').textContent =
+        'Erreur';
+    }
+
+  }
+
+}
+
+
+// =========================================================
+// AVIS
+// =========================================================
+
+async function loadAllReviews() {
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from('game_reviews')
+        .select('*')
+        .order(
+          'created_at',
+          {
+            ascending: false
+          }
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    allReviews =
+      data || [];
+
+
+  } catch (error) {
+
+    console.error(
+      'Erreur chargement avis :',
+      error
+    );
+
+    allReviews = [];
+
+  }
+
+}
+
+
+function getGameReviews(gameId) {
+
+  return allReviews.filter(
+    review =>
+      String(review.game_id) ===
+      String(gameId)
+  );
+
+}
+
+
+function getAverageRating(gameId) {
+
+  const reviews =
+    getGameReviews(gameId);
+
+
+  if (!reviews.length) {
+    return 0;
+  }
+
+
+  return (
+    reviews.reduce(
+      (sum, review) =>
+        sum +
+        Number(review.rating || 0),
+      0
+    ) /
+    reviews.length
+  );
+
+}
+
+
+// =========================================================
+// RENDU CATALOGUE
+// =========================================================
+
+function renderGames() {
+
+  const container =
+    $('games');
+
+
+  if (!container) {
+    return;
+  }
+
+
+  const query =
+    $('search')?.value
+      .toLowerCase()
+      .trim() || '';
+
+
+  const category =
+    $('category')?.value || '';
+
+
+  const minPlayers =
+    Number(
+      $('players')?.value || 0
+    );
+
+
+  const sortBy =
+    $('sort')?.value || 'name';
+
+
+  let games =
+    allGames.filter(
+      game => {
+
+        const searchText = `
+          ${game.name || ''}
+          ${game.publisher || ''}
+          ${game.category || ''}
+        `.toLowerCase();
+
+
+        return (
+          (!query ||
+            searchText.includes(query))
+          &&
+          (!category ||
+            game.category === category)
+          &&
+          (!minPlayers ||
+            Number(game.players_max || 0) >= minPlayers)
+        );
+
+      }
+    );
+
+
+  if (sortBy === 'duration') {
+
+    games.sort(
+      (a, b) =>
+        Number(a.duration || 0) -
+        Number(b.duration || 0)
+    );
+
+  } else if (sortBy === 'players') {
+
+    games.sort(
+      (a, b) =>
+        Number(b.players_max || 0) -
+        Number(a.players_max || 0)
+    );
+
+  } else if (sortBy === 'newest') {
+
+    games.sort(
+      (a, b) =>
+        new Date(b.created_at || 0) -
+        new Date(a.created_at || 0)
+    );
+
+  } else {
+
+    games.sort(
+      (a, b) =>
+        String(a.name || '')
+          .localeCompare(
+            String(b.name || ''),
+            'fr'
+          )
+    );
+
+  }
+
+
+  if ($('count')) {
+    $('count').textContent =
+      `${games.length} jeu(x)`;
+  }
+
+
+  if (!games.length) {
+
+    container.innerHTML = `
+      <div
+        class="empty panel"
+        style="grid-column:1/-1;"
+      >
+        Aucun jeu trouvé.
+      </div>
+    `;
+
+    $('catalogueToggle')
+      ?.style.setProperty('display', 'none');
+
+    return;
+
+  }
+
+
+  const hasMore =
+    games.length > GAMES_PREVIEW_LIMIT;
+
+  const displayGames =
+    (!hasMore || showAllGames)
+      ? games
+      : games.slice(0, GAMES_PREVIEW_LIMIT);
+
+
+  const toggleWrapper =
+    $('catalogueToggle');
+
+  const toggleBtn =
+    $('showAllGamesBtn');
+
+  const toggleArrow =
+    $('showAllGamesArrow');
+
+  const toggleText =
+    $('showAllGamesText');
+
+
+  if (toggleWrapper) {
+
+    toggleWrapper.style.display =
+      hasMore ? 'flex' : 'none';
+
+  }
+
+
+  if (hasMore && toggleBtn) {
+
+    toggleBtn.setAttribute(
+      'aria-expanded',
+      String(showAllGames)
+    );
+
+    if (toggleArrow) {
+      toggleArrow.textContent =
+        showAllGames ? '↑' : '↓';
+    }
+
+    if (toggleText) {
+      toggleText.textContent =
+        showAllGames
+          ? 'Réduire la liste'
+          : `Afficher tous les jeux (${games.length})`;
+    }
+
+    toggleBtn.onclick = () => {
+      showAllGames = !showAllGames;
+      renderGames();
+
+      if (!showAllGames) {
+        container.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    };
+
+  }
+
+
+  container.innerHTML =
+    displayGames.map(
+      game => {
+
+        const reviews =
+          getGameReviews(game.id);
+
+        const average =
+          getAverageRating(game.id);
+
+
+        let ratingHTML = '';
+
+
+        if (reviews.length) {
+
+          const rounded =
+            Math.max(
+              0,
+              Math.min(
+                5,
+                Math.round(average)
+              )
+            );
+
+
+          ratingHTML = `
+            <div
+              style="
+                display:flex;
+                align-items:center;
+                gap:7px;
+                margin-top:8px;
+              "
+            >
+
+              <span class="review-stars">
+                ${'★'.repeat(rounded)}
+
+                <span style="color:var(--line);">
+                  ${'★'.repeat(5 - rounded)}
+                </span>
+              </span>
+
+              <span
+                style="
+                  color:var(--muted);
+                  font-size:12px;
+                "
+              >
+                ${average.toFixed(1)}/5
+                · ${reviews.length} avis
+              </span>
+
+            </div>
+          `;
+
+        } else {
+
+          ratingHTML = `
+            <div
+              style="
+                color:var(--muted);
+                font-size:12px;
+                margin-top:8px;
+              "
+            >
+              Aucun avis
+            </div>
+          `;
+
+        }
+
+
+        return `
+
+          <article
+            class="card"
+            data-review-game="${esc(game.id)}"
+            style="cursor:pointer;"
+            title="Voir le jeu et les avis"
+          >
+
+            <div class="cover">
+
+              ${
+                game.cover_image
+                  ? `
+                    <img
+                      src="${esc(game.cover_image)}"
+                      alt="${esc(game.name)}"
+                    >
+                  `
+                  : '<span>✦</span>'
+              }
+
+            </div>
+
+            <div class="card-body">
+
+              <p class="tag">
+                ${esc(
+                  game.category || 'Jeu'
+                )}
+              </p>
+
+              <h3>
+                ${esc(game.name)}
+              </h3>
+
+              <p class="publisher">
+                ${esc(game.publisher || '')}
+              </p>
+
+              <div class="meta">
+
+                <span>
+                  ♙
+                  ${game.players_min || '?'}-
+                  ${game.players_max || '?'}
+                  joueurs
+                </span>
+
+                <span>
+                  ◷
+                  ${game.duration || '?'}
+                  min
+                </span>
+
+              </div>
+
+              ${ratingHTML}
+
+              <p
+                class="desc"
+                style="
+                  display:-webkit-box;
+                  -webkit-line-clamp:3;
+                  -webkit-box-orient:vertical;
+                  overflow:hidden;
+                "
+              >
+                ${esc(
+                  game.description ||
+                  'Aucune description disponible.'
+                )}
+              </p>
+
+              <p
+                style="
+                  color:#2583ff;
+                  font-size:12px;
+                  margin-top:10px;
+                  font-weight:700;
+                "
+              >
+                Voir la fiche complète et les avis →
+              </p>
+
+            </div>
+
+          </article>
+
+        `;
+
+      }
+    ).join('');
+
+
+  container
+    .querySelectorAll(
+      '[data-review-game]'
+    )
+    .forEach(
+      card => {
+
+        card.addEventListener(
+          'click',
+          () => {
+
+            const game =
+              allGames.find(
+                g =>
+                  String(g.id) ===
+                  String(
+                    card.dataset.reviewGame
+                  )
+              );
+
+            if (game) {
+              openReviewModal(game);
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
 
 // =========================================================
 // CALENDRIER DE DISPONIBILITÉ PAR JEU
@@ -4071,7 +5147,8 @@ async function handleSignup(e) {
 
     const email = String(
       $('signupEmail')?.value || ''
-    ).trim();
+    ).trim()
+    .toLowerCase();
 
     const password =
       $('signupPassword')?.value || '';
@@ -4124,13 +5201,9 @@ async function handleSignup(e) {
         data.message ||
         '✓ Demande envoyée ! Votre compte est maintenant en attente de validation par un administrateur.';
 
-      msg.style.color =
-        'var(--success)';
+      msg.style.color = 'var(--success)';
     }
 
-    // On garde une référence directe au formulaire
-    // afin de ne pas dépendre de e.currentTarget après
-    // les await.
     if (form) {
       form.reset();
     }
@@ -4144,11 +5217,12 @@ async function handleSignup(e) {
     if (msg) {
       msg.textContent =
         'Erreur : ' +
-        (error?.message ||
-          'Une erreur est survenue.');
+        (
+          error?.message ||
+          'Une erreur est survenue.'
+        );
 
-      msg.style.color =
-        'var(--danger)';
+      msg.style.color = 'var(--danger)';
     }
 
   } finally {
