@@ -4199,7 +4199,7 @@ async function loadAdminPanel() {
 let currentAccountRequests = [];
 
 async function loadAdminAccountRequests() {
-  const container = $('accountRequestsList');
+  const container = $('adminPendingAccounts');
   if (!container) return;
 
   container.innerHTML = `
@@ -4236,7 +4236,7 @@ async function loadAdminAccountRequests() {
 }
 
 function renderAdminAccountRequests() {
-  const container = $('accountRequestsList');
+  const container = $('adminPendingAccounts');
   if (!container) return;
 
   const pending = currentAccountRequests.filter(
