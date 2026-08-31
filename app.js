@@ -4229,9 +4229,6 @@ async function loadAdminGamesList() {
       }
     );
 
-}
-
-
   // -------------------------------------------------------
   // MODIFICATION D'UN JEU
   // -------------------------------------------------------
@@ -4240,24 +4237,25 @@ async function loadAdminGamesList() {
     .querySelectorAll('[data-edit-game]')
     .forEach(button => {
 
-      button.onclick = () => {
+      button.addEventListener('click', () => {
 
         if (!isAdminEmail(currentUser?.email)) {
           return;
         }
 
-        const game =
-          games.find(
-            item => String(item.id) === String(button.dataset.editGame)
-          );
+        const game = (games || []).find(
+          item => String(item.id) === String(button.dataset.editGame)
+        );
 
         if (game) {
           openEditGameModal(game);
         }
 
-      };
+      });
 
     });
+
+}
 
 
 // =========================================================
