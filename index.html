@@ -1365,6 +1365,113 @@
 
 
 <!-- =====================================================
+     MODIFICATION D'UN JEU — ADMIN
+====================================================== -->
+
+<div
+  id="editGameAdminModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="editGameAdminModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">ADMINISTRATION · JEU</p>
+
+    <h2>Modifier la fiche du jeu</h2>
+
+    <form
+      id="editGameAdminForm"
+      style="margin-top:20px;"
+    >
+
+      <input type="hidden" name="id">
+
+      <div class="admin-form-grid">
+
+        <input
+          name="name"
+          placeholder="Nom du jeu"
+          required
+        >
+
+        <input
+          name="publisher"
+          placeholder="Éditeur"
+        >
+
+        <input
+          name="category"
+          placeholder="Catégorie"
+        >
+
+        <input
+          name="cover_image"
+          placeholder="URL de l'image de couverture"
+        >
+
+      </div>
+
+      <div class="admin-form-grid">
+
+        <input
+          name="players_min"
+          type="number"
+          min="1"
+          placeholder="Joueurs min"
+        >
+
+        <input
+          name="players_max"
+          type="number"
+          min="1"
+          placeholder="Joueurs max"
+        >
+
+        <input
+          name="duration"
+          type="number"
+          min="1"
+          placeholder="Durée (min)"
+        >
+
+      </div>
+
+      <textarea
+        name="description"
+        class="admin-textarea"
+        placeholder="Description du jeu..."
+        style="height:100px; margin-bottom:12px;"
+      ></textarea>
+
+      <button
+        type="submit"
+        class="button primary"
+        style="width:100%;"
+      >
+        Enregistrer les modifications →
+      </button>
+
+      <p
+        id="editGameAdminMsg"
+        class="form-message"
+        style="margin-top:8px;"
+      ></p>
+
+    </form>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
      AUTHENTIFICATION
 ====================================================== -->
 
