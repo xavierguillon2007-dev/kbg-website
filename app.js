@@ -14,7 +14,32 @@ const supabase = createClient(
   SUPABASE_URL,
   SUPABASE_KEY
 );
+// =========================================================
+// REDIRECTION DES LIENS DE RÉCUPÉRATION DE MOT DE PASSE
+// =========================================================
 
+const currentHash = window.location.hash || '';
+const currentSearch = window.location.search || '';
+
+const isPasswordRecovery =
+  /(?:^|[&#?])type=recovery(?:&|$)/i.test(currentHash) ||
+  /(?:^|[&#?])type=recovery(?:&|$)/i.test(currentSearch);
+
+const recoveryCode =
+  new URLSearchParams(currentSearch).get('code');
+
+const isHomePage =
+  window.location.pathname === '/' ||
+  window.location.pathname.endsWith('/index.html');
+
+if (
+  isHomePage &&
+  (isPasswordRecovery || recoveryCode)
+) {
+  window.location.replace(
+    `${window.location.origin}/reset_password.html${currentSearch}${currentHash}`
+  );
+}
 
 // =========================================================
 // ADMIN
