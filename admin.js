@@ -271,3 +271,290 @@ function renderReservations() {
     };
   });
 }
+// =========================================================
+// GESTION DES DEMANDES DE VALIDATION DE COMPTES
+// =========================================================
+
+async function loadAccountRequests() {
+  const container = $('accountRequestsList');
+
+  if (!container) return;
+
+  container.innerHTML =
+    '<div class="loading">Chargement des demandes de validation…</div>';
+
+  try {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error(
+        'Erreur chargement demandes de comptes :',
+        error
+      );
+
+      container.innerHTML = `
+        <div class="empty panel">
+          <strong>Erreur lors du chargement des demandes.</strong>
+          <br>
+          <small>${esc(error.message)}</small>
+        </div>
+      `;
+
+      return;
+    }
+
+    currentAccountRequests = data || [];
+
+    renderAccountRequests();
+
+  } catch (error) {
+
+    console.error(
+      'Erreur inattendue demandes de comptes :',
+      error
+    );
+
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Erreur inattendue.</strong>
+        <br>
+        <small>${esc(error?.message || error)}</small>
+      </div>
+    `;
+  }
+}
+
+
+// =========================================================
+// AFFICHAGE DES DEMANDES
+// =========================================================
+
+function renderAccountRequests() {
+  const container = $('accountRequestsList');
+
+  if (!container) return;
+
+  const pendingRequests =
+    currentAccountRequests.filter(
+      request => request.status === 'pending'
+    );
+
+  if (!pendingRequests.length) {
+
+    container.innerHTML = `
+      <div class="empty panel">
+        Aucune demande de compte en attente.
+      </div>
+    `;
+
+    return;
+  }
+
+  container.innerHTML = pendingRequests.map(request => `
+    <article class="panel admin-card">
+
+      <div>
+        <span class="badge badge-warning">
+          En attente
+        </span>
+
+        <h3 style="margin-top:8px;">
+          ${esc(request.first_name)}
+          ${esc(request.last_name)}
+        </h3>
+
+        <p class="publisher">
+          ${esc(request.email)}
+        </p>
+      </div>
+
+      <div class="admin-card-body">
+
+        <p>
+          <strong>Promotion :</strong>
+          ${esc(request.promotion)}
+        </p>
+
+        <p>
+          <strong>Demande créée :</strong>
+          ${formatAccountRequestDate(request.created_at)}
+        </p>
+
+      </div>
+
+      <div class="admin-card-actions">
+
+        <button
+          class="button primary"
+          data-approve-account="${request.id}">
+          ✓ Valider
+        </button>
+
+        <button
+          class="button danger"
+          data-reject-account="${request.id}">
+          ✕ Refuser
+        </button>
+
+      </div>
+
+    </article>
+  `).join('');
+
+  container
+    .querySelectorAll('[data-approve-account]')
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => handleAccountDecision(
+          button.dataset.approveAccount,
+          'approved',
+          button
+        )
+      );
+
+    });
+
+  container
+    .querySelectorAll('[data-reject-account]')
+    .forEach(button => {
+
+      button.addEventListener(
+        'click',
+        () => handleAccountDecision(
+          button.dataset.rejectAccount,
+          'rejected',
+          button
+        )
+      );
+
+    });
+}
+
+
+// =========================================================
+// DATE
+// =========================================================
+
+function formatAccountRequestDate(value) {
+
+  if (!value) {
+    return 'Date inconnue';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date inconnue';
+  }
+
+  return date.toLocaleString(
+    'fr-FR',
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }
+  );
+}
+
+
+// =========================================================
+// VALIDATION / REFUS
+// =========================================================
+
+async function handleAccountDecision(
+  requestId,
+  decision,
+  button
+) {
+
+  const request =
+    currentAccountRequests.find(
+      item =>
+        String(item.id) ===
+        String(requestId)
+    );
+
+  if (!request) {
+    alert('Demande introuvable.');
+    return;
+  }
+
+  const action =
+    decision === 'approved'
+      ? 'valider'
+      : 'refuser';
+
+  if (
+    !confirm(
+      `Voulez-vous vraiment ${action} le compte de ` +
+      `${request.first_name} ${request.last_name} ?`
+    )
+  ) {
+    return;
+  }
+
+  const originalText =
+    button.textContent;
+
+  button.disabled = true;
+  button.textContent = '…';
+
+  try {
+
+    const { data, error } =
+      await supabase.functions.invoke(
+        'approve-account',
+        {
+          body: {
+            request_id: request.id,
+            decision: decision
+          }
+        }
+      );
+
+    if (error) {
+
+      console.error(
+        'Erreur approve-account :',
+        error
+      );
+
+      throw new Error(
+        error.message ||
+        'La fonction de validation a retourné une erreur.'
+      );
+    }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    alert(
+      decision === 'approved'
+        ? '✓ Compte validé avec succès.'
+        : '✓ Compte refusé.'
+    );
+
+    await loadAccountRequests();
+
+  } catch (error) {
+
+    console.error(
+      'Erreur validation compte :',
+      error
+    );
+
+    alert(
+      'Erreur : ' +
+      (error?.message || error)
+    );
+
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
