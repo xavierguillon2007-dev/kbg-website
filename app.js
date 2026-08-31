@@ -5133,7 +5133,7 @@ async function handleLogin(e) {
 
 
 
-const PASSWORD_RESET_PAGE = 'reset-password.html';
+const PASSWORD_RESET_PAGE = 'reset_password.html';
 
 async function handleForgotPassword() {
   const emailInput = $('loginEmail');
