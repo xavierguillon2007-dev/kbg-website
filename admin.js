@@ -4,9 +4,19 @@ const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Adresses e-mail autorisées à accéder à cette page
-const ADMIN_EMAILS = ['xavierguillon2007@gmail.com', 'kbg.asso@gmail.com'];
-const isAdminEmail = email => !!email && ADMIN_EMAILS.includes(email.toLowerCase().trim());
+// Le statut administrateur est vérifié côté Supabase.
+let currentUserIsAdmin = false;
+const isAdminEmail = _email => currentUserIsAdmin;
+
+async function loadAdminStatus(userId) {
+  if (!userId) return false;
+  const { data, error } = await supabase.rpc('is_admin_user', { p_user_id: userId });
+  if (error) {
+    console.error('Erreur vérification administrateur :', error);
+    return false;
+  }
+  return data === true;
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
@@ -17,6 +27,10 @@ let currentAccountRequests = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    currentUserIsAdmin = await loadAdminStatus(session.user.id);
+  }
 
   if (!session) {
     $('adminReservationsList').innerHTML = `<div class="empty panel">Accès restreint. Connectez-vous d'abord sur la page d'accueil.</div>`;

@@ -45,16 +45,24 @@ if (
 // ADMIN
 // =========================================================
 
-const ADMIN_EMAILS = [
-  'xavierguillon2007@gmail.com',
-  'kbg.asso@gmail.com'
-];
+// Le statut administrateur est vérifié côté Supabase via public.is_admin_user().
+// Il n'y a volontairement plus de liste d'e-mails administrateurs dans le front-end.
+let currentUserIsAdmin = false;
 
-function isAdminEmail(email) {
-  return !!email &&
-    ADMIN_EMAILS.includes(
-      email.toLowerCase().trim()
-    );
+async function loadAdminStatus(userId) {
+  if (!userId) return false;
+  const { data, error } = await supabase.rpc('is_admin_user', {
+    p_user_id: userId
+  });
+  if (error) {
+    console.error('Erreur vérification administrateur :', error);
+    return false;
+  }
+  return data === true;
+}
+
+function isAdminEmail(_email) {
+  return currentUserIsAdmin;
 }
 
 
@@ -279,6 +287,9 @@ supabase.auth.onAuthStateChange(
 async function handleAuthChange(user) {
 
   currentUser = user;
+  currentUserIsAdmin = currentUser
+    ? await loadAdminStatus(currentUser.id)
+    : false;
   await loadCurrentProfile(currentUser);
 
   const userNav =

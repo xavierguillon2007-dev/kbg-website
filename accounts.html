@@ -31,6 +31,35 @@
     </div>
     <div id="accountsList" class="grid"><div class="loading">Chargement des comptes…</div></div>
   </section>
+
+  <section class="section">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">ADMINISTRATION · DROITS</p>
+        <h2>Administrateurs</h2>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-bottom:18px;">
+      <h3>Ajouter un administrateur</h3>
+      <p class="publisher">Le compte doit déjà exister sur le site.</p>
+      <form id="addAdminForm" style="margin-top:14px;">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <input name="email" type="email" placeholder="E-mail du compte" required style="flex:1;min-width:240px;">
+          <button class="button primary" type="submit">Ajouter les droits →</button>
+        </div>
+        <p id="addAdminMsg" class="form-message" style="margin-top:8px;"></p>
+      </form>
+    </div>
+
+    <div class="section-head">
+      <div><h3>Administrateurs actuels</h3></div>
+      <input id="adminEmailSearch" placeholder="Rechercher un administrateur…" style="max-width:320px;">
+    </div>
+    <div id="adminsList" class="grid">
+      <div class="loading">Chargement des administrateurs…</div>
+    </div>
+  </section>
 </main>
 
 <div id="accountModal" class="modal hidden">
@@ -61,6 +90,6 @@
   </div>
 </div>
 <footer><span>KBG / Association ludique</span><span>Gestion des comptes</span></footer>
-<script type="module" src="accounts.js?v=1"></script>
+<script type="module" src="accounts.js?v=2"></script>
 </body>
 </html>
