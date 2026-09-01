@@ -219,17 +219,7 @@ async function loadAdminReservations() {
   }
 
   currentReservations = data || [];
-  updateAdminReservationBadge();
   renderReservations();
-}
-
-function updateAdminReservationBadge() {
-  const badge = $('adminReservationsBadge');
-  if (!badge) return;
-
-  const count = currentReservations.filter(r => r.status === 'pending').length;
-  badge.textContent = `${count} en attente`;
-  badge.hidden = count === 0;
 }
 
 function renderReservations() {
@@ -291,7 +281,7 @@ function renderReservations() {
         return;
       }
 
-      await loadAdminReservations();
+      loadAdminReservations();
     };
   });
 }
@@ -315,8 +305,6 @@ async function loadAccountRequests() {
 
     if (error) throw error;
 
-    // Le back-office actuel repose sur account_requests.
-    // Aucun appel au RPC legacy get_pending_accounts_admin n'est effectué.
     currentAccountRequests = (data || [])
       .filter(request => request.status === 'pending')
       .map(request => ({ ...request, source: 'request' }));

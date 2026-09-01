@@ -163,6 +163,7 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .card-body .meta { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 .card-body .desc { font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
+
 .game-card-actions {
   display: flex;
   gap: 8px;
@@ -174,12 +175,12 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .game-card-action {
   appearance: none;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 10px;
+  border-radius: 7px;
+  padding: 9px 12px;
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
   cursor: pointer;
   transition: .15s ease;
 }
@@ -190,20 +191,14 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 }
 
 .game-card-action-primary {
-  background: transparent;
-  color: var(--accent);
-  border-color: var(--line);
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .game-card-action:hover,
 .game-card-action:focus-visible {
   transform: translateY(-1px);
-}
-
-.game-card-action-primary:hover,
-.game-card-action-primary:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 .game-card-action:focus-visible {
