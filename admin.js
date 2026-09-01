@@ -333,6 +333,7 @@ async function loadAccountRequests() {
     });
 
     renderAccountRequests();
+    updatePendingAccountsBadge();
   } catch (error) {
     console.error('Erreur chargement des comptes à valider :', error);
     container.innerHTML = `
@@ -355,6 +356,8 @@ function renderAccountRequests() {
   const pendingRequests = currentAccountRequests.filter(
     request => request.status === 'pending'
   );
+
+  updatePendingAccountsBadge(pendingRequests.length);
 
   if (!pendingRequests.length) {
     container.innerHTML = '<div class="empty panel">Aucune demande de compte en attente.</div>';
@@ -389,6 +392,16 @@ function renderAccountRequests() {
       )
     );
   });
+}
+
+function updatePendingAccountsBadge(count = currentAccountRequests.filter(
+  request => request.status === 'pending'
+).length) {
+  const badge = $('pendingAccountsBadge');
+  if (!badge) return;
+
+  badge.textContent = `${count} en attente`;
+  badge.hidden = count === 0;
 }
 
 function formatAccountRequestDate(value) {
