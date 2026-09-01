@@ -1190,6 +1190,52 @@
 </div>
 
 
+<div
+  style="
+    margin-top:16px;
+    padding:16px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--panel);
+  "
+>
+
+  <p
+    class="eyebrow"
+    style="color:var(--warning);"
+  >
+    👤 COMPTES EXISTANTS EN ATTENTE
+  </p>
+
+  <p
+    style="
+      margin-top:6px;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    "
+  >
+    Comptes créés avant la mise en place des demandes de validation
+    (donc sans fiche ci-dessus) mais dont le statut est resté « en attente ».
+  </p>
+
+  <div
+    id="adminLegacyPendingAccounts"
+    class="grid"
+    style="
+      grid-template-columns:1fr;
+      gap:10px;
+      margin-top:12px;
+    "
+  >
+    <div class="loading">
+      Chargement…
+    </div>
+  </div>
+
+</div>
+
+
     <!-- AJOUT JEU -->
 
     <form
