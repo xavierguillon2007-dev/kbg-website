@@ -403,8 +403,8 @@ async function handleAuthChange(user) {
               $('adminModal')
                 ?.classList.remove('hidden');
 
-              await refreshAdminNotificationBadge();
               await loadAdminPanel();
+              await refreshAdminNotificationBadge();
 
             }
           );
@@ -586,6 +586,53 @@ async function submitProfile(e) {
 
 
 // =========================================================
+// NOTIFICATIONS ADMIN — comptes + réservations en attente
+// =========================================================
+
+function updateAdminNotificationBadge(count) {
+  const badge = $('adminNotificationBadge');
+  if (!badge) return;
+  const safeCount = Math.max(0, Number(count) || 0);
+  badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+  badge.classList.toggle('hidden', safeCount === 0);
+}
+
+async function refreshAdminNotificationBadge() {
+  if (!currentUser || !currentUserIsAdmin) {
+    updateAdminNotificationBadge(0);
+    return;
+  }
+
+  try {
+    const [accountResult, legacyResult, reservationResult] = await Promise.all([
+      supabase.from('account_requests').select('id').eq('status', 'pending'),
+      supabase.rpc('get_pending_accounts_admin'),
+      supabase.from('reservations').select('id').eq('status', 'pending')
+    ]);
+
+    if (accountResult.error) throw accountResult.error;
+    if (legacyResult.error) throw legacyResult.error;
+    if (reservationResult.error) throw reservationResult.error;
+
+    const accountIds = new Set((accountResult.data || []).map(row => String(row.id)));
+    const legacyIds = (legacyResult.data || [])
+      .filter(row => row?.status === 'pending')
+      .map(row => String(row.id ?? row.user_id ?? row.email ?? ''))
+      .filter(Boolean);
+
+    // Les anciennes demandes peuvent recouvrir account_requests : on déduplique.
+    legacyIds.forEach(id => accountIds.add(id));
+
+    const total = accountIds.size + (reservationResult.data || []).length;
+    updateAdminNotificationBadge(total);
+  } catch (error) {
+    console.error('Erreur compteur notifications admin :', error);
+    // En cas d'erreur RLS/réseau, ne pas afficher un faux compteur.
+    updateAdminNotificationBadge(0);
+  }
+}
+
+// =========================================================
 // NOTIFICATIONS
 // =========================================================
 
@@ -604,70 +651,6 @@ function updateNotificationBadge(count) {
   } else {
     badge.textContent = '0';
     badge.classList.add('hidden');
-  }
-}
-
-async function refreshAdminNotificationBadge() {
-  if (!currentUser || !currentUserIsAdmin) {
-    const badge = $('adminNotificationBadge');
-    if (badge) {
-      badge.textContent = '0';
-      badge.classList.add('hidden');
-    }
-    return;
-  }
-
-  try {
-    const [requestsResult, legacyResult, reservationsResult] = await Promise.all([
-      supabase
-        .from('account_requests')
-        .select('id, user_id, email', { count: 'exact' })
-        .eq('status', 'pending'),
-      supabase.rpc('get_pending_accounts_admin'),
-      supabase
-        .from('reservations')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
-    ]);
-
-    if (requestsResult.error) throw requestsResult.error;
-    if (legacyResult.error) throw legacyResult.error;
-    if (reservationsResult.error) throw reservationsResult.error;
-
-    // Même logique que dans le panneau admin : une demande explicite
-    // account_requests est prioritaire sur l'ancien profil pending.
-    const seen = new Set();
-    let pendingAccounts = 0;
-
-    for (const request of (requestsResult.data || [])) {
-      const key = String(request.email || request.user_id || request.id).trim().toLowerCase();
-      if (!seen.has(key)) {
-        seen.add(key);
-        pendingAccounts++;
-      }
-    }
-
-    for (const account of (legacyResult.data || [])) {
-      const key = String(account.email || account.user_id || '').trim().toLowerCase();
-      if (!key || !seen.has(key)) {
-        if (key) seen.add(key);
-        pendingAccounts++;
-      }
-    }
-
-    const total = pendingAccounts + (reservationsResult.count || 0);
-    const badge = $('adminNotificationBadge');
-    if (!badge) return;
-
-    if (total > 0) {
-      badge.textContent = total > 99 ? '99+' : String(total);
-      badge.classList.remove('hidden');
-    } else {
-      badge.textContent = '0';
-      badge.classList.add('hidden');
-    }
-  } catch (error) {
-    console.error('Erreur compteur admin :', error);
   }
 }
 
@@ -3737,6 +3720,7 @@ async function loadAdminPanel() {
   await loadAdminLegacyPendingAccounts();
   await loadAdminGamesList();
   await loadAdminReservationsList();
+  await refreshAdminNotificationBadge();
 
 }
 
