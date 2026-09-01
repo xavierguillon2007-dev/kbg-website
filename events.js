@@ -41,10 +41,26 @@ function isAdminEmail(email) {
 // =========================================================
 
 let currentUser = null;
+let currentProfile = null;
 let allEvents = [];
 let editingEventId = null;
 let participantCounts = new Map();
 
+
+async function loadCurrentProfile(user = currentUser) {
+  currentProfile = null;
+  if (!user) return null;
+  const { data, error } = await supabase.from('profiles')
+    .select('user_id, first_name, last_name, promotion, account_status')
+    .eq('user_id', user.id).maybeSingle();
+  if (error) { console.error('Erreur chargement profil :', error); return null; }
+  currentProfile = data || null;
+  return currentProfile;
+}
+
+function isApprovedMember() {
+  return !!currentUser && currentProfile?.account_status === 'approved';
+}
 
 // =========================================================
 // VISIBILITÉ (membres connectés uniquement)
@@ -57,7 +73,7 @@ function isEventVisible(event) {
    * que par les comptes connectés (pas nécessairement admin).
    */
 
-  return !event.members_only || !!currentUser;
+  return !event.members_only || isApprovedMember() || isAdminEmail(currentUser?.email);
 
 }
 
@@ -237,6 +253,7 @@ async function initializeAuth() {
     currentUser =
       data?.session?.user || null;
 
+    await loadCurrentProfile(currentUser);
     updateUserNav();
 
   } catch (error) {
@@ -259,6 +276,7 @@ async function initializeAuth() {
       currentUser =
         session?.user || null;
 
+      await loadCurrentProfile(currentUser);
       updateUserNav();
 
       /*
@@ -295,6 +313,7 @@ function updateUserNav() {
 
   if (currentUser) {
 
+    const approved = isApprovedMember();
     const email =
       currentUser.email || '';
 
@@ -311,6 +330,7 @@ function updateUserNav() {
         "
       >
         👋 ${esc(email)}
+        ${approved ? '' : '<span class="badge badge-warning" style="margin-left:8px;">⏳ En attente</span>'}
       </span>
 
       <button
@@ -1210,7 +1230,11 @@ async function getEventParticipation(eventId) {
 }
 
 async function toggleEventParticipation(event) {
-  if (!currentUser) {
+  if (!isApprovedMember()) {
+    if (currentUser) {
+      alert('Votre compte doit être validé par un administrateur pour participer à un événement.');
+      return;
+    }
     $('authModal')?.classList.remove('hidden');
     return;
   }
@@ -1337,7 +1361,7 @@ async function openEventDetail(event) {
     </div>
 
     ${
-      currentUser && !past
+      isApprovedMember() && !past
         ? `
           <div style="margin-top:22px;padding:16px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
             <p class="eyebrow">PARTICIPATION</p>
@@ -1358,11 +1382,13 @@ async function openEventDetail(event) {
           ? `
             <div style="margin-top:22px;padding:14px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
               <p style="font-size:13px;color:var(--muted);">
-                👤 Connectez-vous pour indiquer votre participation.
+                ${currentUser ? '⏳ Votre compte est en attente de validation. La participation sera disponible après validation.' : '👤 Connectez-vous pour indiquer votre participation.'}
               </p>
-              <button type="button" id="eventLoginForParticipationBtn" class="button primary" style="width:100%;margin-top:10px;">
-                Se connecter
-              </button>
+              ${currentUser ? '' : `
+                <button type="button" id="eventLoginForParticipationBtn" class="button primary" style="width:100%;margin-top:10px;">
+                  Se connecter
+                </button>
+              `}
             </div>
           `
           : ''

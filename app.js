@@ -134,7 +134,7 @@ async function loadCurrentProfile(user = currentUser) {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, first_name, last_name, promotion')
+    .select('user_id, first_name, last_name, promotion, account_status')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -145,6 +145,10 @@ async function loadCurrentProfile(user = currentUser) {
 
   currentProfile = data || null;
   return currentProfile;
+}
+
+function isApprovedMember() {
+  return !!currentUser && currentProfile?.account_status === 'approved';
 }
 
 
@@ -312,6 +316,7 @@ async function handleAuthChange(user) {
           "
         >
           👋 ${esc(displayName)}
+          ${isApprovedMember() ? '' : '<span class="badge badge-warning" style="margin-left:8px;">⏳ En attente</span>'}
         </span>
 
         ${
@@ -382,8 +387,14 @@ async function handleAuthChange(user) {
 
     }
 
-    authWarning
-      ?.classList.add('hidden');
+    if (authWarning) {
+      if (approved) {
+        authWarning.classList.add('hidden');
+      } else {
+        authWarning.textContent = '⏳ Votre compte est en attente de validation par un administrateur. Les fonctionnalités réservées aux membres resteront indisponibles jusqu’à validation.';
+        authWarning.classList.remove('hidden');
+      }
+    }
 
     await loadUserNotifications(false);
     startNotificationRealtime();
@@ -486,39 +497,6 @@ async function submitProfile(e) {
 
 
   try {
-
-    const {
-      data,
-      error
-    } =
-      await supabase.auth.updateUser({
-
-        data: {
-
-          ...(currentUser.user_metadata || {}),
-
-          first_name:
-            firstName,
-
-          last_name:
-            lastName,
-
-          promotion:
-            promotion
-
-        }
-
-      });
-
-
-    if (error) {
-      throw error;
-    }
-
-
-    currentUser =
-      data.user;
-
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .upsert({
@@ -527,7 +505,7 @@ async function submitProfile(e) {
         last_name: lastName,
         promotion: promotion
       }, { onConflict: 'user_id' })
-      .select('user_id, first_name, last_name, promotion')
+      .select('user_id, first_name, last_name, promotion, account_status')
       .single();
 
     if (profileError) {
@@ -3437,6 +3415,14 @@ async function submitReview(e) {
     return;
   }
 
+  if (!isApprovedMember()) {
+    if (msg) {
+      msg.textContent = 'Votre compte est encore en attente de validation par un administrateur.';
+      msg.style.color = 'var(--warning)';
+    }
+    return;
+  }
+
 
   if (!hasCompleteProfile()) {
 
@@ -3681,6 +3667,16 @@ async function handleBookingSubmit(e) {
     $('authModal')
       ?.classList.remove('hidden');
 
+    return;
+  }
+
+  if (!isApprovedMember()) {
+    if (msg) {
+      msg.textContent =
+        'Votre compte est encore en attente de validation par un administrateur.';
+      msg.style.color =
+        'var(--warning)';
+    }
     return;
   }
 
