@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KBG — Catalogue de jeux</title>
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=6">
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
@@ -24,7 +24,6 @@
   <nav>
 
     <a href="#catalogue">Catalogue</a>
-    <a href="#reservation">Réserver</a>
     <a href="#calendrier">Planning</a>
     <a href="events.html">Événements</a>
     <a href="contact.html">Contact</a>
@@ -81,7 +80,7 @@
       </h1>
 
       <p class="hero-copy">
-        Le catalogue du KBG contient plus de 150 jeux ! Cliquez sur une fiche ou remplissez le formulaire pour les réserver.
+        Le catalogue du KBG contient plus de 150 jeux ! Ouvrez une fiche pour consulter les disponibilités et réserver directement le jeu.
       </p>
 
       <a
@@ -253,238 +252,6 @@
     <span id="showAllGamesText">Afficher tous les jeux</span>
   </button>
 </div>
-  </section>
-
-
-  <!-- =====================================================
-       RÉSERVATION
-  ====================================================== -->
-
-  <section
-    id="reservation"
-    class="section"
-  >
-
-    <div class="reservation-layout">
-
-      <div class="reservation-info">
-
-        <p class="eyebrow">
-          RÉSERVATION · 02
-        </p>
-
-        <h2>
-          Demander à emprunter un jeu
-        </h2>
-
-        <p>
-          Sélectionnez le jeu souhaité, vos dates et vos
-          coordonnées. L'équipe du KBG traitera votre demande
-          rapidement.
-        </p>
-
-        <ul class="reservation-rules">
-
-          <li>
-            Emprunt réservé aux membres de l'association.
-          </li>
-
-          <li>
-            Durée maximale d’emprunt : 7 jours renouvelables.
-          </li>
-
-          <li>
-            Vérifiez l'intégralité du matériel avant retour.
-          </li>
-
-        </ul>
-
-
-        <div
-          id="authWarning"
-          class="panel hidden"
-          style="
-            border-color:var(--warning);
-            margin-top:16px;
-          "
-        >
-
-          <p
-            class="eyebrow"
-            style="color:var(--warning);"
-          >
-            CONNEXION REQUISE
-          </p>
-
-          <p
-            style="
-              font-size:13px;
-              margin-top:4px;
-            "
-          >
-            Vous devez être connecté à votre compte pour
-            effectuer une demande.
-          </p>
-
-          <button
-            class="button primary"
-            id="noticeAuthBtn"
-            style="
-              margin-top:12px;
-              width:100%;
-            "
-          >
-            Se connecter / S'inscrire →
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <div class="form-card">
-
-        <form id="reservationForm">
-
-          <div class="form-group">
-
-            <label for="gameSelect">
-              Jeu souhaité
-            </label>
-
-            <select
-              id="gameSelect"
-              name="game_id"
-              required
-            >
-
-              <option value="">
-                Sélectionnez un jeu…
-              </option>
-
-            </select>
-
-          </div>
-
-
-          <div class="form-row">
-
-            <div class="form-group">
-
-              <label for="dateStart">
-                Date de début
-              </label>
-
-              <input
-                id="dateStart"
-                name="date_start"
-                type="date"
-                required
-              >
-
-            </div>
-
-
-            <div class="form-group">
-
-              <label for="dateEnd">
-                Date de fin
-              </label>
-
-              <input
-                id="dateEnd"
-                name="date_end"
-                type="date"
-                required
-              >
-
-            </div>
-
-          </div>
-
-
-          <div class="form-row">
-
-            <div class="form-group">
-
-              <label for="firstName">
-                Prénom
-              </label>
-
-              <input
-                id="firstName"
-                name="first_name"
-                placeholder="Jean"
-                required
-              >
-
-            </div>
-
-
-            <div class="form-group">
-
-              <label for="lastName">
-                Nom
-              </label>
-
-              <input
-                id="lastName"
-                name="last_name"
-                placeholder="Dupont"
-                required
-              >
-
-            </div>
-
-          </div>
-
-
-          <div class="form-group">
-
-            <label for="promotion">
-              Promotion / Filière
-            </label>
-
-            <input
-              id="promotion"
-              name="promotion"
-              placeholder="Ex. DFGSM2, Master 1..."
-              required
-            >
-
-          </div>
-
-
-          <button
-            id="submitBookingBtn"
-            class="button primary"
-            type="submit"
-            style="
-              width:100%;
-              margin-top:8px;
-              padding:12px;
-            "
-          >
-            Envoyer la demande →
-          </button>
-
-
-          <p
-            id="formMessage"
-            class="form-message"
-            style="
-              margin-top:10px;
-              text-align:center;
-              font-size:13px;
-            "
-          ></p>
-
-        </form>
-
-      </div>
-
-    </div>
-
   </section>
 
 
@@ -768,8 +535,17 @@
           line-height:1.5;
         "
       >
-        Les dates vertes sont disponibles. Cliquez sur une date libre pour la sélectionner dans le formulaire de réservation.
+        Les dates vertes sont disponibles. Sélectionnez une date de début puis une date de fin pour réserver ce jeu.
       </p>
+
+      <div style="margin-top:16px;">
+        <button id="reserveGameBtn" class="button primary" type="button" disabled style="width:100%; padding:12px;">
+          Sélectionnez vos dates →
+        </button>
+        <p id="gameReservationMessage" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;">
+          Choisissez une date de début puis une date de fin dans le calendrier.
+        </p>
+      </div>
 
     </div>
 
