@@ -446,3 +446,76 @@ on public.game_reviews as restrictive
 for insert
 to authenticated
 with check (public.is_approved_member(auth.uid()));
+
+-- ---------------------------------------------------------
+-- 6 ter. COMPTES EXISTANTS EN ATTENTE (ANCIENS COMPTES)
+-- ---------------------------------------------------------
+-- Permet aux administrateurs de voir et de valider les profils
+-- créés avant la mise en place de account_requests.
+
+create or replace function public.get_pending_accounts_admin()
+returns table (
+  user_id uuid,
+  email text,
+  first_name text,
+  last_name text,
+  promotion text,
+  account_status text,
+  created_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    p.user_id,
+    u.email::text,
+    p.first_name,
+    p.last_name,
+    p.promotion,
+    p.account_status,
+    p.created_at
+  from public.profiles p
+  join auth.users u on u.id = p.user_id
+  where p.account_status = 'pending'
+    and public.is_admin_user(auth.uid())
+  order by p.created_at desc;
+$$;
+
+revoke all on function public.get_pending_accounts_admin() from public;
+grant execute on function public.get_pending_accounts_admin() to authenticated;
+
+create or replace function public.set_account_status_admin(
+  p_user_id uuid,
+  p_status text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_count integer;
+begin
+  if not public.is_admin_user(auth.uid()) then
+    raise exception 'Accès réservé aux administrateurs.';
+  end if;
+
+  if p_status not in ('approved', 'rejected') then
+    raise exception 'Statut invalide.';
+  end if;
+
+  update public.profiles
+  set account_status = p_status,
+      updated_at = now()
+  where user_id = p_user_id
+    and account_status = 'pending';
+
+  get diagnostics updated_count = row_count;
+  return updated_count = 1;
+end;
+$$;
+
+revoke all on function public.set_account_status_admin(uuid, text) from public;
+grant execute on function public.set_account_status_admin(uuid, text) to authenticated;

@@ -14,6 +14,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 let currentReservations = [];
 let currentGames = [];
 let currentAccountRequests = [];
+let currentLegacyPendingAccounts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -59,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 await loadAdminGames();
 await loadAdminReservations();
 await loadAccountRequests();
+await loadLegacyPendingAccounts();
 });
 
 // --- GESTION DU CATALOGUE (AJOUT / ÉDITION / SUPPRESSION) ---
@@ -330,6 +332,127 @@ async function loadAccountRequests() {
         ${esc(error?.message || String(error))}
       </div>
     `;
+  }
+}
+
+// =========================================================
+// GESTION DES COMPTES EXISTANTS EN ATTENTE
+// =========================================================
+
+async function loadLegacyPendingAccounts() {
+  const container = $('legacyPendingAccountsList');
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading">Chargement…</div>';
+
+  try {
+    const { data, error } = await supabase
+      .rpc('get_pending_accounts_admin');
+
+    if (error) throw error;
+
+    currentLegacyPendingAccounts = data || [];
+    renderLegacyPendingAccounts();
+  } catch (error) {
+    console.error('Erreur chargement comptes existants en attente :', error);
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Erreur Supabase</strong><br>
+        ${esc(error?.message || error)}
+      </div>
+    `;
+  }
+}
+
+function renderLegacyPendingAccounts() {
+  const container = $('legacyPendingAccountsList');
+  if (!container) return;
+
+  if (!currentLegacyPendingAccounts.length) {
+    container.innerHTML = `
+      <div class="empty panel">Aucun compte existant en attente.</div>
+    `;
+    return;
+  }
+
+  container.innerHTML = currentLegacyPendingAccounts.map(account => `
+    <article class="panel admin-card">
+      <div>
+        <span class="badge badge-warning">En attente</span>
+        <h3 style="margin-top:8px;">
+          ${esc(account.first_name)} ${esc(account.last_name)}
+        </h3>
+        <p class="publisher">${esc(account.email)}</p>
+      </div>
+      <div class="admin-card-body">
+        <p><strong>Promotion :</strong> ${esc(account.promotion || 'Non renseignée')}</p>
+        <p><strong>Compte créé :</strong> ${formatAccountRequestDate(account.created_at)}</p>
+      </div>
+      <div class="admin-card-actions">
+        <button class="button primary" data-approve-legacy="${esc(account.user_id)}">
+          ✓ Valider
+        </button>
+        <button class="button danger" data-reject-legacy="${esc(account.user_id)}">
+          ✕ Refuser
+        </button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-approve-legacy]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleLegacyAccountDecision(button.dataset.approveLegacy, 'approved', button)
+    );
+  });
+
+  container.querySelectorAll('[data-reject-legacy]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleLegacyAccountDecision(button.dataset.rejectLegacy, 'rejected', button)
+    );
+  });
+}
+
+async function handleLegacyAccountDecision(userId, decision, button) {
+  const account = currentLegacyPendingAccounts.find(
+    item => String(item.user_id) === String(userId)
+  );
+
+  if (!account) {
+    alert('Compte introuvable.');
+    return;
+  }
+
+  const action = decision === 'approved' ? 'valider' : 'refuser';
+  if (!confirm(`Voulez-vous vraiment ${action} le compte de ${account.first_name} ${account.last_name} ?`)) {
+    return;
+  }
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = '…';
+
+  try {
+    const { data, error } = await supabase.rpc('set_account_status_admin', {
+      p_user_id: account.user_id,
+      p_status: decision
+    });
+
+    if (error) throw error;
+
+    if (!data) {
+      throw new Error("La mise à jour du compte n'a pas été appliquée.");
+    }
+
+    alert(decision === 'approved'
+      ? '✓ Compte validé avec succès.'
+      : '✓ Compte refusé.');
+
+    await loadLegacyPendingAccounts();
+  } catch (error) {
+    console.error('Erreur validation compte existant :', error);
+    alert('Erreur : ' + (error?.message || error));
+    button.disabled = false;
+    button.textContent = originalText;
   }
 }
 
