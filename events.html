@@ -195,11 +195,11 @@
     ×
   </button>
 
-  <p class="eyebrow">
+  <p class="eyebrow" id="addEventModalEyebrow">
     + NOUVEL ÉVÉNEMENT
   </p>
 
-  <h2>
+  <h2 id="addEventModalTitle">
     Ajouter un événement
   </h2>
 
@@ -326,9 +326,58 @@
   </div>
 
 
+  <div
+    class="form-group"
+    style="
+      display:flex;
+      align-items:flex-start;
+      gap:10px;
+      background:var(--bg);
+      border:1px solid var(--line);
+      border-radius:8px;
+      padding:12px 14px;
+    "
+  >
+
+    <input
+      id="eventMembersOnly"
+      name="members_only"
+      type="checkbox"
+      style="
+        width:16px;
+        height:16px;
+        margin-top:2px;
+        flex-shrink:0;
+        accent-color:var(--accent);
+      "
+    >
+
+    <label
+      for="eventMembersOnly"
+      style="
+        font-size:12px;
+        font-weight:600;
+        letter-spacing:normal;
+        text-transform:none;
+        color:var(--text);
+        cursor:pointer;
+      "
+    >
+      🔒 Réservé aux comptes connectés
+      <br>
+      <small style="color:var(--muted);font-weight:400;">
+        Si coché, cet événement sera masqué pour les visiteurs non connectés,
+        aussi bien sur la page Événements que dans le calendrier de l'accueil.
+      </small>
+    </label>
+
+  </div>
+
+
   <button
     class="button primary"
     type="submit"
+    id="addEventSubmitBtn"
     style="
       width:100%;
       margin-top:8px;

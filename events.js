@@ -42,6 +42,23 @@ function isAdminEmail(email) {
 
 let currentUser = null;
 let allEvents = [];
+let editingEventId = null;
+
+
+// =========================================================
+// VISIBILITÉ (membres connectés uniquement)
+// =========================================================
+
+function isEventVisible(event) {
+
+  /*
+   * Un événement marqué "members_only" n'est visible
+   * que par les comptes connectés (pas nécessairement admin).
+   */
+
+  return !event.members_only || !!currentUser;
+
+}
 
 
 // =========================================================
@@ -236,12 +253,20 @@ async function initializeAuth() {
 
 
   supabase.auth.onAuthStateChange(
-    (_event, session) => {
+    async (_event, session) => {
 
       currentUser =
         session?.user || null;
 
       updateUserNav();
+
+      /*
+       * On recharge les événements pour appliquer
+       * immédiatement les règles de visibilité
+       * (événements réservés aux membres).
+       */
+
+      await loadEvents();
 
     }
   );
@@ -429,6 +454,23 @@ async function loadEvents() {
       Array.isArray(data)
         ? data
         : [];
+
+
+    /*
+     * On masque les événements réservés aux membres
+     * pour les visiteurs non connectés. Les comptes
+     * connectés (admin ou non) voient tout.
+     *
+     * Note : ce filtrage se fait côté client. Pour une
+     * sécurité complète, il est recommandé d'ajouter
+     * également une policy RLS côté Supabase qui empêche
+     * les requêtes anonymes de récupérer ces lignes.
+     */
+
+    allEvents =
+      allEvents.filter(
+        isEventVisible
+      );
 
 
     /*
@@ -787,6 +829,29 @@ function renderEvents() {
       }
     );
 
+  // Édition réservée aux administrateurs.
+  container
+    .querySelectorAll('[data-edit-event]')
+    .forEach(button => {
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!isAdminEmail(currentUser?.email)) return;
+
+        const id = button.dataset.editEvent;
+        if (!id) return;
+
+        const eventData = allEvents.find(
+          item => String(item.id) === String(id)
+        );
+
+        if (eventData) {
+          openEditEventModal(eventData);
+        }
+      });
+    });
+
   // Suppression réservée aux administrateurs.
   container
     .querySelectorAll('[data-delete-event]')
@@ -916,6 +981,16 @@ function renderEventCard(
             `
         }
 
+        ${
+          event.members_only
+            ? `
+              <p class="tag" style="color:var(--warning);margin-top:2px;">
+                🔒 RÉSERVÉ AUX MEMBRES
+              </p>
+            `
+            : ''
+        }
+
 
         <h3>
           ${esc(
@@ -988,14 +1063,27 @@ function renderEventCard(
         ${
           isAdminEmail(currentUser?.email)
             ? `
-              <button
-                type="button"
-                class="button danger"
-                data-delete-event="${esc(event.id)}"
-                style="margin-top:12px;width:100%;"
-              >
-                🗑 Supprimer l'événement
-              </button>
+              <div style="display:flex;gap:8px;margin-top:12px;">
+
+                <button
+                  type="button"
+                  class="button"
+                  data-edit-event="${esc(event.id)}"
+                  style="flex:1;"
+                >
+                  ✏️ Modifier
+                </button>
+
+                <button
+                  type="button"
+                  class="button danger"
+                  data-delete-event="${esc(event.id)}"
+                  style="flex:1;"
+                >
+                  🗑 Supprimer
+                </button>
+
+              </div>
             `
             : ''
         }
@@ -1068,6 +1156,11 @@ function openEventDetail(event) {
         past
           ? 'ÉVÉNEMENT PASSÉ'
           : 'ÉVÉNEMENT À VENIR'
+      }
+      ${
+        event.members_only
+          ? ' · 🔒 RÉSERVÉ AUX MEMBRES'
+          : ''
       }
     </p>
 
@@ -1184,14 +1277,27 @@ function openEventDetail(event) {
     ${
       isAdminEmail(currentUser?.email)
         ? `
-          <button
-            type="button"
-            id="deleteEventFromModal"
-            class="button danger"
-            style="margin-top:20px;width:100%;"
-          >
-            🗑 Supprimer cet événement
-          </button>
+          <div style="display:flex;gap:8px;margin-top:20px;">
+
+            <button
+              type="button"
+              id="editEventFromModal"
+              class="button"
+              style="flex:1;"
+            >
+              ✏️ Modifier
+            </button>
+
+            <button
+              type="button"
+              id="deleteEventFromModal"
+              class="button danger"
+              style="flex:1;"
+            >
+              🗑 Supprimer
+            </button>
+
+          </div>
         `
         : ''
     }
@@ -1202,6 +1308,11 @@ function openEventDetail(event) {
   modal.classList.remove(
     'hidden'
   );
+
+  $('editEventFromModal')?.addEventListener('click', () => {
+    if (!isAdminEmail(currentUser?.email)) return;
+    openEditEventModal(event);
+  });
 
   $('deleteEventFromModal')?.addEventListener('click', async () => {
     if (!isAdminEmail(currentUser?.email)) return;
@@ -1225,7 +1336,7 @@ function openEventDetail(event) {
       console.error('Erreur suppression événement :', error);
       alert(`Impossible de supprimer l'événement : ${error.message}`);
       button.disabled = false;
-      button.textContent = '🗑 Supprimer cet événement';
+      button.textContent = '🗑 Supprimer';
     }
   });
 
@@ -1233,7 +1344,146 @@ function openEventDetail(event) {
 
 
 // =========================================================
-// AJOUT ÉVÉNEMENT
+// MODALE AJOUT / ÉDITION
+// =========================================================
+
+function resetAddEventForm() {
+
+  const form =
+    $('addEventForm');
+
+  form?.reset();
+
+  const msg =
+    $('addEventMsg');
+
+  if (msg) {
+    msg.textContent = '';
+  }
+
+}
+
+
+function openAddEventModal() {
+
+  editingEventId = null;
+
+  resetAddEventForm();
+
+  const eyebrow = $('addEventModalEyebrow');
+  const title = $('addEventModalTitle');
+  const submitBtn = $('addEventSubmitBtn');
+
+  if (eyebrow) {
+    eyebrow.textContent = '+ NOUVEL ÉVÉNEMENT';
+  }
+
+  if (title) {
+    title.textContent = "Ajouter un événement";
+  }
+
+  if (submitBtn) {
+    submitBtn.textContent = "Publier l'événement →";
+  }
+
+  $('addEventModal')
+    ?.classList.remove('hidden');
+
+}
+
+
+function openEditEventModal(event) {
+
+  if (!isAdminEmail(currentUser?.email)) {
+    return;
+  }
+
+  editingEventId = event.id;
+
+  const form =
+    $('addEventForm');
+
+  const msg =
+    $('addEventMsg');
+
+  if (msg) {
+    msg.textContent = '';
+  }
+
+  if (form) {
+
+    const rawDate =
+      event.date ||
+      event.event_date ||
+      event.date_start ||
+      event.start_date ||
+      '';
+
+    if (form.elements['name']) {
+      form.elements['name'].value = event.name || '';
+    }
+
+    if (form.elements['date']) {
+      form.elements['date'].value = String(rawDate).slice(0, 10);
+    }
+
+    if (form.elements['organizers']) {
+      form.elements['organizers'].value = event.organizers || '';
+    }
+
+    if (form.elements['photo_url']) {
+      form.elements['photo_url'].value =
+        event.photo_url ||
+        event.photo ||
+        event.image_url ||
+        '';
+    }
+
+    if (form.elements['short_description']) {
+      form.elements['short_description'].value =
+        event.short_description ||
+        event.brief_description ||
+        event.description_brief ||
+        '';
+    }
+
+    if (form.elements['description']) {
+      form.elements['description'].value = event.description || '';
+    }
+
+    if (form.elements['members_only']) {
+      form.elements['members_only'].checked = !!event.members_only;
+    }
+
+  }
+
+  const eyebrow = $('addEventModalEyebrow');
+  const title = $('addEventModalTitle');
+  const submitBtn = $('addEventSubmitBtn');
+
+  if (eyebrow) {
+    eyebrow.textContent = '✏️ MODIFICATION';
+  }
+
+  if (title) {
+    title.textContent = "Modifier l'événement";
+  }
+
+  if (submitBtn) {
+    submitBtn.textContent = 'Enregistrer les modifications →';
+  }
+
+  $('eventDetailModal')
+    ?.classList.add('hidden');
+
+  $('addEventModal')
+    ?.classList.remove('hidden');
+
+}
+
+
+// =========================================================
+// AJOUT / MODIFICATION ÉVÉNEMENT
 // =========================================================
 
 async function handleAddEvent(e) {
@@ -1404,6 +1654,10 @@ async function handleAddEvent(e) {
      * que ton système doit avoir dans Supabase.
      */
 
+    const membersOnly =
+      formData.get('members_only') === 'on';
+
+
     const newEvent = {
 
       // La colonne id de Supabase est un BIGINT généré automatiquement.
@@ -1424,19 +1678,29 @@ async function handleAddEvent(e) {
         shortDescription || null,
 
       description:
-        description
+        description,
+
+      members_only:
+        membersOnly
 
     };
+
+
+    const isEditing =
+      !!editingEventId;
 
 
     const {
       error
     } =
-      await supabase
-        .from('events')
-        .insert(
-          newEvent
-        );
+      isEditing
+        ? await supabase
+            .from('events')
+            .update(newEvent)
+            .eq('id', editingEventId)
+        : await supabase
+            .from('events')
+            .insert(newEvent);
 
 
     if (error) {
@@ -1447,7 +1711,9 @@ async function handleAddEvent(e) {
     if (msg) {
 
       msg.textContent =
-        '✓ Événement publié !';
+        isEditing
+          ? '✓ Événement mis à jour !'
+          : '✓ Événement publié !';
 
       msg.style.color =
         'var(--success)';
@@ -1456,6 +1722,8 @@ async function handleAddEvent(e) {
 
 
     form.reset();
+
+    editingEventId = null;
 
 
     await loadEvents();
@@ -1825,10 +2093,7 @@ function setupEventListeners() {
         }
 
 
-        $('addEventModal')
-          ?.classList.remove(
-            'hidden'
-          );
+        openAddEventModal();
 
       }
     );

@@ -242,8 +242,6 @@ document.addEventListener(
     }
 
    await loadGames();
-await renderCalendar();
-await loadNextEvent();
 
   }
 );
@@ -420,6 +418,14 @@ async function handleAuthChange(user) {
   }
 
   renderGames();
+
+  /*
+   * On rafraîchit le calendrier et le cadre "prochain
+   * événement" pour appliquer immédiatement les règles
+   * de visibilité (événements réservés aux membres).
+   */
+  await renderCalendar();
+  await loadNextEvent();
 
 }
 
@@ -792,7 +798,13 @@ async function renderCalendar() {
     if (startOffset === -1) startOffset = 6;
 
     const dayEventsMap = {};
-    const monthEvents = Array.isArray(events) ? events : [];
+
+    /*
+     * Les événements réservés aux membres sont masqués
+     * pour les visiteurs non connectés.
+     */
+    const monthEvents = (Array.isArray(events) ? events : [])
+      .filter(event => !event.members_only || !!currentUser);
 
     let html = '';
 
@@ -824,7 +836,7 @@ async function renderCalendar() {
           <span class="cal-day-num">${day}</span>
           ${dayEvents.map(event => `
             <span class="cal-event" title="${esc(event.name || 'Événement')}">
-              📅 ${esc(event.name || 'Événement')}
+              ${event.members_only ? '🔒' : '📅'} ${esc(event.name || 'Événement')}
             </span>
           `).join('')}
         </div>
@@ -884,6 +896,7 @@ function openDayModal(dateStr, events) {
     list.innerHTML = events.map(event => `
       <div class="panel" style="padding:12px;font-size:13px;">
         <strong>${esc(event.name || 'Événement')}</strong>
+        ${event.members_only ? `<p style="color:var(--warning);font-size:11px;font-weight:700;margin-top:4px;">🔒 Réservé aux membres connectés</p>` : ''}
         ${event.organizers ? `<p style="color:var(--muted);font-size:12px;margin-top:4px;">Organisé par : ${esc(event.organizers)}</p>` : ''}
         ${event.short_description || event.description ? `<p style="margin-top:6px;font-size:12px;">${esc(event.short_description || event.description)}</p>` : ''}
       </div>
@@ -926,9 +939,13 @@ async function loadNextEvent() {
 
 
     allEvents =
-      Array.isArray(events)
-        ? events
-        : [];
+      (Array.isArray(events) ? events : [])
+        /*
+         * On masque les événements réservés aux membres
+         * pour les visiteurs non connectés, y compris sur
+         * le cadre "prochain événement" de l'accueil.
+         */
+        .filter(event => !event.members_only || !!currentUser);
 
 
     renderNextEvent();
