@@ -1953,16 +1953,27 @@ function renderGames() {
                 )}
               </p>
 
-              <p
-                style="
-                  color:#2583ff;
-                  font-size:12px;
-                  margin-top:10px;
-                  font-weight:700;
-                "
-              >
-                Voir la fiche complète et les avis →
-              </p>
+              <div class="game-card-actions">
+
+                <button
+                  type="button"
+                  class="game-card-action game-card-action-secondary"
+                  data-open-game="${esc(game.id)}"
+                  title="Voir la fiche complète et les avis"
+                >
+                  Voir la fiche et les avis →
+                </button>
+
+                <button
+                  type="button"
+                  class="game-card-action game-card-action-primary"
+                  data-open-game="${esc(game.id)}"
+                  title="Réserver ce jeu"
+                >
+                  Réserver le jeu →
+                </button>
+
+              </div>
 
             </div>
 
@@ -1981,25 +1992,39 @@ function renderGames() {
     .forEach(
       card => {
 
+        const openGame = () => {
+
+          const game =
+            allGames.find(
+              g =>
+                String(g.id) ===
+                String(
+                  card.dataset.reviewGame
+                )
+            );
+
+          if (game) {
+            openReviewModal(game);
+          }
+
+        };
+
         card.addEventListener(
           'click',
-          () => {
-
-            const game =
-              allGames.find(
-                g =>
-                  String(g.id) ===
-                  String(
-                    card.dataset.reviewGame
-                  )
-              );
-
-            if (game) {
-              openReviewModal(game);
-            }
-
-          }
+          openGame
         );
+
+        card
+          .querySelectorAll('[data-open-game]')
+          .forEach(button => {
+            button.addEventListener(
+              'click',
+              event => {
+                event.stopPropagation();
+                openGame();
+              }
+            );
+          });
 
       }
     );
