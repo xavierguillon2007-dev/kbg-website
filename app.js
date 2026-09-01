@@ -3965,6 +3965,7 @@ async function loadAdminPanel() {
   // Chaque bloc est chargé indépendamment : une panne d'un bloc
   // ne doit pas laisser les autres en chargement infini.
   await loadAdminAccountRequests();
+  await loadAdminLegacyPendingAccounts();
   await loadAdminGamesList();
   await loadAdminReservationsList();
 
@@ -4113,6 +4114,141 @@ async function handleAdminAccountDecision(requestId, decision, button) {
     await loadAdminAccountRequests();
   } catch (error) {
     console.error('Erreur validation compte :', error);
+    alert('Erreur : ' + (error?.message || error));
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+
+// =========================================================
+// ADMIN — ANCIENS COMPTES EN ATTENTE
+// =========================================================
+
+let currentAdminLegacyPendingAccounts = [];
+
+async function loadAdminLegacyPendingAccounts() {
+  const container = $('adminLegacyPendingAccounts');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="loading">Chargement…</div>
+  `;
+
+  try {
+    const request = supabase.rpc('get_pending_accounts_admin');
+
+    const timeout = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Délai dépassé lors du chargement des anciens comptes en attente.')),
+        10000
+      )
+    );
+
+    const { data, error } = await Promise.race([request, timeout]);
+
+    if (error) throw error;
+
+    currentAdminLegacyPendingAccounts = Array.isArray(data) ? data : [];
+    renderAdminLegacyPendingAccounts();
+  } catch (error) {
+    console.error('Erreur anciens comptes en attente :', error);
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Impossible de charger les comptes existants en attente.</strong>
+        <br><br>
+        <small>${esc(error?.message || 'Erreur inconnue')}</small>
+      </div>
+    `;
+  }
+}
+
+function renderAdminLegacyPendingAccounts() {
+  const container = $('adminLegacyPendingAccounts');
+  if (!container) return;
+
+  if (!currentAdminLegacyPendingAccounts.length) {
+    container.innerHTML = `
+      <div class="empty panel">Aucun compte existant en attente.</div>
+    `;
+    return;
+  }
+
+  container.innerHTML = currentAdminLegacyPendingAccounts.map(account => `
+    <article class="panel admin-card">
+      <div>
+        <span class="badge badge-warning">En attente</span>
+        <h3 style="margin-top:8px;">
+          ${esc(account.first_name)} ${esc(account.last_name)}
+        </h3>
+        <p class="publisher">${esc(account.email)}</p>
+      </div>
+      <div class="admin-card-body">
+        <p><strong>Promotion :</strong> ${esc(account.promotion || 'Non renseignée')}</p>
+        <p><strong>Compte créé :</strong> ${formatAdminAccountRequestDate(account.created_at)}</p>
+      </div>
+      <div class="admin-card-actions">
+        <button class="button primary" data-admin-legacy-action="approved" data-user-id="${esc(account.user_id)}">
+          ✓ Valider
+        </button>
+        <button class="button danger" data-admin-legacy-action="rejected" data-user-id="${esc(account.user_id)}">
+          ✕ Refuser
+        </button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-admin-legacy-action]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleAdminLegacyAccountDecision(
+        button.dataset.userId,
+        button.dataset.adminLegacyAction,
+        button
+      )
+    );
+  });
+}
+
+async function handleAdminLegacyAccountDecision(userId, decision, button) {
+  const account = currentAdminLegacyPendingAccounts.find(
+    item => String(item.user_id) === String(userId)
+  );
+
+  if (!account || !['approved', 'rejected'].includes(decision)) {
+    alert('Compte invalide.');
+    return;
+  }
+
+  const verb = decision === 'approved' ? 'valider' : 'refuser';
+  if (!confirm(`Voulez-vous vraiment ${verb} le compte de ${account.first_name} ${account.last_name} ?`)) {
+    return;
+  }
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = '…';
+
+  try {
+    const { data, error } = await supabase.rpc('set_account_status_admin', {
+      p_user_id: account.user_id,
+      p_status: decision
+    });
+
+    if (error) throw error;
+
+    if (!data) {
+      throw new Error("La mise à jour du compte n'a pas été appliquée.");
+    }
+
+    alert(
+      decision === 'approved'
+        ? '✓ Compte validé avec succès.'
+        : '✓ Compte refusé.'
+    );
+
+    await loadAdminLegacyPendingAccounts();
+  } catch (error) {
+    console.error('Erreur validation ancien compte :', error);
     alert('Erreur : ' + (error?.message || error));
     button.disabled = false;
     button.textContent = originalText;
