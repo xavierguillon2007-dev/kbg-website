@@ -43,6 +43,7 @@ function isAdminEmail(email) {
 let currentUser = null;
 let allEvents = [];
 let editingEventId = null;
+let participantCounts = new Map();
 
 
 // =========================================================
@@ -473,6 +474,11 @@ async function loadEvents() {
       );
 
 
+    // Nombre de participants affichable sur les cartes.
+    // Le RPC ne renvoie que des compteurs, jamais les noms.
+    await loadParticipantCounts();
+
+
     /*
      * Tri chronologique.
      */
@@ -563,6 +569,42 @@ async function loadEvents() {
 
   }
 
+}
+
+
+// =========================================================
+// COMPTEUR DE PARTICIPANTS
+// =========================================================
+
+async function loadParticipantCounts() {
+
+  participantCounts = new Map();
+
+  const eventIds = allEvents
+    .map(event => event.id)
+    .filter(id => id !== null && id !== undefined);
+
+  if (!eventIds.length) return;
+
+  try {
+    const { data, error } = await supabase
+      .rpc('get_event_participant_counts', {
+        p_event_ids: eventIds
+      });
+
+    if (error) throw error;
+
+    (data || []).forEach(row => {
+      participantCounts.set(
+        String(row.event_id),
+        Number(row.participant_count || 0)
+      );
+    });
+  } catch (error) {
+    // Si le RPC n'est pas encore créé dans Supabase, les cartes
+    // restent fonctionnelles et affichent simplement 0 participant.
+    console.warn('Compteurs de participants indisponibles :', error.message);
+  }
 }
 
 
@@ -1049,16 +1091,43 @@ function renderEventCard(
         }
 
 
-        <p
+        <div
           style="
-            color:#2583ff;
-            font-size:12px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
             margin-top:12px;
-            font-weight:700;
           "
         >
-          Voir les détails →
-        </p>
+          <p
+            style="
+              color:#2583ff;
+              font-size:12px;
+              font-weight:700;
+              margin:0;
+            "
+          >
+            Voir les détails →
+          </p>
+
+          <span
+            class="event-participant-count"
+            title="Nombre de participants inscrits"
+            style="
+              flex-shrink:0;
+              padding:5px 9px;
+              border:1px solid var(--line);
+              border-radius:999px;
+              font-size:12px;
+              font-weight:700;
+              color:var(--muted);
+              background:var(--bg);
+            "
+          >
+            👥 ${participantCounts.get(String(event.id)) || 0} participant${(participantCounts.get(String(event.id)) || 0) > 1 ? 's' : ''}
+          </span>
+        </div>
 
         ${
           isAdminEmail(currentUser?.email)
@@ -1101,19 +1170,125 @@ function renderEventCard(
 // MODALE DÉTAIL
 // =========================================================
 
-function openEventDetail(event) {
 
-  const modal =
-    $('eventDetailModal');
+// =========================================================
+// PARTICIPATION AUX ÉVÉNEMENTS
+// =========================================================
 
-  const body =
-    $('eventDetailBody');
+async function getEventParticipation(eventId) {
+  if (!currentUser || !eventId) {
+    return { participating: false, participants: [] };
+  }
 
+  const { data: mine, error: mineError } = await supabase
+    .from('event_participants')
+    .select('event_id')
+    .eq('event_id', eventId)
+    .eq('user_id', currentUser.id)
+    .maybeSingle();
 
-  if (!modal || !body) {
+  if (mineError) throw mineError;
+
+  let participants = [];
+
+  if (isAdminEmail(currentUser.email)) {
+    const { data, error } = await supabase
+      .from('event_participants')
+      .select('user_id, first_name, last_name, created_at')
+      .eq('event_id', eventId)
+      .order('last_name', { ascending: true })
+      .order('first_name', { ascending: true });
+
+    if (error) throw error;
+    participants = data || [];
+  }
+
+  return {
+    participating: !!mine,
+    participants
+  };
+}
+
+async function toggleEventParticipation(event) {
+  if (!currentUser) {
+    $('authModal')?.classList.remove('hidden');
     return;
   }
 
+  const button = $('eventParticipationBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Enregistrement…';
+  }
+
+  try {
+    const { data: existing, error: findError } = await supabase
+      .from('event_participants')
+      .select('user_id')
+      .eq('event_id', event.id)
+      .eq('user_id', currentUser.id)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    if (existing) {
+      const { error } = await supabase
+        .from('event_participants')
+        .delete()
+        .eq('event_id', event.id)
+        .eq('user_id', currentUser.id);
+
+      if (error) throw error;
+    } else {
+      const firstName = String(
+        currentUser.user_metadata?.first_name ||
+        currentUser.user_metadata?.firstName ||
+        ''
+      ).trim();
+
+      const lastName = String(
+        currentUser.user_metadata?.last_name ||
+        currentUser.user_metadata?.lastName ||
+        ''
+      ).trim();
+
+      if (!firstName || !lastName) {
+        throw new Error(
+          'Votre prénom et votre nom sont nécessaires pour participer à un événement.'
+        );
+      }
+
+      const { error } = await supabase
+        .from('event_participants')
+        .insert({
+          event_id: event.id,
+          user_id: currentUser.id,
+          first_name: firstName,
+          last_name: lastName
+        });
+
+      if (error) throw error;
+    }
+
+    await loadParticipantCounts();
+    renderEvents();
+    await openEventDetail(event);
+  } catch (error) {
+    console.error('Erreur participation événement :', error);
+    alert(`Impossible de modifier votre participation : ${error.message}`);
+    if (button) {
+      button.disabled = false;
+      button.textContent = 'Participer';
+    }
+  }
+}
+
+async function openEventDetail(event) {
+
+  const modal = $('eventDetailModal');
+  const body = $('eventDetailBody');
+
+  if (!modal || !body) return;
 
   const photo =
     event.photo_url ||
@@ -1121,193 +1296,187 @@ function openEventDetail(event) {
     event.image_url ||
     '';
 
-
-  const date =
-    parseEventDate(event);
-
-
-  const past =
-    isEventPast(event);
-
+  const past = isEventPast(event);
 
   body.innerHTML = `
-
     ${
       photo
         ? `
           <img
             src="${esc(photo)}"
             alt="${esc(event.name)}"
-            style="
-              width:100%;
-              max-height:350px;
-              object-fit:cover;
-              border-radius:8px;
-              margin-bottom:20px;
-            "
+            style="width:100%;max-height:350px;object-fit:cover;border-radius:8px;margin-bottom:20px;"
           >
         `
         : ''
     }
 
-
     <p class="eyebrow">
-      ${
-        past
-          ? 'ÉVÉNEMENT PASSÉ'
-          : 'ÉVÉNEMENT À VENIR'
-      }
-      ${
-        event.members_only
-          ? ' · 🔒 RÉSERVÉ AUX MEMBRES'
-          : ''
-      }
+      ${past ? 'ÉVÉNEMENT PASSÉ' : 'ÉVÉNEMENT À VENIR'}
+      ${event.members_only ? ' · 🔒 RÉSERVÉ AUX MEMBRES' : ''}
     </p>
 
+    <h2 style="margin-top:5px;">${esc(event.name || 'Événement')}</h2>
 
-    <h2
-      style="
-        margin-top:5px;
-      "
-    >
-      ${esc(
-        event.name ||
-        'Événement'
-      )}
-    </h2>
-
-
-    <p
-      style="
-        color:var(--accent);
-        font-weight:700;
-        margin-top:8px;
-      "
-    >
-      📅 ${esc(
-        formatEventDate(event)
-      )}
+    <p style="color:var(--accent);font-weight:700;margin-top:8px;">
+      📅 ${esc(formatEventDate(event))}
     </p>
-
 
     ${
       event.organizers
         ? `
-          <p
-            style="
-              color:var(--muted);
-              font-size:13px;
-              margin-top:8px;
-            "
-          >
-            Organisé par :
-            ${esc(event.organizers)}
+          <p style="color:var(--muted);font-size:13px;margin-top:8px;">
+            Organisé par : ${esc(event.organizers)}
           </p>
         `
         : ''
     }
-
 
     ${
       event.short_description ||
       event.brief_description ||
       event.description_brief
         ? `
-          <div
-            style="
-              margin-top:20px;
-              padding:14px;
-              border:1px solid var(--line);
-              background:var(--bg);
-              border-radius:8px;
-            "
-          >
-
-            <p class="eyebrow">
-              EN BREF
+          <div style="margin-top:20px;padding:14px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
+            <p class="eyebrow">EN BREF</p>
+            <p style="margin-top:7px;font-size:14px;line-height:1.6;">
+              ${esc(event.short_description || event.brief_description || event.description_brief)}
             </p>
-
-            <p
-              style="
-                margin-top:7px;
-                font-size:14px;
-                line-height:1.6;
-              "
-            >
-              ${esc(
-                event.short_description ||
-                event.brief_description ||
-                event.description_brief
-              )}
-            </p>
-
           </div>
         `
         : ''
     }
 
-
-    <div
-      style="
-        margin-top:22px;
-      "
-    >
-
-      <p class="eyebrow">
-        DESCRIPTION
+    <div style="margin-top:22px;">
+      <p class="eyebrow">DESCRIPTION</p>
+      <p style="margin-top:8px;font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;">
+        ${esc(event.description || 'Aucune description disponible.')}
       </p>
-
-      <p
-        style="
-          margin-top:8px;
-          font-size:14px;
-          line-height:1.75;
-          white-space:pre-wrap;
-          overflow-wrap:anywhere;
-        "
-      >
-        ${esc(
-          event.description ||
-          'Aucune description disponible.'
-        )}
-      </p>
-
     </div>
+
+    ${
+      currentUser && !past
+        ? `
+          <div style="margin-top:22px;padding:16px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
+            <p class="eyebrow">PARTICIPATION</p>
+            <p id="eventParticipationStatus" style="margin-top:7px;color:var(--muted);font-size:13px;">
+              Chargement…
+            </p>
+            <button
+              type="button"
+              id="eventParticipationBtn"
+              class="button primary"
+              style="width:100%;margin-top:12px;"
+            >
+              Participer
+            </button>
+          </div>
+        `
+        : !past
+          ? `
+            <div style="margin-top:22px;padding:14px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
+              <p style="font-size:13px;color:var(--muted);">
+                👤 Connectez-vous pour indiquer votre participation.
+              </p>
+              <button type="button" id="eventLoginForParticipationBtn" class="button primary" style="width:100%;margin-top:10px;">
+                Se connecter
+              </button>
+            </div>
+          `
+          : ''
+    }
 
     ${
       isAdminEmail(currentUser?.email)
         ? `
-          <div style="display:flex;gap:8px;margin-top:20px;">
+          <div id="adminEventParticipants" style="margin-top:22px;padding-top:20px;border-top:1px solid var(--line);">
+            <p class="eyebrow">INSCRITS</p>
+            <div id="eventParticipantsList" style="margin-top:10px;color:var(--muted);font-size:13px;">
+              Chargement de la liste…
+            </div>
+          </div>
 
-            <button
-              type="button"
-              id="editEventFromModal"
-              class="button"
-              style="flex:1;"
-            >
+          <div style="display:flex;gap:8px;margin-top:20px;">
+            <button type="button" id="editEventFromModal" class="button" style="flex:1;">
               ✏️ Modifier
             </button>
-
-            <button
-              type="button"
-              id="deleteEventFromModal"
-              class="button danger"
-              style="flex:1;"
-            >
+            <button type="button" id="deleteEventFromModal" class="button danger" style="flex:1;">
               🗑 Supprimer
             </button>
-
           </div>
         `
         : ''
     }
-
   `;
 
+  modal.classList.remove('hidden');
 
-  modal.classList.remove(
-    'hidden'
-  );
+  $('eventLoginForParticipationBtn')?.addEventListener('click', () => {
+    modal.classList.add('hidden');
+    $('authModal')?.classList.remove('hidden');
+  });
+
+  $('eventParticipationBtn')?.addEventListener('click', () => {
+    toggleEventParticipation(event);
+  });
+
+  try {
+    const { participating, participants } = await getEventParticipation(event.id);
+
+    const status = $('eventParticipationStatus');
+    const button = $('eventParticipationBtn');
+
+    if (status) {
+      status.textContent = participating
+        ? '✓ Vous êtes inscrit à cet événement.'
+        : 'Vous n’êtes pas encore inscrit.';
+    }
+
+    if (button) {
+      button.textContent = participating
+        ? 'Ne plus participer'
+        : 'Participer';
+      button.classList.toggle('danger', participating);
+      button.classList.toggle('primary', !participating);
+    }
+
+    if (isAdminEmail(currentUser?.email)) {
+      const list = $('eventParticipantsList');
+
+      if (list) {
+        if (!participants.length) {
+          list.innerHTML = 'Aucune personne inscrite pour le moment.';
+        } else {
+          list.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <strong style="color:var(--text);">
+                ${participants.length} inscrit${participants.length > 1 ? 's' : ''}
+              </strong>
+            </div>
+            <ol style="margin:0;padding-left:22px;">
+              ${participants.map(person => `
+                <li style="padding:5px 0;">
+                  ${esc(person.first_name)} ${esc(person.last_name)}
+                </li>
+              `).join('')}
+            </ol>
+          `;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Erreur chargement participation :', error);
+
+    const status = $('eventParticipationStatus');
+    if (status) {
+      status.textContent = 'Impossible de charger votre participation.';
+    }
+
+    const list = $('eventParticipantsList');
+    if (list) {
+      list.innerHTML = `Impossible de charger la liste : ${esc(error.message)}`;
+    }
+  }
 
   $('editEventFromModal')?.addEventListener('click', () => {
     if (!isAdminEmail(currentUser?.email)) return;
@@ -1339,9 +1508,7 @@ function openEventDetail(event) {
       button.textContent = '🗑 Supprimer';
     }
   });
-
 }
-
 
 // =========================================================
 // MODALE AJOUT / ÉDITION
