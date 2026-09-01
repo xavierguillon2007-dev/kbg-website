@@ -339,10 +339,11 @@ async function handleAuthChange(user) {
           admin
             ? `
               <button
-                class="button primary"
+                class="button primary admin-button"
                 id="openAdminBtn"
               >
                 🔑 Admin
+                <span id="adminNotificationBadge" class="admin-notification-badge hidden" aria-label="Notifications administrateur">0</span>
               </button>
             `
             : ''
@@ -402,6 +403,7 @@ async function handleAuthChange(user) {
               $('adminModal')
                 ?.classList.remove('hidden');
 
+              await refreshAdminNotificationBadge();
               await loadAdminPanel();
 
             }
@@ -414,6 +416,7 @@ async function handleAuthChange(user) {
     await loadUserNotifications(false);
     startNotificationRealtime();
     await refreshNotificationBadge();
+    await refreshAdminNotificationBadge();
 
   } else {
 
@@ -601,6 +604,70 @@ function updateNotificationBadge(count) {
   } else {
     badge.textContent = '0';
     badge.classList.add('hidden');
+  }
+}
+
+async function refreshAdminNotificationBadge() {
+  if (!currentUser || !currentUserIsAdmin) {
+    const badge = $('adminNotificationBadge');
+    if (badge) {
+      badge.textContent = '0';
+      badge.classList.add('hidden');
+    }
+    return;
+  }
+
+  try {
+    const [requestsResult, legacyResult, reservationsResult] = await Promise.all([
+      supabase
+        .from('account_requests')
+        .select('id, user_id, email', { count: 'exact' })
+        .eq('status', 'pending'),
+      supabase.rpc('get_pending_accounts_admin'),
+      supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+    ]);
+
+    if (requestsResult.error) throw requestsResult.error;
+    if (legacyResult.error) throw legacyResult.error;
+    if (reservationsResult.error) throw reservationsResult.error;
+
+    // Même logique que dans le panneau admin : une demande explicite
+    // account_requests est prioritaire sur l'ancien profil pending.
+    const seen = new Set();
+    let pendingAccounts = 0;
+
+    for (const request of (requestsResult.data || [])) {
+      const key = String(request.email || request.user_id || request.id).trim().toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        pendingAccounts++;
+      }
+    }
+
+    for (const account of (legacyResult.data || [])) {
+      const key = String(account.email || account.user_id || '').trim().toLowerCase();
+      if (!key || !seen.has(key)) {
+        if (key) seen.add(key);
+        pendingAccounts++;
+      }
+    }
+
+    const total = pendingAccounts + (reservationsResult.count || 0);
+    const badge = $('adminNotificationBadge');
+    if (!badge) return;
+
+    if (total > 0) {
+      badge.textContent = total > 99 ? '99+' : String(total);
+      badge.classList.remove('hidden');
+    } else {
+      badge.textContent = '0';
+      badge.classList.add('hidden');
+    }
+  } catch (error) {
+    console.error('Erreur compteur admin :', error);
   }
 }
 

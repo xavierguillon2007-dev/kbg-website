@@ -219,7 +219,20 @@ async function loadAdminReservations() {
   }
 
   currentReservations = data || [];
+  updatePendingReservationsBadge();
   renderReservations();
+}
+
+function updatePendingReservationsBadge() {
+  const badge = $('pendingReservationsBadge');
+  if (!badge) return;
+
+  const count = currentReservations.filter(
+    reservation => reservation.status === 'pending'
+  ).length;
+
+  badge.textContent = `${count} en attente`;
+  badge.hidden = count === 0;
 }
 
 function renderReservations() {
