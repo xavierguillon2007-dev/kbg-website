@@ -65,6 +65,14 @@ function isAdminEmail(_email) {
   return currentUserIsAdmin;
 }
 
+// Vérification fraîche des droits admin au moment d'une action sensible.
+async function ensureCurrentUserIsAdmin() {
+  if (!currentUser?.id) return false;
+  const admin = await loadAdminStatus(currentUser.id);
+  currentUserIsAdmin = admin;
+  return admin;
+}
+
 
 // =========================================================
 // VARIABLES
@@ -4366,11 +4374,11 @@ async function loadAdminReservationsList() {
   }
 
 
-  if (
-    !isAdminEmail(
-      currentUser?.email
-    )
-  ) {
+  if (!(await ensureCurrentUserIsAdmin())) {
+    pendingContainer.innerHTML = `
+      <div class="empty">Accès administrateur requis.</div>
+    `;
+    processedContainer.innerHTML = '';
     return;
   }
 
@@ -4687,17 +4695,14 @@ async function loadAdminReservationsList() {
         button.onclick =
           async () => {
 
-            if (
-              !isAdminEmail(
-                currentUser?.email
-              )
-            ) {
+            if (!(await ensureCurrentUserIsAdmin())) {
+              alert(
+                "Votre session n'est pas reconnue comme administrateur. Déconnectez-vous puis reconnectez-vous et réessayez."
+              );
               return;
             }
 
-
-            button.disabled =
-              true;
+            button.disabled = true;
 
 
             const originalText =
@@ -4712,23 +4717,12 @@ async function loadAdminReservationsList() {
             // A RÉELLEMENT ÉTÉ MODIFIÉE (garde-fou RLS)
             // -----------------------------------------------
 
-            const {
-              data,
-              error
-            } =
-              await supabase
-                .from('reservations')
-                .update({
-
-                  status:
-                    button.dataset.act
-
-                })
-                .eq(
-                  'id',
-                  button.dataset.id
-                )
-                .select();
+            const { data, error } = await supabase
+              .from('reservations')
+              .update({ status: button.dataset.act })
+              .eq('id', button.dataset.id)
+              .select('id,status')
+              .single();
 
 
             if (error) {
@@ -4755,25 +4749,16 @@ async function loadAdminReservationsList() {
             }
 
 
-            if (!data || !data.length) {
-
+            if (!data) {
               alert(
-                "La mise à jour n'a pas été appliquée. C'est très probablement un problème de permissions Supabase : " +
-                "la policy RLS d'UPDATE sur la table 'reservations' n'autorise pas votre compte à modifier cette ligne. " +
-                "Vérifiez la policy admin dans Supabase."
+                "La réservation n'a pas pu être mise à jour. Vérifiez votre session administrateur."
               );
-
-              button.disabled =
-                false;
-
-              button.textContent =
-                originalText;
-
+              button.disabled = false;
+              button.textContent = originalText;
               return;
             }
 
-
-           await loadAdminReservationsList();
+            await loadAdminReservationsList();
 
 await renderCalendar();
 
