@@ -388,7 +388,7 @@ async function handleAuthChange(user) {
     }
 
     if (authWarning) {
-      if (approved) {
+      if (isApprovedMember()) {
         authWarning.classList.add('hidden');
       } else {
         authWarning.textContent = '⏳ Votre compte est en attente de validation par un administrateur. Les fonctionnalités réservées aux membres resteront indisponibles jusqu’à validation.';
@@ -4090,18 +4090,19 @@ async function handleAdminAccountDecision(requestId, decision, button) {
   button.textContent = '…';
 
   try {
-    const { data, error } = await supabase.functions.invoke(
-      'approve-account',
-      {
-        body: {
-          request_id: request.id,
-          action: decision
-        }
-      }
-    );
+    const { data, error } = await supabase
+      .from('account_requests')
+      .update({ status: decision })
+      .eq('id', request.id)
+      .select();
 
     if (error) throw error;
-    if (data?.error) throw new Error(data.error);
+
+    if (!data || !data.length) {
+      throw new Error(
+        "La mise à jour n'a rien modifié (droits insuffisants ou demande introuvable)."
+      );
+    }
 
     alert(
       decision === 'approved'
