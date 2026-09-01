@@ -1240,31 +1240,13 @@ async function toggleEventParticipation(event) {
 
       if (error) throw error;
     } else {
-      const firstName = String(
-        currentUser.user_metadata?.first_name ||
-        currentUser.user_metadata?.firstName ||
-        ''
-      ).trim();
-
-      const lastName = String(
-        currentUser.user_metadata?.last_name ||
-        currentUser.user_metadata?.lastName ||
-        ''
-      ).trim();
-
-      if (!firstName || !lastName) {
-        throw new Error(
-          'Votre prénom et votre nom sont nécessaires pour participer à un événement.'
-        );
-      }
-
+      // Le navigateur ne fournit jamais le nom/prénom de l'inscription.
+      // Le trigger PostgreSQL les récupère depuis public.profiles.
       const { error } = await supabase
         .from('event_participants')
         .insert({
           event_id: event.id,
-          user_id: currentUser.id,
-          first_name: firstName,
-          last_name: lastName
+          user_id: currentUser.id
         });
 
       if (error) throw error;

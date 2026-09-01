@@ -67,6 +67,7 @@ let allReviews = [];
 let allEvents = [];
 
 let currentUser = null;
+let currentProfile = null;
 
 let currentCalendarDate = new Date();
 
@@ -111,7 +112,7 @@ function esc(value) {
 
 function getUserProfile() {
 
-  if (!currentUser) {
+  if (!currentUser || !currentProfile) {
     return {
       firstName: '',
       lastName: '',
@@ -119,25 +120,31 @@ function getUserProfile() {
     };
   }
 
-  const metadata =
-    currentUser.user_metadata || {};
-
   return {
-    firstName:
-      String(
-        metadata.first_name || ''
-      ).trim(),
-
-    lastName:
-      String(
-        metadata.last_name || ''
-      ).trim(),
-
-    promotion:
-      String(
-        metadata.promotion || ''
-      ).trim()
+    firstName: String(currentProfile.first_name || '').trim(),
+    lastName: String(currentProfile.last_name || '').trim(),
+    promotion: String(currentProfile.promotion || '').trim()
   };
+}
+
+async function loadCurrentProfile(user = currentUser) {
+  currentProfile = null;
+
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name, promotion')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Erreur chargement profil :', error);
+    return null;
+  }
+
+  currentProfile = data || null;
+  return currentProfile;
 }
 
 
@@ -268,6 +275,7 @@ supabase.auth.onAuthStateChange(
 async function handleAuthChange(user) {
 
   currentUser = user;
+  await loadCurrentProfile(currentUser);
 
   const userNav =
     $('userNav');
@@ -510,6 +518,23 @@ async function submitProfile(e) {
 
     currentUser =
       data.user;
+
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        user_id: currentUser.id,
+        first_name: firstName,
+        last_name: lastName,
+        promotion: promotion
+      }, { onConflict: 'user_id' })
+      .select('user_id, first_name, last_name, promotion')
+      .single();
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    currentProfile = profileData;
 
 
     if (msg) {
