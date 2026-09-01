@@ -74,6 +74,24 @@ grant execute on function public.is_approved_member(uuid) to anon, authenticated
 
 -- Un utilisateur peut modifier son nom/promotion, mais jamais
 -- transformer lui-même son statut pending en approved.
+create or replace function public.is_admin_user(p_user_id uuid default auth.uid())
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select lower(coalesce(u.email, '')) in (
+    'xavierguillon2007@gmail.com',
+    'kbg.asso@gmail.com'
+  )
+  from auth.users u
+  where u.id = p_user_id;
+$$;
+
+revoke all on function public.is_admin_user(uuid) from public;
+grant execute on function public.is_admin_user(uuid) to anon, authenticated;
+
 create or replace function public.protect_profile_account_status()
 returns trigger
 language plpgsql
@@ -81,7 +99,12 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is not null and new.account_status is distinct from old.account_status then
+  -- Un membre ne peut jamais changer lui-même son statut.
+  -- Les deux comptes administrateurs peuvent le faire, notamment
+  -- lorsque la validation est effectuée directement depuis l'interface.
+  if auth.uid() is not null
+     and new.account_status is distinct from old.account_status
+     and not public.is_admin_user(auth.uid()) then
     raise exception 'Le statut du compte ne peut être modifié que par un administrateur.';
   end if;
   return new;
@@ -254,6 +277,29 @@ create trigger account_requests_sync_profile_status
 after insert or update of status on public.account_requests
 for each row
 execute function public.sync_profile_account_status();
+
+-- ---------------------------------------------------------
+-- 6 bis. DEMANDES DE COMPTES : ACCÈS ADMINISTRATEUR
+-- ---------------------------------------------------------
+-- Les administrateurs doivent pouvoir consulter et traiter les demandes.
+-- La sécurité repose sur l'e-mail du compte Auth, jamais sur user_metadata.
+
+alter table public.account_requests enable row level security;
+
+drop policy if exists "account_requests_select_admin" on public.account_requests;
+create policy "account_requests_select_admin"
+on public.account_requests
+for select
+to authenticated
+using (public.is_admin_user(auth.uid()));
+
+drop policy if exists "account_requests_update_admin" on public.account_requests;
+create policy "account_requests_update_admin"
+on public.account_requests
+for update
+to authenticated
+using (public.is_admin_user(auth.uid()))
+with check (public.is_admin_user(auth.uid()));
 
 -- ---------------------------------------------------------
 -- 7. ÉVÉNEMENTS : PROTECTION DES ÉVÉNEMENTS MEMBRES

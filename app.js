@@ -148,7 +148,7 @@ async function loadCurrentProfile(user = currentUser) {
 }
 
 function isApprovedMember() {
-  return !!currentUser && currentProfile?.account_status === 'approved';
+  return !!currentUser && (isAdminEmail(currentUser.email) || currentProfile?.account_status === 'approved');
 }
 
 

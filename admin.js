@@ -283,7 +283,6 @@ async function loadAccountRequests() {
     return;
   }
 
-  console.log('TEST 1 : loadAccountRequests appelée');
 
   container.innerHTML = `
     <div class="loading">
@@ -292,14 +291,12 @@ async function loadAccountRequests() {
   `;
 
   try {
-    console.log('TEST 2 : avant requête Supabase');
 
     const result = await supabase
       .from('account_requests')
       .select('*')
       .order('created_at', { ascending: false });
 
-    console.log('TEST 3 : réponse Supabase', result);
 
     const { data, error } = result;
 
@@ -319,10 +316,6 @@ async function loadAccountRequests() {
 
     currentAccountRequests = data || [];
 
-    console.log(
-      'TEST 4 : demandes récupérées =',
-      currentAccountRequests.length
-    );
 
     renderAccountRequests();
 

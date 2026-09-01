@@ -59,7 +59,7 @@ async function loadCurrentProfile(user = currentUser) {
 }
 
 function isApprovedMember() {
-  return !!currentUser && currentProfile?.account_status === 'approved';
+  return !!currentUser && (isAdminEmail(currentUser.email) || currentProfile?.account_status === 'approved');
 }
 
 // =========================================================
@@ -2191,8 +2191,8 @@ async function handleSignup(e) {
 
       msg.textContent =
         data?.session
-          ? '✓ Compte créé et connecté !'
-          : '✓ Compte créé ! Vérifiez votre boîte mail si nécessaire.';
+          ? '✓ Compte créé ! Votre demande doit maintenant être validée par un administrateur.'
+          : '✓ Compte créé ! Vérifiez votre boîte mail si nécessaire. Votre demande sera ensuite validée par un administrateur.';
 
       msg.style.color =
         'var(--success)';
