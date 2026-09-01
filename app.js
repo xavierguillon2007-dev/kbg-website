@@ -343,7 +343,7 @@ async function handleAuthChange(user) {
                 id="openAdminBtn"
               >
                 🔑 Admin
-                <span id="adminNotificationBadge" class="admin-notification-badge hidden" aria-label="Notifications administrateur">0</span>
+                <span id="adminNotificationBadge" class="admin-notification-badge hidden">0</span>
               </button>
             `
             : ''
@@ -367,6 +367,11 @@ async function handleAuthChange(user) {
               await supabase.removeChannel(notificationsChannel);
               notificationsChannel = null;
               notificationRealtimeStartedFor = null;
+            }
+
+            if (adminNotificationInterval) {
+              clearInterval(adminNotificationInterval);
+              adminNotificationInterval = null;
             }
 
             const {
@@ -403,8 +408,8 @@ async function handleAuthChange(user) {
               $('adminModal')
                 ?.classList.remove('hidden');
 
-              await loadAdminPanel();
               await refreshAdminNotificationBadge();
+              await loadAdminPanel();
 
             }
           );
@@ -417,6 +422,14 @@ async function handleAuthChange(user) {
     startNotificationRealtime();
     await refreshNotificationBadge();
     await refreshAdminNotificationBadge();
+
+    if (adminNotificationInterval) {
+      clearInterval(adminNotificationInterval);
+      adminNotificationInterval = null;
+    }
+    if (currentUserIsAdmin) {
+      adminNotificationInterval = setInterval(refreshAdminNotificationBadge, 30000);
+    }
 
   } else {
 
@@ -586,58 +599,12 @@ async function submitProfile(e) {
 
 
 // =========================================================
-// NOTIFICATIONS ADMIN — comptes + réservations en attente
-// =========================================================
-
-function updateAdminNotificationBadge(count) {
-  const badge = $('adminNotificationBadge');
-  if (!badge) return;
-  const safeCount = Math.max(0, Number(count) || 0);
-  badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
-  badge.classList.toggle('hidden', safeCount === 0);
-}
-
-async function refreshAdminNotificationBadge() {
-  if (!currentUser || !currentUserIsAdmin) {
-    updateAdminNotificationBadge(0);
-    return;
-  }
-
-  try {
-    const [accountResult, legacyResult, reservationResult] = await Promise.all([
-      supabase.from('account_requests').select('id').eq('status', 'pending'),
-      supabase.rpc('get_pending_accounts_admin'),
-      supabase.from('reservations').select('id').eq('status', 'pending')
-    ]);
-
-    if (accountResult.error) throw accountResult.error;
-    if (legacyResult.error) throw legacyResult.error;
-    if (reservationResult.error) throw reservationResult.error;
-
-    const accountIds = new Set((accountResult.data || []).map(row => String(row.id)));
-    const legacyIds = (legacyResult.data || [])
-      .filter(row => row?.status === 'pending')
-      .map(row => String(row.id ?? row.user_id ?? row.email ?? ''))
-      .filter(Boolean);
-
-    // Les anciennes demandes peuvent recouvrir account_requests : on déduplique.
-    legacyIds.forEach(id => accountIds.add(id));
-
-    const total = accountIds.size + (reservationResult.data || []).length;
-    updateAdminNotificationBadge(total);
-  } catch (error) {
-    console.error('Erreur compteur notifications admin :', error);
-    // En cas d'erreur RLS/réseau, ne pas afficher un faux compteur.
-    updateAdminNotificationBadge(0);
-  }
-}
-
-// =========================================================
 // NOTIFICATIONS
 // =========================================================
 
 let notificationsChannel = null;
 let notificationRealtimeStartedFor = null;
+let adminNotificationInterval = null;
 
 function updateNotificationBadge(count) {
   const badge = $('notifBadge');
@@ -672,6 +639,52 @@ async function refreshNotificationBadge() {
   } catch (error) {
     console.error('Erreur compteur notifications :', error);
     updateNotificationBadge(0);
+  }
+}
+
+
+// =========================================================
+// ADMIN — COMPTEUR GLOBAL DES DEMANDES EN ATTENTE
+// Ne dépend d'aucun RPC legacy : les compteurs sont lus directement
+// depuis account_requests et reservations.
+// =========================================================
+
+function updateAdminNotificationBadge(count) {
+  const badge = $('adminNotificationBadge');
+  if (!badge) return;
+
+  const safeCount = Math.max(0, Number(count) || 0);
+  badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
+  badge.classList.toggle('hidden', safeCount === 0);
+}
+
+async function refreshAdminNotificationBadge() {
+  if (!currentUser || !currentUserIsAdmin) {
+    updateAdminNotificationBadge(0);
+    return;
+  }
+
+  try {
+    const [accountsResult, reservationsResult] = await Promise.all([
+      supabase
+        .from('account_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending'),
+      supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+    ]);
+
+    if (accountsResult.error) throw accountsResult.error;
+    if (reservationsResult.error) throw reservationsResult.error;
+
+    updateAdminNotificationBadge(
+      (accountsResult.count || 0) + (reservationsResult.count || 0)
+    );
+  } catch (error) {
+    console.error('Erreur compteur notifications admin :', error);
+    updateAdminNotificationBadge(0);
   }
 }
 
@@ -3720,7 +3733,6 @@ async function loadAdminPanel() {
   await loadAdminLegacyPendingAccounts();
   await loadAdminGamesList();
   await loadAdminReservationsList();
-  await refreshAdminNotificationBadge();
 
 }
 
@@ -3889,20 +3901,19 @@ async function loadAdminLegacyPendingAccounts() {
   `;
 
   try {
-    const request = supabase.rpc('get_pending_accounts_admin');
-
-    const timeout = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error('Délai dépassé lors du chargement des anciens comptes en attente.')),
-        10000
-      )
-    );
-
-    const { data, error } = await Promise.race([request, timeout]);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, last_name, promotion, account_status, created_at')
+      .eq('account_status', 'pending')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    currentAdminLegacyPendingAccounts = Array.isArray(data) ? data : [];
+    currentAdminLegacyPendingAccounts = (data || []).map(account => ({
+      ...account,
+      email: '',
+      status: 'pending'
+    }));
     renderAdminLegacyPendingAccounts();
   } catch (error) {
     console.error('Erreur anciens comptes en attente :', error);

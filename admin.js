@@ -219,12 +219,14 @@ async function loadAdminReservations() {
   }
 
   currentReservations = data || [];
+  updateAdminReservationBadge();
   renderReservations();
 }
 
 function updateAdminReservationBadge() {
   const badge = $('adminReservationsBadge');
   if (!badge) return;
+
   const count = currentReservations.filter(r => r.status === 'pending').length;
   badge.textContent = `${count} en attente`;
   badge.hidden = count === 0;
@@ -232,7 +234,6 @@ function updateAdminReservationBadge() {
 
 function renderReservations() {
   const container = $('adminReservationsList');
-  updateAdminReservationBadge();
   const filter = $('filterStatus').value;
   const list = currentReservations.filter(r => !filter || r.status === filter);
 
@@ -290,7 +291,7 @@ function renderReservations() {
         return;
       }
 
-      loadAdminReservations();
+      await loadAdminReservations();
     };
   });
 }
@@ -307,39 +308,18 @@ async function loadAccountRequests() {
   container.innerHTML = '<div class="loading">Chargement des comptes à valider…</div>';
 
   try {
-    const [requestsResult, legacyResult] = await Promise.all([
-      supabase
-        .from('account_requests')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase.rpc('get_pending_accounts_admin')
-    ]);
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (requestsResult.error) throw requestsResult.error;
-    if (legacyResult.error) throw legacyResult.error;
+    if (error) throw error;
 
-    const requests = (requestsResult.data || []).filter(request => request.status === 'pending').map(request => ({
-      ...request,
-      source: 'request'
-    }));
-
-    const legacy = (legacyResult.data || []).map(account => ({
-      ...account,
-      id: `legacy:${account.user_id}`,
-      source: 'profile',
-      status: 'pending'
-    }));
-
-    // Si un même e-mail apparaît dans les deux systèmes, la demande
-    // explicite account_requests est prioritaire afin d'éviter un doublon.
-    const seenEmails = new Set();
-    currentAccountRequests = [...requests, ...legacy].filter(item => {
-      const email = String(item.email || '').trim().toLowerCase();
-      if (!email) return true;
-      if (seenEmails.has(email)) return false;
-      seenEmails.add(email);
-      return true;
-    });
+    // Le back-office actuel repose sur account_requests.
+    // Aucun appel au RPC legacy get_pending_accounts_admin n'est effectué.
+    currentAccountRequests = (data || [])
+      .filter(request => request.status === 'pending')
+      .map(request => ({ ...request, source: 'request' }));
 
     renderAccountRequests();
     updatePendingAccountsBadge();
