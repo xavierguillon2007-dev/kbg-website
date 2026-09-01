@@ -272,14 +272,16 @@ function renderReservations() {
   });
 }
 // =========================================================
-// GESTION DES DEMANDES DE VALIDATION DE COMPTES
+// VALIDATION DES COMPTES — UNE SEULE SECTION
+// Les nouvelles demandes et les anciens comptes pending sont
+// fusionnés ici pour éviter toute duplication dans l'interface.
 // =========================================================
 
 async function loadAccountRequests() {
   const container = $('accountRequestsList');
   if (!container) return;
 
-  container.innerHTML = '<div class="loading">Chargement des demandes de validation…</div>';
+  container.innerHTML = '<div class="loading">Chargement des comptes à valider…</div>';
 
   try {
     const [requestsResult, legacyResult] = await Promise.all([
@@ -293,7 +295,7 @@ async function loadAccountRequests() {
     if (requestsResult.error) throw requestsResult.error;
     if (legacyResult.error) throw legacyResult.error;
 
-    const requests = (requestsResult.data || []).map(request => ({
+    const requests = (requestsResult.data || []).filter(request => request.status === 'pending').map(request => ({
       ...request,
       source: 'request'
     }));
@@ -318,10 +320,10 @@ async function loadAccountRequests() {
 
     renderAccountRequests();
   } catch (error) {
-    console.error('Erreur chargement des demandes de validation :', error);
+    console.error('Erreur chargement des comptes à valider :', error);
     container.innerHTML = `
       <div class="empty panel">
-        <strong>Impossible de charger les demandes de validation.</strong><br><br>
+        <strong>Impossible de charger les comptes à valider.</strong><br><br>
         <small>${esc(error?.message || String(error))}</small>
       </div>
     `;

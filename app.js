@@ -319,6 +319,13 @@ async function handleAuthChange(user) {
           ${isApprovedMember() ? '' : '<span class="badge badge-warning" style="margin-left:8px;">⏳ En attente</span>'}
         </span>
 
+        <button
+          class="button"
+          id="openProfileBtn"
+        >
+          👤 Mon compte
+        </button>
+
         ${
           admin
             ? `
@@ -367,6 +374,14 @@ async function handleAuthChange(user) {
           }
         );
 
+
+      $('openProfileBtn')?.addEventListener('click', () => {
+        const profile = getUserProfile();
+        $('profileFirstName').value = profile.firstName;
+        $('profileLastName').value = profile.lastName;
+        $('profilePromotion').value = profile.promotion;
+        $('profileModal')?.classList.remove('hidden');
+      });
 
       if (admin) {
 
@@ -5510,6 +5525,42 @@ async function handleSignup(e) {
 }
 
 // =========================================================
+// SUPPRESSION DE SON PROPRE COMPTE
+// =========================================================
+
+async function deleteOwnAccount() {
+  if (!currentUser) return;
+
+  const confirmation = prompt(
+    'Cette action est définitive. Tapez SUPPRIMER pour confirmer la suppression de votre compte.'
+  );
+
+  if (confirmation !== 'SUPPRIMER') return;
+
+  const button = $('deleteOwnAccountBtn');
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Suppression…';
+  }
+
+  try {
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) throw error;
+
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  } catch (error) {
+    console.error('Erreur suppression compte :', error);
+    alert('Impossible de supprimer le compte : ' + (error?.message || error));
+    if (button) {
+      button.disabled = false;
+      button.textContent = '🗑 Supprimer définitivement mon compte';
+    }
+  }
+}
+
+
+// =========================================================
 // LISTENERS
 // =========================================================
 
@@ -5614,6 +5665,8 @@ function setupEventListeners() {
       'submit',
       submitProfile
     );
+
+  $('deleteOwnAccountBtn')?.addEventListener('click', deleteOwnAccount);
 
 
   // -------------------------------------------------------

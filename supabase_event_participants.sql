@@ -519,3 +519,145 @@ $$;
 
 revoke all on function public.set_account_status_admin(uuid, text) from public;
 grant execute on function public.set_account_status_admin(uuid, text) to authenticated;
+
+
+-- =========================================================
+-- 13. GESTION COMPLÈTE DES COMPTES ADMIN + SUPPRESSION DU COMPTE
+-- =========================================================
+
+create or replace function public.get_all_accounts_admin()
+returns table (
+  user_id uuid,
+  email text,
+  first_name text,
+  last_name text,
+  promotion text,
+  account_status text,
+  created_at timestamptz,
+  last_sign_in_at timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select
+    u.id,
+    u.email::text,
+    coalesce(p.first_name, ''),
+    coalesce(p.last_name, ''),
+    coalesce(p.promotion, ''),
+    coalesce(p.account_status, 'pending'),
+    u.created_at,
+    u.last_sign_in_at
+  from auth.users u
+  left join public.profiles p on p.user_id = u.id
+  where public.is_admin_user(auth.uid())
+  order by u.created_at desc;
+$$;
+
+revoke all on function public.get_all_accounts_admin() from public;
+grant execute on function public.get_all_accounts_admin() to authenticated;
+
+create or replace function public.update_account_admin(
+  p_user_id uuid,
+  p_first_name text,
+  p_last_name text,
+  p_promotion text,
+  p_account_status text
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_admin_user(auth.uid()) then
+    raise exception 'Accès réservé aux administrateurs.';
+  end if;
+
+  if p_account_status not in ('pending','approved','rejected') then
+    raise exception 'Statut invalide.';
+  end if;
+
+  update public.profiles
+  set first_name = coalesce(p_first_name, ''),
+      last_name = coalesce(p_last_name, ''),
+      promotion = coalesce(p_promotion, ''),
+      account_status = p_account_status,
+      updated_at = now()
+  where user_id = p_user_id;
+
+  return found;
+end;
+$$;
+
+revoke all on function public.update_account_admin(uuid,text,text,text,text) from public;
+grant execute on function public.update_account_admin(uuid,text,text,text,text) to authenticated;
+
+-- Suppression par un administrateur. La suppression de auth.users
+-- déclenche les cascades définies sur les tables qui le référencent.
+create or replace function public.delete_account_admin(p_user_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  deleted_count integer;
+begin
+  if not public.is_admin_user(auth.uid()) then
+    raise exception 'Accès réservé aux administrateurs.';
+  end if;
+
+  if p_user_id is null then
+    raise exception 'Compte invalide.';
+  end if;
+
+  if p_user_id = auth.uid() then
+    raise exception 'Utilisez « Supprimer mon compte » depuis votre espace personnel pour supprimer votre propre compte.';
+  end if;
+
+  -- Nettoyage des demandes historiques avant suppression de l'utilisateur.
+  delete from public.account_requests
+  where lower(email) = lower((select email from auth.users where id = p_user_id));
+
+  delete from auth.users
+  where id = p_user_id;
+
+  get diagnostics deleted_count = row_count;
+  return deleted_count = 1;
+end;
+$$;
+
+revoke all on function public.delete_account_admin(uuid) from public;
+grant execute on function public.delete_account_admin(uuid) to authenticated;
+
+-- Un membre peut supprimer son propre compte, mais pas celui d'un autre utilisateur.
+create or replace function public.delete_own_account()
+returns boolean
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+declare
+  uid uuid := auth.uid();
+  deleted_count integer;
+begin
+  if uid is null then
+    raise exception 'Vous devez être connecté.';
+  end if;
+
+  delete from public.account_requests
+  where lower(email) = lower((select email from auth.users where id = uid));
+
+  delete from auth.users
+  where id = uid;
+
+  get diagnostics deleted_count = row_count;
+  return deleted_count = 1;
+end;
+$$;
+
+revoke all on function public.delete_own_account() from public;
+grant execute on function public.delete_own_account() to authenticated;

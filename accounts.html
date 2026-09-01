@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KBG — Gestion des comptes</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html"><span class="brand-mark">K</span><span>KBG<span class="muted">/</span> COMPTES</span></a>
+  <nav>
+    <a href="admin.html">← Retour administration</a>
+    <div id="userNav" class="user-nav"></div>
+  </nav>
+</header>
+<main>
+  <section class="hero">
+    <div class="orb"></div>
+    <div>
+      <p class="eyebrow">ADMINISTRATION · COMPTES</p>
+      <h1>Gestion des <span>comptes.</span></h1>
+      <p class="hero-copy">Consultez, modifiez ou supprimez définitivement les comptes du site.</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="section-head">
+      <div><p class="eyebrow">MEMBRES</p><h2>Comptes existants</h2></div>
+      <input id="accountSearch" placeholder="Rechercher un nom ou un e-mail…" style="max-width:320px;">
+    </div>
+    <div id="accountsList" class="grid"><div class="loading">Chargement des comptes…</div></div>
+  </section>
+</main>
+
+<div id="accountModal" class="modal hidden">
+  <div class="modal-card">
+    <button class="modal-close" data-close="accountModal">×</button>
+    <p class="eyebrow">FICHE COMPTE</p>
+    <h2 id="accountModalTitle">Compte</h2>
+    <p id="accountModalEmail" class="publisher"></p>
+    <form id="accountEditForm" style="margin-top:20px;">
+      <input type="hidden" name="user_id">
+      <div class="admin-form-grid">
+        <input name="first_name" placeholder="Prénom" required>
+        <input name="last_name" placeholder="Nom" required>
+        <input name="promotion" placeholder="Promotion / Filière">
+        <select name="account_status">
+          <option value="pending">En attente</option>
+          <option value="approved">Validé</option>
+          <option value="rejected">Refusé</option>
+        </select>
+      </div>
+      <button class="button primary" type="submit" style="width:100%;margin-top:14px;">Enregistrer les modifications →</button>
+      <p id="accountEditMsg" class="form-message" style="margin-top:8px;"></p>
+    </form>
+    <div style="border-top:1px solid var(--line);margin-top:22px;padding-top:18px;">
+      <button id="deleteAccountBtn" class="button danger" style="width:100%;">🗑 Supprimer définitivement ce compte</button>
+      <p style="color:var(--muted);font-size:12px;line-height:1.5;margin-top:8px;">La suppression efface le compte Auth et les données de profil associées. Cette action est irréversible.</p>
+    </div>
+  </div>
+</div>
+<footer><span>KBG / Association ludique</span><span>Gestion des comptes</span></footer>
+<script type="module" src="accounts.js?v=1"></script>
+</body>
+</html>

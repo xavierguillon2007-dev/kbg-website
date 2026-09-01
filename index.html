@@ -1013,8 +1013,8 @@
       PROFIL
     </p>
 
-    <h2>
-      Complétez votre profil
+    <h2 id="profileModalTitle">
+      Mon compte
     </h2>
 
     <p
@@ -1025,9 +1025,7 @@
         line-height:1.6;
       "
     >
-      Votre ancien compte ne contient pas encore votre
-      prénom et votre nom. Ces informations seront utilisées
-      automatiquement lorsque vous publierez un avis.
+      Modifiez vos informations personnelles. Elles sont utilisées pour votre profil et pour les demandes effectuées sur le site.
     </p>
 
 
@@ -1101,6 +1099,15 @@
         Enregistrer mes informations →
       </button>
 
+      <button
+        class="button danger"
+        type="button"
+        id="deleteOwnAccountBtn"
+        style="width:100%; margin-top:10px;"
+      >
+        🗑 Supprimer définitivement mon compte
+      </button>
+
 
       <p
         id="profileMsg"
@@ -1141,7 +1148,7 @@
       Panneau de gestion
     </h2>
     <!-- =====================================================
-     VALIDATION DES COMPTES
+     GESTION DES COMPTES
 ====================================================== -->
 
 <div
@@ -1153,86 +1160,13 @@
     background:var(--panel);
   "
 >
-
-  <p
-    class="eyebrow"
-    style="color:var(--warning);"
-  >
-    👤 VALIDATION DES COMPTES
+  <p class="eyebrow" style="color:var(--warning);">👤 GESTION DES COMPTES</p>
+  <p style="margin-top:6px;color:var(--muted);font-size:13px;line-height:1.5;">
+    Consultez tous les comptes, modifiez leurs informations et supprimez définitivement un compte si nécessaire.
   </p>
-
-  <p
-    style="
-      margin-top:6px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.5;
-    "
-  >
-    Les nouveaux comptes doivent être validés par un administrateur
-    avant de pouvoir utiliser le site.
-  </p>
-
-  <div
-    id="adminPendingAccounts"
-    class="grid"
-    style="
-      grid-template-columns:1fr;
-      gap:10px;
-      margin-top:12px;
-    "
-  >
-    <div class="loading">
-      Chargement des demandes…
-    </div>
-  </div>
-
-</div>
-
-
-<div
-  style="
-    margin-top:16px;
-    padding:16px;
-    border:1px solid var(--line);
-    border-radius:10px;
-    background:var(--panel);
-  "
->
-
-  <p
-    class="eyebrow"
-    style="color:var(--warning);"
-  >
-    👤 COMPTES EXISTANTS EN ATTENTE
-  </p>
-
-  <p
-    style="
-      margin-top:6px;
-      color:var(--muted);
-      font-size:13px;
-      line-height:1.5;
-    "
-  >
-    Comptes créés avant la mise en place des demandes de validation
-    (donc sans fiche ci-dessus) mais dont le statut est resté « en attente ».
-  </p>
-
-  <div
-    id="adminLegacyPendingAccounts"
-    class="grid"
-    style="
-      grid-template-columns:1fr;
-      gap:10px;
-      margin-top:12px;
-    "
-  >
-    <div class="loading">
-      Chargement…
-    </div>
-  </div>
-
+  <a class="button primary" href="accounts.html" style="display:inline-block;margin-top:12px;">
+    Ouvrir la gestion des comptes →
+  </a>
 </div>
 
 
@@ -1724,7 +1658,7 @@
 
 <script
   type="module"
-  src="app.js?v=5"
+  src="app.js?v=7"
 ></script>
 
 </body>
