@@ -4517,6 +4517,7 @@ async function loadAdminReservationsList() {
               >
 
                 <button
+                  type="button"
                   class="button primary"
                   data-act="approved"
                   data-id="${esc(
@@ -4527,6 +4528,7 @@ async function loadAdminReservationsList() {
                 </button>
 
                 <button
+                  type="button"
                   class="button danger"
                   data-act="rejected"
                   data-id="${esc(
@@ -4639,6 +4641,7 @@ async function loadAdminReservationsList() {
                   reservation.status !== 'approved'
                     ? `
                       <button
+                        type="button"
                         class="button"
                         data-act="approved"
                         data-id="${esc(
@@ -4655,6 +4658,7 @@ async function loadAdminReservationsList() {
                   reservation.status !== 'rejected'
                     ? `
                       <button
+                        type="button"
                         class="button"
                         data-act="rejected"
                         data-id="${esc(
@@ -4668,6 +4672,7 @@ async function loadAdminReservationsList() {
                 }
 
                 <button
+                  type="button"
                   class="button"
                   data-act="pending"
                   data-id="${esc(
@@ -4685,100 +4690,124 @@ async function loadAdminReservationsList() {
         ).join('');
 
 
-  document
-    .querySelectorAll(
-      '#adminModal [data-act]'
-    )
-    .forEach(
-      button => {
+  // Délégation d'événement : le panneau admin est re-rendu plusieurs fois,
+  // donc on attache le gestionnaire une seule fois au conteneur modal.
+  const adminModal = $('adminModal');
 
-        button.onclick =
-          async () => {
+  if (adminModal && adminModal.dataset.reservationActionsBound !== 'true') {
+    adminModal.dataset.reservationActionsBound = 'true';
 
-            if (!(await ensureCurrentUserIsAdmin())) {
-              alert(
-                "Votre session n'est pas reconnue comme administrateur. Déconnectez-vous puis reconnectez-vous et réessayez."
-              );
-              return;
-            }
+    adminModal.addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-act][data-id]');
+      if (!button || !adminModal.contains(button)) return;
 
-            button.disabled = true;
+      event.preventDefault();
+      event.stopPropagation();
 
+      const action = button.dataset.act;
+      const reservationId = button.dataset.id;
 
-            const originalText =
-              button.textContent;
+      if (!['approved', 'rejected', 'pending'].includes(action)) return;
 
-            button.textContent =
-              '…';
+      const originalText = button.textContent.trim();
+      const card = button.closest('.panel');
 
+      // Message visible dans la fiche, même si les alertes du navigateur sont
+      // bloquées ou masquées par les réglages du navigateur.
+      const showActionMessage = (message, isError = false) => {
+        let msg = card?.querySelector('.admin-reservation-action-message');
+        if (!msg && card) {
+          msg = document.createElement('div');
+          msg.className = 'admin-reservation-action-message';
+          msg.style.cssText = 'margin-top:8px;font-size:12px;font-weight:700;';
+          card.appendChild(msg);
+        }
+        if (msg) {
+          msg.textContent = message;
+          msg.style.color = isError ? 'var(--danger)' : 'var(--success)';
+        }
+      };
 
-            // -----------------------------------------------
-            // MISE À JOUR + VÉRIFICATION QU'UNE LIGNE
-            // A RÉELLEMENT ÉTÉ MODIFIÉE (garde-fou RLS)
-            // -----------------------------------------------
+      try {
+        button.disabled = true;
+        button.textContent = '…';
+        showActionMessage('Mise à jour en cours…');
 
-            const { data, error } = await supabase
-              .from('reservations')
-              .update({ status: button.dataset.act })
-              .eq('id', button.dataset.id)
-              .select('id,status')
-              .single();
+        // On récupère la session réelle du navigateur au moment du clic.
+        const { data: sessionData, error: sessionError } =
+          await supabase.auth.getSession();
 
+        if (sessionError) throw sessionError;
 
-            if (error) {
+        const session = sessionData?.session;
+        if (!session?.user?.id) {
+          throw new Error('Votre session Supabase a expiré. Reconnectez-vous.');
+        }
 
-              console.error(
-                'Erreur modification réservation :',
-                error
-              );
+        // Source de vérité : admin_users.
+        const adminOk = await loadAdminStatus(session.user.id);
+        currentUserIsAdmin = adminOk;
 
+        if (!adminOk) {
+          throw new Error(
+            "Ce compte n'est pas reconnu comme administrateur par Supabase (admin_users)."
+          );
+        }
 
-              alert(
-                'Erreur : ' +
-                error.message
-              );
+        console.info('[ADMIN] Validation réservation', {
+          reservationId,
+          action,
+          userId: session.user.id
+        });
 
+        // UPDATE direct : on ne mélange pas cette action avec le calendrier
+        // ou d'autres fonctions de l'interface qui pourraient échouer ensuite.
+        const { data, error } = await supabase
+          .from('reservations')
+          .update({ status: action })
+          .eq('id', reservationId)
+          .select('id,status')
+          .maybeSingle();
 
-              button.disabled =
-                false;
+        if (error) throw error;
 
-              button.textContent =
-                originalText;
+        if (!data) {
+          throw new Error(
+            "Supabase n'a modifié aucune ligne. Vérifiez la policy UPDATE de reservations et l'identité administrateur de cette session."
+          );
+        }
 
-              return;
-            }
+        console.info('[ADMIN] Réservation mise à jour', data);
+        showActionMessage(
+          action === 'approved'
+            ? '✓ Réservation validée.'
+            : action === 'rejected'
+              ? '✓ Réservation refusée.'
+              : '✓ Réservation remise en attente.'
+        );
 
+        // Recharge uniquement le panneau admin et le compteur.
+        await loadAdminReservationsList();
+        await refreshAdminNotificationBadge();
 
-            if (!data) {
-              alert(
-                "La réservation n'a pas pu être mise à jour. Vérifiez votre session administrateur."
-              );
-              button.disabled = false;
-              button.textContent = originalText;
-              return;
-            }
-
-            await loadAdminReservationsList();
-
-await renderCalendar();
-
-if (selectedReviewGame) {
-
-  await loadGameAvailability(
-    selectedReviewGame,
-    gameAvailabilityMonth
-  );
-
-}
-
-await loadUserNotifications();
-
-          };
-
+      } catch (error) {
+        console.error('[ADMIN] Erreur modification réservation :', error);
+        showActionMessage(
+          `Erreur : ${error?.message || 'Impossible de modifier la réservation.'}`,
+          true
+        );
+        alert(`Erreur lors de la modification de la réservation :\n\n${error?.message || error}`);
+      } finally {
+        // Si le bouton existe encore après le re-render, il n'est plus utile de
+        // le réactiver ; sinon on restaure son état initial.
+        if (document.body.contains(button)) {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
       }
-    );
+    });
+  }
 
-}
 
 
 // =========================================================

@@ -174,12 +174,12 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .game-card-action {
   appearance: none;
   border: 1px solid var(--line);
-  border-radius: 7px;
-  padding: 9px 12px;
+  border-radius: 6px;
+  padding: 7px 10px;
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.15;
   cursor: pointer;
   transition: .15s ease;
 }
@@ -190,14 +190,20 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 }
 
 .game-card-action-primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+  background: transparent;
+  color: var(--accent);
+  border-color: var(--line);
 }
 
 .game-card-action:hover,
 .game-card-action:focus-visible {
   transform: translateY(-1px);
+}
+
+.game-card-action-primary:hover,
+.game-card-action-primary:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .game-card-action:focus-visible {
