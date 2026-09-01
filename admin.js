@@ -511,32 +511,30 @@ async function handleAccountDecision(
 
   try {
 
-    const { data, error } =
-      await supabase.functions.invoke(
-        'approve-account',
-        {
-          body: {
-            request_id: request.id,
-            action: decision
-          }
-        }
-      );
+    // La RLS autorise directement les administrateurs à modifier
+    // account_requests. Le trigger SQL
+    // account_requests_sync_profile_status synchronise ensuite
+    // automatiquement profiles.account_status.
+    const { data, error } = await supabase
+      .from('account_requests')
+      .update({
+        status: decision
+      })
+      .eq('id', request.id)
+      .select('id, status');
 
     if (error) {
-
       console.error(
-        'Erreur approve-account :',
+        'Erreur mise à jour account_requests :',
         error
       );
-
-      throw new Error(
-        error.message ||
-        'La fonction de validation a retourné une erreur.'
-      );
+      throw error;
     }
 
-    if (data?.error) {
-      throw new Error(data.error);
+    if (!data || data.length === 0) {
+      throw new Error(
+        "La mise à jour n'a rien modifié. Vérifiez les policies RLS de la table account_requests."
+      );
     }
 
     alert(
