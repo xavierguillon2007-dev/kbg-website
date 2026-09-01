@@ -65,6 +65,60 @@ function isAdminEmail(_email) {
   return currentUserIsAdmin;
 }
 
+// Compteur global des notifications administrateur : comptes en attente + réservations en attente.
+async function loadAdminNotificationCount() {
+  const badge = $('adminNotificationBadge');
+  if (!badge || !currentUserIsAdmin) return;
+
+  try {
+    const [requestsResult, legacyResult, reservationsResult] = await Promise.all([
+      supabase
+        .from('account_requests')
+        .select('email,status')
+        .eq('status', 'pending'),
+      supabase.rpc('get_pending_accounts_admin'),
+      supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
+    ]);
+
+    if (requestsResult.error) throw requestsResult.error;
+    if (legacyResult.error) throw legacyResult.error;
+    if (reservationsResult.error) throw reservationsResult.error;
+
+    const pendingRequests = requestsResult.data || [];
+    const pendingLegacy = legacyResult.data || [];
+
+    // Évite de compter deux fois un compte présent dans account_requests et dans
+    // l'ancien système de profils en attente.
+    const seenEmails = new Set(
+      pendingRequests
+        .map(item => String(item.email || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    const uniqueLegacyCount = pendingLegacy.filter(item => {
+      const email = String(item.email || '').trim().toLowerCase();
+      if (!email) return true;
+      if (seenEmails.has(email)) return false;
+      seenEmails.add(email);
+      return true;
+    }).length;
+
+    const pendingAccountsCount = pendingRequests.length + uniqueLegacyCount;
+    const pendingReservationsCount = reservationsResult.count || 0;
+    const total = pendingAccountsCount + pendingReservationsCount;
+
+    badge.textContent = String(total);
+    badge.hidden = total === 0;
+    badge.setAttribute('aria-label', `${total} notification${total > 1 ? 's' : ''} administrateur${total > 1 ? 's' : ''}`);
+  } catch (error) {
+    console.error('Erreur chargement des notifications administrateur :', error);
+    badge.hidden = true;
+  }
+}
+
 
 // =========================================================
 // VARIABLES
@@ -295,6 +349,8 @@ async function handleAuthChange(user) {
   const userNav =
     $('userNav');
 
+  const authWarning =
+    $('authWarning');
 
   const notifBadge =
     $('notifBadge');
@@ -339,10 +395,11 @@ async function handleAuthChange(user) {
           admin
             ? `
               <button
-                class="button primary"
+                class="button primary admin-button"
                 id="openAdminBtn"
               >
                 🔑 Admin
+                <span id="adminNotificationBadge" class="admin-notification-badge" hidden aria-hidden="true">0</span>
               </button>
             `
             : ''
@@ -394,6 +451,8 @@ async function handleAuthChange(user) {
 
       if (admin) {
 
+        loadAdminNotificationCount();
+
         $('openAdminBtn')
           ?.addEventListener(
             'click',
@@ -409,6 +468,18 @@ async function handleAuthChange(user) {
 
       }
 
+    }
+
+    if (authWarning) {
+      if (isApprovedMember()) {
+        authWarning.classList.add('hidden');
+      } else if (currentProfile?.account_status === 'rejected') {
+        authWarning.textContent = '✕ Votre compte a été refusé par un administrateur. Contactez l’association si vous pensez qu’il s’agit d’une erreur.';
+        authWarning.classList.remove('hidden');
+      } else {
+        authWarning.textContent = '⏳ Votre compte est en attente de validation par un administrateur. Les fonctionnalités réservées aux membres resteront indisponibles jusqu’à validation.';
+        authWarning.classList.remove('hidden');
+      }
     }
 
     await loadUserNotifications(false);
@@ -443,6 +514,8 @@ async function handleAuthChange(user) {
 
     }
 
+    authWarning
+      ?.classList.remove('hidden');
 
     updateNotificationBadge(0);
     notificationRealtimeStartedFor = null;
@@ -1490,6 +1563,24 @@ async function loadGames() {
     }
 
 
+    if ($('gameSelect')) {
+
+      $('gameSelect').innerHTML = `
+        <option value="">
+          Sélectionnez un jeu…
+        </option>
+      ` +
+      allGames.map(
+        game => `
+          <option value="${esc(game.id)}">
+            ${esc(game.name)}
+          </option>
+        `
+      ).join('');
+
+    }
+
+
     await loadAllReviews();
 
     renderGames();
@@ -1953,27 +2044,16 @@ function renderGames() {
                 )}
               </p>
 
-              <div class="game-card-actions">
-
-                <button
-                  type="button"
-                  class="game-card-action game-card-action-secondary"
-                  data-open-game="${esc(game.id)}"
-                  title="Voir la fiche complète et les avis"
-                >
-                  Voir la fiche et les avis →
-                </button>
-
-                <button
-                  type="button"
-                  class="game-card-action game-card-action-primary"
-                  data-open-game="${esc(game.id)}"
-                  title="Réserver ce jeu"
-                >
-                  Réserver le jeu →
-                </button>
-
-              </div>
+              <p
+                style="
+                  color:#2583ff;
+                  font-size:12px;
+                  margin-top:10px;
+                  font-weight:700;
+                "
+              >
+                Voir la fiche complète et les avis →
+              </p>
 
             </div>
 
@@ -1992,39 +2072,25 @@ function renderGames() {
     .forEach(
       card => {
 
-        const openGame = () => {
-
-          const game =
-            allGames.find(
-              g =>
-                String(g.id) ===
-                String(
-                  card.dataset.reviewGame
-                )
-            );
-
-          if (game) {
-            openReviewModal(game);
-          }
-
-        };
-
         card.addEventListener(
           'click',
-          openGame
-        );
+          () => {
 
-        card
-          .querySelectorAll('[data-open-game]')
-          .forEach(button => {
-            button.addEventListener(
-              'click',
-              event => {
-                event.stopPropagation();
-                openGame();
-              }
-            );
-          });
+            const game =
+              allGames.find(
+                g =>
+                  String(g.id) ===
+                  String(
+                    card.dataset.reviewGame
+                  )
+              );
+
+            if (game) {
+              openReviewModal(game);
+            }
+
+          }
+        );
 
       }
     );
@@ -2596,54 +2662,176 @@ function renderGameAvailabilityCalendar(game) {
 }
 
 
-function updateGameReservationButton() {
-  const button = $('reserveGameBtn');
-  const message = $('gameReservationMessage');
-  if (!button) return;
-  const ready = !!(selectedReviewGame && gameAvailabilityStart && gameAvailabilityEnd);
-  button.disabled = !ready;
-  button.textContent = ready ? 'Réserver le jeu →' : 'Sélectionnez vos dates →';
-  if (message && !ready) {
-    message.textContent = 'Choisissez une date de début puis une date de fin dans le calendrier.';
-    message.style.color = 'var(--muted)';
+function selectGameAvailabilityDate(
+  dateStr,
+  game
+) {
+
+  if (
+    isDateBeforeToday(dateStr) ||
+    isDateReserved(dateStr)
+  ) {
+    return;
   }
-}
 
-function selectGameAvailabilityDate(dateStr, game) {
-  if (isDateBeforeToday(dateStr) || isDateReserved(dateStr)) return;
 
-  if (!gameAvailabilityStart || gameAvailabilityEnd || dateStr < gameAvailabilityStart) {
-    gameAvailabilityStart = dateStr;
-    gameAvailabilityEnd = null;
-    const message = $('gameReservationMessage');
-    if (message) {
-      message.textContent = 'Date de début sélectionnée. Cliquez sur une autre date verte pour choisir la fin.';
-      message.style.color = 'var(--muted)';
+  const startInput =
+    $('dateStart');
+
+  const endInput =
+    $('dateEnd');
+
+  const gameSelect =
+    $('gameSelect');
+
+  const msg =
+    $('formMessage');
+
+
+  if (gameSelect) {
+
+    gameSelect.value =
+      String(game.id);
+
+  }
+
+
+  /*
+   * Premier clic :
+   * sélection de la date de début.
+   *
+   * Deuxième clic :
+   * sélection de la date de fin.
+   */
+
+  if (
+    !gameAvailabilityStart ||
+    gameAvailabilityEnd ||
+    dateStr < gameAvailabilityStart
+  ) {
+
+    gameAvailabilityStart =
+      dateStr;
+
+    gameAvailabilityEnd =
+      null;
+
+
+    if (startInput) {
+      startInput.value =
+        dateStr;
     }
+
+    if (endInput) {
+      endInput.value =
+        '';
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Date de début sélectionnée. ' +
+        'Cliquez sur une autre date verte ' +
+        'pour choisir la fin.';
+
+      msg.style.color =
+        'var(--muted)';
+
+    }
+
   } else {
-    if (rangeContainsReservation(gameAvailabilityStart, dateStr)) {
-      const message = $('gameReservationMessage');
-      if (message) {
-        message.textContent = 'Cette période contient une date déjà réservée. Choisissez une autre date de fin.';
-        message.style.color = 'var(--danger)';
+
+    /*
+     * Vérifie que toute la période
+     * est libre.
+     */
+
+    if (
+      rangeContainsReservation(
+        gameAvailabilityStart,
+        dateStr
+      )
+    ) {
+
+      if (msg) {
+
+        msg.textContent =
+          'Cette période contient une date déjà réservée. ' +
+          'Choisissez une autre date de fin.';
+
+        msg.style.color =
+          'var(--danger)';
+
       }
+
       return;
+
     }
-    gameAvailabilityEnd = dateStr;
-    const message = $('gameReservationMessage');
-    if (message) {
-      message.textContent = 'Période sélectionnée. Vous pouvez réserver ce jeu.';
-      message.style.color = 'var(--success)';
+
+
+    gameAvailabilityEnd =
+      dateStr;
+
+
+    if (startInput) {
+
+      startInput.value =
+        gameAvailabilityStart;
+
     }
+
+    if (endInput) {
+
+      endInput.value =
+        gameAvailabilityEnd;
+
+    }
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Période sélectionnée. ' +
+        'Vous pouvez envoyer la demande de réservation.';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
   }
-  renderGameAvailabilityCalendar(game);
-  updateGameReservationButton();
+
+
+  renderGameAvailabilityCalendar(
+    game
+  );
+
+
+  if (
+    gameAvailabilityStart &&
+    gameAvailabilityEnd
+  ) {
+
+    $('reservationForm')
+      ?.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+
+  }
+
 }
+
 
 function resetGameAvailabilitySelection() {
-  gameAvailabilityStart = null;
-  gameAvailabilityEnd = null;
-  updateGameReservationButton();
+
+  gameAvailabilityStart =
+    null;
+
+  gameAvailabilityEnd =
+    null;
+
 }
 // =========================================================
 // MODALE JEU
@@ -2878,7 +3066,6 @@ loadGameAvailability(
   gameAvailabilityMonth
 );
 
-updateGameReservationButton();
 modal.classList.remove('hidden');
 
 }
@@ -3515,69 +3702,340 @@ async function submitReview(e) {
 // RÉSERVATION — VERSION CORRIGÉE
 // =========================================================
 
-async function handleGameReservation() {
-  const msg = $('gameReservationMessage');
-  const submitBtn = $('reserveGameBtn');
-  const game = selectedReviewGame;
+async function handleBookingSubmit(e) {
 
-  if (!game) return;
+  e.preventDefault();
+
+
+  // IMPORTANT :
+  // On récupère explicitement le formulaire.
+  // Cela évite l'erreur FormData que tu avais.
+
+  const form =
+    e.target instanceof HTMLFormElement
+      ? e.target
+      : e.currentTarget instanceof HTMLFormElement
+        ? e.currentTarget
+        : null;
+
+
+  if (!form) {
+
+    console.error(
+      'Erreur réservation : le formulaire est introuvable.'
+    );
+
+    return;
+  }
+
+
+  const msg =
+    $('formMessage');
+
+  const submitBtn =
+    form.querySelector(
+      'button[type="submit"]'
+    );
+
 
   if (!currentUser) {
-    if (msg) { msg.textContent = 'Vous devez être connecté pour effectuer une réservation.'; msg.style.color = 'var(--danger)'; }
-    $('authModal')?.classList.remove('hidden');
+
+    if (msg) {
+
+      msg.textContent =
+        'Vous devez être connecté pour effectuer une réservation.';
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
+    $('authModal')
+      ?.classList.remove('hidden');
+
     return;
   }
+
   if (!isApprovedMember()) {
-    if (msg) { msg.textContent = 'Votre compte est encore en attente de validation par un administrateur.'; msg.style.color = 'var(--warning)'; }
+    if (msg) {
+      msg.textContent =
+        'Votre compte est encore en attente de validation par un administrateur.';
+      msg.style.color =
+        'var(--warning)';
+    }
     return;
   }
+
+
+  // -------------------------------------------------------
+  // PROFIL OBLIGATOIRE
+  // -------------------------------------------------------
+
   if (!hasCompleteProfile()) {
-    if (msg) { msg.textContent = 'Complétez votre profil avant de réserver.'; msg.style.color = 'var(--warning)'; }
+
+    if (msg) {
+
+      msg.textContent =
+        'Veuillez compléter votre profil avant de réserver.';
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
     await ensureUserProfile();
+
     return;
   }
 
-  const dateStart = gameAvailabilityStart;
-  const dateEnd = gameAvailabilityEnd;
-  if (!dateStart || !dateEnd) {
-    if (msg) { msg.textContent = 'Sélectionnez d’abord une date de début et une date de fin.'; msg.style.color = 'var(--danger)'; }
-    return;
-  }
-  if (dateEnd < dateStart || rangeContainsReservation(dateStart, dateEnd)) {
-    if (msg) { msg.textContent = 'Cette période n’est pas disponible. Choisissez une autre période.'; msg.style.color = 'var(--danger)'; }
-    return;
-  }
-  const today = new Date(); today.setHours(0,0,0,0);
-  if (parseISODate(dateStart) < today) {
-    if (msg) { msg.textContent = 'La date de début ne peut pas être dans le passé.'; msg.style.color = 'var(--danger)'; }
-    return;
+
+  if (msg) {
+
+    msg.textContent =
+      'Envoi de la demande…';
+
+    msg.style.color =
+      'var(--text)';
+
   }
 
-  if (submitBtn) submitBtn.disabled = true;
-  if (msg) { msg.textContent = 'Envoi de la demande…'; msg.style.color = 'var(--text)'; }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+  }
+
 
   try {
-    const profile = getUserProfile();
-    const { error } = await supabase.from('reservations').insert({
-      id: crypto.randomUUID(), user_id: currentUser.id, game_id: game.id,
-      date_start: dateStart, date_end: dateEnd,
-      first_name: profile.firstName, last_name: profile.lastName,
-      promotion: profile.promotion, status: 'pending'
-    });
-    if (error) throw error;
 
-    if (msg) { msg.textContent = '✓ Demande enregistrée ! Elle sera examinée par un administrateur.'; msg.style.color = 'var(--success)'; }
-    resetGameAvailabilitySelection();
-    await loadGameAvailability(game, gameAvailabilityMonth);
+    // -----------------------------------------------------
+    // LECTURE DES CHAMPS
+    // -----------------------------------------------------
+
+    const gameId =
+      String(
+        form.querySelector(
+          '[name="game_id"]'
+        )?.value || ''
+      ).trim();
+
+
+    const dateStart =
+      String(
+        form.querySelector(
+          '[name="date_start"]'
+        )?.value || ''
+      ).trim();
+
+
+    const dateEnd =
+      String(
+        form.querySelector(
+          '[name="date_end"]'
+        )?.value || ''
+      ).trim();
+
+
+    const profile =
+      getUserProfile();
+
+
+    // -----------------------------------------------------
+    // VALIDATION
+    // -----------------------------------------------------
+
+    if (!gameId) {
+
+      throw new Error(
+        'Veuillez sélectionner un jeu.'
+      );
+
+    }
+
+
+    if (!dateStart || !dateEnd) {
+
+      throw new Error(
+        'Veuillez sélectionner les dates de réservation.'
+      );
+
+    }
+
+
+    if (!profile.firstName) {
+
+      throw new Error(
+        'Le prénom est obligatoire.'
+      );
+
+    }
+
+
+    if (!profile.lastName) {
+
+      throw new Error(
+        'Le nom est obligatoire.'
+      );
+
+    }
+
+
+    if (!profile.promotion) {
+
+      throw new Error(
+        'La promotion est obligatoire.'
+      );
+
+    }
+
+
+    if (dateEnd < dateStart) {
+
+      throw new Error(
+        'La date de fin doit être postérieure ou égale à la date de début.'
+      );
+
+    }
+
+
+    // -----------------------------------------------------
+    // VÉRIFICATION DES DATES
+    // -----------------------------------------------------
+
+    const today =
+      new Date();
+
+    today.setHours(
+      0,
+      0,
+      0,
+      0
+    );
+
+
+    const startDateObject =
+      new Date(
+        dateStart + 'T00:00:00'
+      );
+
+
+    if (startDateObject < today) {
+
+      throw new Error(
+        'La date de début ne peut pas être dans le passé.'
+      );
+
+    }
+
+
+    // -----------------------------------------------------
+    // NOUVELLE RÉSERVATION
+    // -----------------------------------------------------
+
+    const newReservation = {
+
+      id:
+        crypto.randomUUID(),
+
+      user_id:
+        currentUser.id,
+
+      game_id:
+        gameId,
+
+      date_start:
+        dateStart,
+
+      date_end:
+        dateEnd,
+
+      first_name:
+        profile.firstName,
+
+      last_name:
+        profile.lastName,
+
+      promotion:
+        profile.promotion,
+
+      status:
+        'pending'
+
+    };
+
+
+    // -----------------------------------------------------
+    // ENVOI SUPABASE
+    // -----------------------------------------------------
+
+    const {
+      error
+    } =
+      await supabase
+        .from('reservations')
+        .insert(
+          newReservation
+        );
+
+
+    if (error) {
+      throw error;
+    }
+
+
+    // -----------------------------------------------------
+    // SUCCÈS
+    // -----------------------------------------------------
+
+    if (msg) {
+
+      msg.textContent =
+        '✓ Demande enregistrée ! Elle sera examinée par un administrateur.';
+
+      msg.style.color =
+        'var(--success)';
+
+    }
+
+
+    form.reset();
+
+
     await loadUserNotifications();
-    setTimeout(() => $('reviewModal')?.classList.add('hidden'), 900);
+
+
+    // Petit rafraîchissement du calendrier
+    await renderCalendar();
+
+
   } catch (error) {
-    console.error('Erreur réservation :', error);
-    if (msg) { msg.textContent = error.code === '23505' ? 'Une réservation identique existe déjà.' : 'Erreur : ' + error.message; msg.style.color = 'var(--danger)'; }
+
+    console.error(
+      'Erreur réservation :',
+      error
+    );
+
+
+    if (msg) {
+
+      msg.textContent =
+        'Erreur : ' +
+        error.message;
+
+      msg.style.color =
+        'var(--danger)';
+
+    }
+
   } finally {
-    updateGameReservationButton();
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+    }
+
   }
+
 }
+
 
 // =========================================================
 // ADMIN
@@ -5314,7 +5772,183 @@ function setupEventListeners() {
 // CALENDRIER DE DISPONIBILITÉ DU JEU
 // -------------------------------------------------------
 
-$('reserveGameBtn')?.addEventListener('click', handleGameReservation);
+$('gameSelect')
+  ?.addEventListener(
+    'change',
+    async () => {
+
+      const gameId =
+        $('gameSelect')?.value || '';
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(gameId)
+        );
+
+      resetGameAvailabilitySelection();
+
+      if (game) {
+
+        gameAvailabilityMonth =
+          new Date();
+
+        await loadGameAvailability(
+          game,
+          gameAvailabilityMonth
+        );
+
+      }
+
+    }
+  );
+
+
+$('dateStart')
+  ?.addEventListener(
+    'change',
+    () => {
+
+      const value =
+        $('dateStart')?.value || '';
+
+      if (!value) {
+
+        resetGameAvailabilitySelection();
+
+        return;
+
+      }
+
+      gameAvailabilityStart =
+        value;
+
+      gameAvailabilityEnd =
+        null;
+
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(
+              $('gameSelect')?.value || ''
+            )
+        );
+
+
+      if (game) {
+
+        renderGameAvailabilityCalendar(
+          game
+        );
+
+      }
+
+    }
+  );
+
+
+$('dateEnd')
+  ?.addEventListener(
+    'change',
+    () => {
+
+      const start =
+        $('dateStart')?.value || '';
+
+      const end =
+        $('dateEnd')?.value || '';
+
+
+      if (
+        !start ||
+        !end ||
+        end < start
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        rangeContainsReservation(
+          start,
+          end
+        )
+      ) {
+
+        $('dateEnd').value =
+          '';
+
+
+        const msg =
+          $('formMessage');
+
+
+        if (msg) {
+
+          msg.textContent =
+            'La période choisie contient ' +
+            'une date déjà réservée pour ce jeu.';
+
+          msg.style.color =
+            'var(--danger)';
+
+        }
+
+        return;
+
+      }
+
+
+      gameAvailabilityStart =
+        start;
+
+      gameAvailabilityEnd =
+        end;
+
+
+      const game =
+        allGames.find(
+          g =>
+            String(g.id) ===
+            String(
+              $('gameSelect')?.value || ''
+            )
+        );
+
+
+      if (game) {
+
+        renderGameAvailabilityCalendar(
+          game
+        );
+
+      }
+
+    }
+  );
+  $('reservationForm')
+    ?.addEventListener(
+      'submit',
+      handleBookingSubmit
+    );
+
+
+  $('noticeAuthBtn')
+    ?.addEventListener(
+      'click',
+      () => {
+
+        $('authModal')
+          ?.classList.remove('hidden');
+
+      }
+    );
+
 
   // -------------------------------------------------------
   // CALENDRIER

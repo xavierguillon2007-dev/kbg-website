@@ -101,6 +101,29 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .button:hover { border-color: var(--purple-light); }
 .button.primary { background: var(--accent); color: #fff; border: none; }
 .button.primary:hover { background: var(--accent-hover); }
+
+.admin-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.admin-notification-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 800;
+  box-sizing: border-box;
+}
 .button.danger { background: var(--danger); color: #fff; border: none; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px; box-shadow: 0 4px 16px rgba(61, 42, 109, 0.08); }
 .badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -140,65 +163,13 @@ h2 { font-size: 24px; font-weight: 700; color: var(--purple); }
 .card-body .meta { display: flex; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 12px; }
 .card-body .desc { font-size: 13px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-.game-card-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 16px;
-  flex-wrap: wrap;
-}
-
-.game-card-action {
-  appearance: none;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 10px;
-  font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.15;
-  cursor: pointer;
-  transition: .15s ease;
-}
-
-.game-card-action-secondary {
-  background: var(--bg);
-  color: var(--text);
-}
-
-.game-card-action-primary {
-  background: transparent;
-  color: var(--accent);
-  border-color: var(--line);
-}
-
-.game-card-action:hover,
-.game-card-action:focus-visible {
-  transform: translateY(-1px);
-}
-
-.game-card-action-primary:hover,
-.game-card-action-primary:focus-visible {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.game-card-action:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-@media (max-width: 560px) {
-  .game-card-actions {
-    flex-direction: column;
-  }
-
-  .game-card-action {
-    width: 100%;
-  }
-}
-
 /* RÉSERVATION LAYOUT 2 COLONNES */
+.reservation-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; align-items: start; }
+@media (max-width: 850px) { .reservation-layout { grid-template-columns: 1fr; } }
+.reservation-info { display: flex; flex-direction: column; gap: 16px; }
+.reservation-info p { color: var(--muted); font-size: 14px; }
+.reservation-rules { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; list-style: none; }
+.reservation-rules li::before { content: "✦"; color: var(--accent); margin-right: 8px; }
 
 .form-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 24px; box-shadow: 0 4px 20px rgba(61, 42, 109, 0.12); }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
