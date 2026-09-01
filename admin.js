@@ -14,7 +14,6 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 let currentReservations = [];
 let currentGames = [];
 let currentAccountRequests = [];
-let currentLegacyPendingAccounts = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -60,7 +59,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 await loadAdminGames();
 await loadAdminReservations();
 await loadAccountRequests();
-await loadLegacyPendingAccounts();
 });
 
 // --- GESTION DU CATALOGUE (AJOUT / ÉDITION / SUPPRESSION) ---
@@ -279,180 +277,54 @@ function renderReservations() {
 
 async function loadAccountRequests() {
   const container = $('accountRequestsList');
-
-  if (!container) {
-    console.error('accountRequestsList introuvable');
-    return;
-  }
-
-
-  container.innerHTML = `
-    <div class="loading">
-      Test : chargement des demandes…
-    </div>
-  `;
-
-  try {
-
-    const result = await supabase
-      .from('account_requests')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-
-    const { data, error } = result;
-
-    if (error) {
-      console.error('TEST ERREUR SUPABASE :', error);
-
-      container.innerHTML = `
-        <div class="empty panel">
-          <strong>Erreur Supabase</strong>
-          <br>
-          ${esc(error.message)}
-        </div>
-      `;
-
-      return;
-    }
-
-    currentAccountRequests = data || [];
-
-
-    renderAccountRequests();
-
-  } catch (error) {
-
-    console.error('TEST ERREUR JS :', error);
-
-    container.innerHTML = `
-      <div class="empty panel">
-        <strong>Erreur JavaScript</strong>
-        <br>
-        ${esc(error?.message || String(error))}
-      </div>
-    `;
-  }
-}
-
-// =========================================================
-// GESTION DES COMPTES EXISTANTS EN ATTENTE
-// =========================================================
-
-async function loadLegacyPendingAccounts() {
-  const container = $('legacyPendingAccountsList');
   if (!container) return;
 
-  container.innerHTML = '<div class="loading">Chargement…</div>';
+  container.innerHTML = '<div class="loading">Chargement des demandes de validation…</div>';
 
   try {
-    const { data, error } = await supabase
-      .rpc('get_pending_accounts_admin');
+    const [requestsResult, legacyResult] = await Promise.all([
+      supabase
+        .from('account_requests')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase.rpc('get_pending_accounts_admin')
+    ]);
 
-    if (error) throw error;
+    if (requestsResult.error) throw requestsResult.error;
+    if (legacyResult.error) throw legacyResult.error;
 
-    currentLegacyPendingAccounts = data || [];
-    renderLegacyPendingAccounts();
-  } catch (error) {
-    console.error('Erreur chargement comptes existants en attente :', error);
-    container.innerHTML = `
-      <div class="empty panel">
-        <strong>Erreur Supabase</strong><br>
-        ${esc(error?.message || error)}
-      </div>
-    `;
-  }
-}
+    const requests = (requestsResult.data || []).map(request => ({
+      ...request,
+      source: 'request'
+    }));
 
-function renderLegacyPendingAccounts() {
-  const container = $('legacyPendingAccountsList');
-  if (!container) return;
+    const legacy = (legacyResult.data || []).map(account => ({
+      ...account,
+      id: `legacy:${account.user_id}`,
+      source: 'profile',
+      status: 'pending'
+    }));
 
-  if (!currentLegacyPendingAccounts.length) {
-    container.innerHTML = `
-      <div class="empty panel">Aucun compte existant en attente.</div>
-    `;
-    return;
-  }
-
-  container.innerHTML = currentLegacyPendingAccounts.map(account => `
-    <article class="panel admin-card">
-      <div>
-        <span class="badge badge-warning">En attente</span>
-        <h3 style="margin-top:8px;">
-          ${esc(account.first_name)} ${esc(account.last_name)}
-        </h3>
-        <p class="publisher">${esc(account.email)}</p>
-      </div>
-      <div class="admin-card-body">
-        <p><strong>Promotion :</strong> ${esc(account.promotion || 'Non renseignée')}</p>
-        <p><strong>Compte créé :</strong> ${formatAccountRequestDate(account.created_at)}</p>
-      </div>
-      <div class="admin-card-actions">
-        <button class="button primary" data-approve-legacy="${esc(account.user_id)}">
-          ✓ Valider
-        </button>
-        <button class="button danger" data-reject-legacy="${esc(account.user_id)}">
-          ✕ Refuser
-        </button>
-      </div>
-    </article>
-  `).join('');
-
-  container.querySelectorAll('[data-approve-legacy]').forEach(button => {
-    button.addEventListener('click', () =>
-      handleLegacyAccountDecision(button.dataset.approveLegacy, 'approved', button)
-    );
-  });
-
-  container.querySelectorAll('[data-reject-legacy]').forEach(button => {
-    button.addEventListener('click', () =>
-      handleLegacyAccountDecision(button.dataset.rejectLegacy, 'rejected', button)
-    );
-  });
-}
-
-async function handleLegacyAccountDecision(userId, decision, button) {
-  const account = currentLegacyPendingAccounts.find(
-    item => String(item.user_id) === String(userId)
-  );
-
-  if (!account) {
-    alert('Compte introuvable.');
-    return;
-  }
-
-  const action = decision === 'approved' ? 'valider' : 'refuser';
-  if (!confirm(`Voulez-vous vraiment ${action} le compte de ${account.first_name} ${account.last_name} ?`)) {
-    return;
-  }
-
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = '…';
-
-  try {
-    const { data, error } = await supabase.rpc('set_account_status_admin', {
-      p_user_id: account.user_id,
-      p_status: decision
+    // Si un même e-mail apparaît dans les deux systèmes, la demande
+    // explicite account_requests est prioritaire afin d'éviter un doublon.
+    const seenEmails = new Set();
+    currentAccountRequests = [...requests, ...legacy].filter(item => {
+      const email = String(item.email || '').trim().toLowerCase();
+      if (!email) return true;
+      if (seenEmails.has(email)) return false;
+      seenEmails.add(email);
+      return true;
     });
 
-    if (error) throw error;
-
-    if (!data) {
-      throw new Error("La mise à jour du compte n'a pas été appliquée.");
-    }
-
-    alert(decision === 'approved'
-      ? '✓ Compte validé avec succès.'
-      : '✓ Compte refusé.');
-
-    await loadLegacyPendingAccounts();
+    renderAccountRequests();
   } catch (error) {
-    console.error('Erreur validation compte existant :', error);
-    alert('Erreur : ' + (error?.message || error));
-    button.disabled = false;
-    button.textContent = originalText;
+    console.error('Erreur chargement des demandes de validation :', error);
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Impossible de charger les demandes de validation.</strong><br><br>
+        <small>${esc(error?.message || String(error))}</small>
+      </div>
+    `;
   }
 }
 
@@ -462,107 +334,99 @@ async function handleLegacyAccountDecision(userId, decision, button) {
 
 function renderAccountRequests() {
   const container = $('accountRequestsList');
-
   if (!container) return;
 
-  const pendingRequests =
-    currentAccountRequests.filter(
-      request => request.status === 'pending'
-    );
+  const pendingRequests = currentAccountRequests.filter(
+    request => request.status === 'pending'
+  );
 
   if (!pendingRequests.length) {
-
-    container.innerHTML = `
-      <div class="empty panel">
-        Aucune demande de compte en attente.
-      </div>
-    `;
-
+    container.innerHTML = '<div class="empty panel">Aucune demande de compte en attente.</div>';
     return;
   }
 
   container.innerHTML = pendingRequests.map(request => `
     <article class="panel admin-card">
-
       <div>
-        <span class="badge badge-warning">
-          En attente
-        </span>
-
-        <h3 style="margin-top:8px;">
-          ${esc(request.first_name)}
-          ${esc(request.last_name)}
-        </h3>
-
-        <p class="publisher">
-          ${esc(request.email)}
-        </p>
+        <span class="badge badge-warning">En attente</span>
+        <h3 style="margin-top:8px;">${esc(request.first_name)} ${esc(request.last_name)}</h3>
+        <p class="publisher">${esc(request.email)}</p>
       </div>
-
       <div class="admin-card-body">
-
-        <p>
-          <strong>Promotion :</strong>
-          ${esc(request.promotion)}
-        </p>
-
-        <p>
-          <strong>Demande créée :</strong>
-          ${formatAccountRequestDate(request.created_at)}
-        </p>
-
+        <p><strong>Promotion :</strong> ${esc(request.promotion || 'Non renseignée')}</p>
+        <p><strong>Origine :</strong> ${request.source === 'profile' ? 'Compte existant' : 'Nouvelle demande'}</p>
+        <p><strong>Date :</strong> ${formatAccountRequestDate(request.created_at)}</p>
       </div>
-
       <div class="admin-card-actions">
-
-        <button
-          class="button primary"
-          data-approve-account="${request.id}">
-          ✓ Valider
-        </button>
-
-        <button
-          class="button danger"
-          data-reject-account="${request.id}">
-          ✕ Refuser
-        </button>
-
+        <button class="button primary" data-account-action="approved" data-account-id="${esc(request.id)}">✓ Valider</button>
+        <button class="button danger" data-account-action="rejected" data-account-id="${esc(request.id)}">✕ Refuser</button>
       </div>
-
     </article>
   `).join('');
 
-  container
-    .querySelectorAll('[data-approve-account]')
-    .forEach(button => {
-
-      button.addEventListener(
-        'click',
-        () => handleAccountDecision(
-          button.dataset.approveAccount,
-          'approved',
-          button
-        )
-      );
-
-    });
-
-  container
-    .querySelectorAll('[data-reject-account]')
-    .forEach(button => {
-
-      button.addEventListener(
-        'click',
-        () => handleAccountDecision(
-          button.dataset.rejectAccount,
-          'rejected',
-          button
-        )
-      );
-
-    });
+  container.querySelectorAll('[data-account-action]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleAccountDecision(
+        button.dataset.accountId,
+        button.dataset.accountAction,
+        button
+      )
+    );
+  });
 }
 
+function formatAccountRequestDate(value) {
+  if (!value) return 'Date inconnue';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+  return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function handleAccountDecision(requestId, decision, button) {
+  const request = currentAccountRequests.find(item => String(item.id) === String(requestId));
+  if (!request || !['approved', 'rejected'].includes(decision)) {
+    alert('Demande de compte invalide.');
+    return;
+  }
+
+  const action = decision === 'approved' ? 'valider' : 'refuser';
+  if (!confirm(`Voulez-vous vraiment ${action} le compte de ${request.first_name} ${request.last_name} ?`)) return;
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = '…';
+
+  try {
+    let data;
+    let error;
+
+    if (request.source === 'profile') {
+      ({ data, error } = await supabase.rpc('set_account_status_admin', {
+        p_user_id: request.user_id,
+        p_status: decision
+      }));
+    } else {
+      ({ data, error } = await supabase
+        .from('account_requests')
+        .update({ status: decision })
+        .eq('id', request.id)
+        .select('id, status'));
+    }
+
+    if (error) throw error;
+    if (request.source === 'profile' ? !data : (!data || !data.length)) {
+      throw new Error("La mise à jour du compte n'a pas été appliquée.");
+    }
+
+    alert(decision === 'approved' ? '✓ Compte validé avec succès.' : '✓ Compte refusé.');
+    await loadAccountRequests();
+  } catch (error) {
+    console.error('Erreur validation compte :', error);
+    alert('Erreur : ' + (error?.message || error));
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
 
 // =========================================================
 // DATE

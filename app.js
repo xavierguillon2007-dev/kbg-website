@@ -390,6 +390,9 @@ async function handleAuthChange(user) {
     if (authWarning) {
       if (isApprovedMember()) {
         authWarning.classList.add('hidden');
+      } else if (currentProfile?.account_status === 'rejected') {
+        authWarning.textContent = '✕ Votre compte a été refusé par un administrateur. Contactez l’association si vous pensez qu’il s’agit d’une erreur.';
+        authWarning.classList.remove('hidden');
       } else {
         authWarning.textContent = '⏳ Votre compte est en attente de validation par un administrateur. Les fonctionnalités réservées aux membres resteront indisponibles jusqu’à validation.';
         authWarning.classList.remove('hidden');
