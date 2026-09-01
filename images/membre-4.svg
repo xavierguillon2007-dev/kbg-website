@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600">
+<rect width="600" height="600" rx="40" fill="#fbe8c8"/>
+<circle cx="300" cy="235" r="105" fill="#3d2a6d"/>
+<path d="M125 520c20-120 105-175 175-175s155 55 175 175" fill="#6b4fa8"/>
+<text x="300" y="275" text-anchor="middle" font-family="Arial,sans-serif" font-size="76" font-weight="700" fill="#fff">HP</text>
+</svg>
