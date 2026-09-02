@@ -62,7 +62,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.location.href = 'index.html';
   });
 
-  $('filterStatus').addEventListener('change', renderReservations);
+  $('filterStatus').addEventListener('change', () => {
+    historyVisibleCount = HISTORY_PAGE_SIZE;
+    renderReservations();
+  });
   $('addGameForm').addEventListener('submit', handleAddGame);
   $('editGameForm')?.addEventListener('submit', handleEditGame);
 
@@ -235,6 +238,23 @@ function updateAdminReservationBadge() {
   badge.hidden = count === 0;
 }
 
+// Nombre de lignes d'historique affichées par défaut, et par palier
+// à chaque clic sur "Afficher plus".
+const HISTORY_PAGE_SIZE = 15;
+let historyOpen = false;
+let historyVisibleCount = HISTORY_PAGE_SIZE;
+
+function statusBadgeClass(status) {
+  return status === 'approved' ? 'success' : status === 'rejected' ? 'danger' : 'warning';
+}
+
+function reservationActionButtons(r) {
+  return `
+    ${r.status !== 'approved' ? `<button class="button primary" data-action="approved" data-id="${r.id}">✓ Valider</button>` : ''}
+    ${r.status !== 'rejected' ? `<button class="button danger" data-action="rejected" data-id="${r.id}">✕ Refuser</button>` : ''}
+  `;
+}
+
 function renderReservations() {
   const container = $('adminReservationsList');
   const filter = $('filterStatus').value;
@@ -245,24 +265,96 @@ function renderReservations() {
     return;
   }
 
-  container.innerHTML = list.map(r => `
-    <article class="panel admin-card">
-      <div>
-        <span class="badge badge-${r.status === 'approved' ? 'success' : r.status === 'rejected' ? 'danger' : 'warning'}">
-          ${r.status}
+  // Sans filtre explicite, on sépare "en attente" (cartes complètes,
+  // toujours toutes visibles) et "historique" (traitées, compactées
+  // et repliées par défaut pour ne pas encombrer la page).
+  const showSeparateHistory = !filter;
+  const pending = showSeparateHistory ? list.filter(r => r.status === 'pending') : list;
+  const processed = showSeparateHistory ? list.filter(r => r.status !== 'pending') : [];
+
+  const pendingHtml = !pending.length
+    ? (showSeparateHistory ? `<div class="empty panel">Aucune demande en attente.</div>` : '')
+    : pending.map(r => `
+      <article class="panel admin-card">
+        <div>
+          <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+          <h3 style="margin-top:8px;">${esc(r.games?.name || 'Jeu inconnu')}</h3>
+        </div>
+        <div class="admin-card-body">
+          <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)} (${esc(r.promotion)})</p>
+          <p><strong>Période :</strong> du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
+        </div>
+        <div class="admin-card-actions">${reservationActionButtons(r)}</div>
+      </article>
+    `).join('');
+
+  let historyHtml = '';
+  if (showSeparateHistory && processed.length) {
+    const visible = processed.slice(0, historyVisibleCount);
+    const remaining = processed.length - visible.length;
+
+    const rowsHtml = visible.map(r => `
+      <div class="admin-card-compact">
+        <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+        <span class="admin-card-compact-main">
+          <strong>${esc(r.games?.name || 'Jeu inconnu')}</strong>
+          — ${esc(r.first_name)} ${esc(r.last_name)}${r.promotion ? ` (${esc(r.promotion)})` : ''}
+          · du ${esc(r.date_start)} au ${esc(r.date_end)}
         </span>
-        <h3 style="margin-top:8px;">${esc(r.games?.name || 'Jeu inconnu')}</h3>
+        <span class="admin-card-compact-actions">${reservationActionButtons(r)}</span>
       </div>
-      <div class="admin-card-body">
-        <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)} (${esc(r.promotion)})</p>
-        <p><strong>Période :</strong> du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
+    `).join('');
+
+    historyHtml = `
+      <details id="historyDetails" class="admin-history" ${historyOpen ? 'open' : ''}>
+        <summary>Historique — ${processed.length} demande${processed.length > 1 ? 's' : ''} traitée${processed.length > 1 ? 's' : ''}</summary>
+        <div class="admin-history-list">
+          ${rowsHtml}
+          ${remaining > 0 ? `<button class="button" id="historyShowMore" style="margin-top:8px;">Afficher ${Math.min(remaining, HISTORY_PAGE_SIZE)} de plus (${remaining} restantes)</button>` : ''}
+        </div>
+      </details>
+    `;
+  } else if (processed.length === 0 && showSeparateHistory) {
+    // rien à afficher, pas de section historique
+  } else if (!showSeparateHistory) {
+    // Filtre explicite "approved" ou "rejected" : liste compacte directement,
+    // sans repli, mais toujours paginée.
+    const visible = list.slice(0, historyVisibleCount);
+    const remaining = list.length - visible.length;
+    historyHtml = `
+      <div class="admin-history-list">
+        ${visible.map(r => `
+          <div class="admin-card-compact">
+            <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+            <span class="admin-card-compact-main">
+              <strong>${esc(r.games?.name || 'Jeu inconnu')}</strong>
+              — ${esc(r.first_name)} ${esc(r.last_name)}${r.promotion ? ` (${esc(r.promotion)})` : ''}
+              · du ${esc(r.date_start)} au ${esc(r.date_end)}
+            </span>
+            <span class="admin-card-compact-actions">${reservationActionButtons(r)}</span>
+          </div>
+        `).join('')}
+        ${remaining > 0 ? `<button class="button" id="historyShowMore" style="margin-top:8px;">Afficher ${Math.min(remaining, HISTORY_PAGE_SIZE)} de plus (${remaining} restantes)</button>` : ''}
       </div>
-      <div class="admin-card-actions">
-        ${r.status !== 'approved' ? `<button class="button primary" data-action="approved" data-id="${r.id}">✓ Valider</button>` : ''}
-        ${r.status !== 'rejected' ? `<button class="button danger" data-action="rejected" data-id="${r.id}">✕ Refuser</button>` : ''}
-      </div>
-    </article>
-  `).join('');
+    `;
+  }
+
+  container.innerHTML = pendingHtml + historyHtml;
+
+  const detailsEl = $('historyDetails');
+  if (detailsEl) {
+    detailsEl.addEventListener('toggle', () => {
+      historyOpen = detailsEl.open;
+    });
+  }
+
+  const showMoreBtn = $('historyShowMore');
+  if (showMoreBtn) {
+    showMoreBtn.onclick = () => {
+      historyVisibleCount += HISTORY_PAGE_SIZE;
+      renderReservations();
+    };
+  }
 
   container.querySelectorAll('[data-action]').forEach(btn => {
     btn.onclick = async () => {

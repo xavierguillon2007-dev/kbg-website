@@ -4357,6 +4357,10 @@ async function handleEditGameAdmin(event) {
 // ADMIN — RÉSERVATIONS
 // =========================================================
 
+const APP_HISTORY_PAGE_SIZE = 15;
+let appHistoryOpen = false;
+let appHistoryVisibleCount = APP_HISTORY_PAGE_SIZE;
+
 async function loadAdminReservationsList() {
 
   const pendingContainer =
@@ -4420,11 +4424,17 @@ async function loadAdminReservationsList() {
   }
 
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const pending =
     (reservations || []).filter(
       reservation =>
-        !reservation.status ||
-        reservation.status === 'pending'
+        (!reservation.status ||
+          reservation.status === 'pending') &&
+        !(
+          reservation.date_start &&
+          reservation.date_start < todayStr
+        )
     );
 
 
@@ -4544,145 +4554,54 @@ async function loadAdminReservationsList() {
         ).join('');
 
 
+  const visibleProcessed = processed.slice(0, appHistoryVisibleCount);
+  const remainingProcessed = processed.length - visibleProcessed.length;
+
+  const processedRowsHtml = visibleProcessed.map(reservation => `
+    <div class="admin-card-compact" style="opacity:0.85;">
+      <span class="badge ${reservation.status === 'approved' ? 'badge-success' : 'badge-danger'}">
+        ${reservation.status === 'approved' ? 'Acceptée' : 'Rejetée'}
+      </span>
+      <span class="admin-card-compact-main">
+        <strong>${esc(reservation.games?.name || 'Jeu')}</strong>
+        — ${esc(reservation.first_name)} ${esc(reservation.last_name)}${reservation.promotion ? ` (${esc(reservation.promotion)})` : ''}
+        · du ${esc(reservation.date_start)} au ${esc(reservation.date_end)}
+      </span>
+      <span class="admin-card-compact-actions">
+        ${reservation.status !== 'approved' ? `<button class="button" data-act="approved" data-id="${esc(reservation.id)}">Valider</button>` : ''}
+        ${reservation.status !== 'rejected' ? `<button class="button" data-act="rejected" data-id="${esc(reservation.id)}">Refuser</button>` : ''}
+        <button class="button" data-act="pending" data-id="${esc(reservation.id)}">Remettre en attente</button>
+      </span>
+    </div>
+  `).join('');
+
   processedContainer.innerHTML =
     !processed.length
+      ? `<div class="empty">Aucun historique.</div>`
+      : `
+        <details id="appHistoryDetails" ${appHistoryOpen ? 'open' : ''}>
+          <summary>Historique — ${processed.length} demande${processed.length > 1 ? 's' : ''} traitée${processed.length > 1 ? 's' : ''}</summary>
+          <div class="admin-history-list">
+            ${processedRowsHtml}
+            ${remainingProcessed > 0 ? `<button class="button" id="appHistoryShowMore" style="margin-top:8px;">Afficher ${Math.min(remainingProcessed, APP_HISTORY_PAGE_SIZE)} de plus (${remainingProcessed} restantes)</button>` : ''}
+          </div>
+        </details>
+      `;
 
-      ? `
-        <div class="empty">
-          Aucun historique.
-        </div>
-      `
+  const appHistoryDetailsEl = document.getElementById('appHistoryDetails');
+  if (appHistoryDetailsEl) {
+    appHistoryDetailsEl.addEventListener('toggle', () => {
+      appHistoryOpen = appHistoryDetailsEl.open;
+    });
+  }
 
-      : processed.map(
-          reservation => `
-
-            <div
-              class="panel"
-              style="
-                padding:12px;
-                font-size:13px;
-                opacity:0.85;
-              "
-            >
-
-              <p>
-
-                <strong>
-                  ${esc(
-                    reservation.games?.name ||
-                    'Jeu'
-                  )}
-                </strong>
-
-                —
-
-                <span
-                  class="badge ${
-                    reservation.status === 'approved'
-                      ? 'badge-success'
-                      : 'badge-danger'
-                  }"
-                >
-                  ${
-                    reservation.status === 'approved'
-                      ? 'Acceptée'
-                      : 'Rejetée'
-                  }
-                </span>
-
-              </p>
-
-              <p
-                style="
-                  color:var(--muted);
-                  margin-top:4px;
-                "
-              >
-
-                ${esc(
-                  reservation.first_name
-                )}
-
-                ${esc(
-                  reservation.last_name
-                )}
-
-                ${
-                  reservation.promotion
-                    ? `(${esc(
-                        reservation.promotion
-                      )})`
-                    : ''
-                }
-
-                — du
-                ${esc(
-                  reservation.date_start
-                )}
-                au
-                ${esc(
-                  reservation.date_end
-                )}
-
-              </p>
-
-              <div
-                style="
-                  display:flex;
-                  gap:6px;
-                  margin-top:8px;
-                  flex-wrap:wrap;
-                "
-              >
-
-                ${
-                  reservation.status !== 'approved'
-                    ? `
-                      <button
-                        class="button"
-                        data-act="approved"
-                        data-id="${esc(
-                          reservation.id
-                        )}"
-                      >
-                        Valider
-                      </button>
-                    `
-                    : ''
-                }
-
-                ${
-                  reservation.status !== 'rejected'
-                    ? `
-                      <button
-                        class="button"
-                        data-act="rejected"
-                        data-id="${esc(
-                          reservation.id
-                        )}"
-                      >
-                        Refuser
-                      </button>
-                    `
-                    : ''
-                }
-
-                <button
-                  class="button"
-                  data-act="pending"
-                  data-id="${esc(
-                    reservation.id
-                  )}"
-                >
-                  Remettre en attente
-                </button>
-
-              </div>
-
-            </div>
-
-          `
-        ).join('');
+  const appHistoryShowMoreBtn = document.getElementById('appHistoryShowMore');
+  if (appHistoryShowMoreBtn) {
+    appHistoryShowMoreBtn.onclick = () => {
+      appHistoryVisibleCount += APP_HISTORY_PAGE_SIZE;
+      loadAdminReservationsList();
+    };
+  }
 
 
   document
