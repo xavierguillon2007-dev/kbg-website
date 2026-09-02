@@ -2154,25 +2154,33 @@ function isDateBeforeToday(dateStr) {
 }
 
 
-function isDateReserved(dateStr) {
+function getGameCopiesCount(game) {
+  const count = Number(game?.copies_count);
+  return Number.isFinite(count) && count >= 1 ? Math.floor(count) : 1;
+}
 
-  return gameAvailabilityReservations.some(
+function getReservedCopiesOnDate(dateStr) {
+  return gameAvailabilityReservations.filter(
     reservation =>
       dateStr >= reservation.date_start &&
       dateStr <= reservation.date_end
-  );
-
+  ).length;
 }
 
+function isDateReserved(dateStr, game = selectedReviewGame) {
+  return getReservedCopiesOnDate(dateStr) >= getGameCopiesCount(game);
+}
 
-function rangeContainsReservation(start, end) {
+function rangeContainsReservation(start, end, game = selectedReviewGame) {
+  const startDate = parseISODate(start);
+  const endDate = parseISODate(end);
+  const copies = getGameCopiesCount(game);
 
-  return gameAvailabilityReservations.some(
-    reservation =>
-      reservation.date_start <= end &&
-      reservation.date_end >= start
-  );
-
+  for (let cursor = new Date(startDate); cursor <= endDate; cursor.setDate(cursor.getDate() + 1)) {
+    const dateStr = cursor.toISOString().slice(0, 10);
+    if (getReservedCopiesOnDate(dateStr) >= copies) return true;
+  }
+  return false;
 }
 
 
@@ -2399,6 +2407,11 @@ async function loadGameAvailability(
         1
       );
 
+    const copiesInfo = $('gameAvailabilityCopiesInfo');
+    if (copiesInfo) {
+      copiesInfo.textContent = `Disponibilité : ${getGameCopiesCount(game)} exemplaire(s) en stock`;
+    }
+
     renderGameAvailabilityCalendar(
       game
     );
@@ -2600,10 +2613,10 @@ function renderGameAvailabilityCalendar(game) {
         ${disabled ? 'disabled' : ''}
         title="${
           reserved
-            ? 'Réservé'
+            ? `Complet (${getReservedCopiesOnDate(dateStr)}/${getGameCopiesCount(game)})`
             : past
               ? 'Date passée'
-              : 'Libre — cliquer pour sélectionner'
+              : `Libre (${getReservedCopiesOnDate(dateStr)}/${getGameCopiesCount(game)}) — cliquer pour sélectionner`
         }"
       >
         ${day}
@@ -4288,6 +4301,7 @@ function openEditGameModal(game) {
   setValue('players_min', game.players_min);
   setValue('players_max', game.players_max);
   setValue('duration', game.duration);
+  setValue('copies_count', Math.max(1, Number(game.copies_count) || 1));
   setValue('description', game.description);
 
   const msg = $('editGameAdminMsg');
@@ -4339,6 +4353,7 @@ async function handleEditGameAdmin(event) {
       players_min: Number(formData.get('players_min')) || null,
       players_max: Number(formData.get('players_max')) || null,
       duration: Number(formData.get('duration')) || null,
+      copies_count: Math.max(1, Number(formData.get('copies_count')) || 1),
       description: String(formData.get('description') || '').trim() || null
     };
 
@@ -4833,6 +4848,9 @@ async function handleAddGame(e) {
         Number(
           formData.get('duration')
         ) || null,
+
+      copies_count:
+        Math.max(1, Number(formData.get('copies_count')) || 1),
 
       description:
         String(

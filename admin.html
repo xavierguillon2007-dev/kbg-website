@@ -43,6 +43,21 @@
           <input name="players_min" type="number" placeholder="Joueurs min" min="1">
           <input name="players_max" type="number" placeholder="Joueurs max" min="1">
           <input name="duration" type="number" placeholder="Durée (minutes)">
+          <label style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12px;color:var(--muted);">Exemplaires possédés</span>
+            <select name="copies_count" required>
+              <option value="1" selected>1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="10">10</option>
+            </select>
+          </label>
         </div>
         <textarea name="description" class="admin-form-textarea" placeholder="Description courte..." style="min-height:80px; margin-bottom:12px;"></textarea>
         <button type="submit" class="button primary">+ Ajouter ce jeu</button>

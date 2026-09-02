@@ -96,6 +96,7 @@ async function loadAdminGames() {
         <p class="tag">${esc(g.category || 'Jeu')}</p>
         <h3>${esc(g.name)}</h3>
         <p class="publisher">${esc(g.publisher || '')}</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">🎲 ${Math.max(1, Number(g.copies_count) || 1)} exemplaire(s)</p>
       </div>
       <div class="admin-card-actions">
         <button class="button" data-edit-game="${g.id}">✏️ Modifier</button>
@@ -136,6 +137,7 @@ async function handleAddGame(e) {
     players_min: Number(f.get('players_min')) || null,
     players_max: Number(f.get('players_max')) || null,
     duration: Number(f.get('duration')) || null,
+    copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
     description: f.get('description').trim() || null,
     is_active: true
   };
@@ -165,6 +167,7 @@ function openEditGameModal(game) {
   form.querySelector('[name="players_min"]').value = game.players_min ?? '';
   form.querySelector('[name="players_max"]').value = game.players_max ?? '';
   form.querySelector('[name="duration"]').value = game.duration ?? '';
+  form.querySelector('[name="copies_count"]').value = Math.max(1, Number(game.copies_count) || 1);
   form.querySelector('[name="description"]').value = game.description || '';
 
   $('editGameModal')?.classList.remove('hidden');
@@ -189,6 +192,7 @@ async function handleEditGame(e) {
     players_min: Number(f.get('players_min')) || null,
     players_max: Number(f.get('players_max')) || null,
     duration: Number(f.get('duration')) || null,
+    copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
     description: f.get('description').trim() || null
   };
 
