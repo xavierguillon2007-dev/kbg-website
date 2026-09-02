@@ -65,6 +65,14 @@ function isAdminEmail(_email) {
   return currentUserIsAdmin;
 }
 
+// Vérification fraîche des droits admin au moment d'une action sensible.
+async function ensureCurrentUserIsAdmin() {
+  if (!currentUser?.id) return false;
+  const admin = await loadAdminStatus(currentUser.id);
+  currentUserIsAdmin = admin;
+  return admin;
+}
+
 
 // =========================================================
 // VARIABLES
@@ -341,7 +349,6 @@ async function handleAuthChange(user) {
               <button
                 class="button primary admin-button"
                 id="openAdminBtn"
-                type="button"
               >
                 🔑 Admin
                 <span id="adminNotificationBadge" class="admin-notification-badge hidden">0</span>
@@ -644,9 +651,16 @@ async function refreshNotificationBadge() {
 }
 
 
+// =========================================================
+// ADMIN — COMPTEUR GLOBAL DES DEMANDES EN ATTENTE
+// Ne dépend d'aucun RPC legacy : les compteurs sont lus directement
+// depuis account_requests et reservations.
+// =========================================================
+
 function updateAdminNotificationBadge(count) {
   const badge = $('adminNotificationBadge');
   if (!badge) return;
+
   const safeCount = Math.max(0, Number(count) || 0);
   badge.textContent = safeCount > 99 ? '99+' : String(safeCount);
   badge.classList.toggle('hidden', safeCount === 0);
@@ -660,14 +674,22 @@ async function refreshAdminNotificationBadge() {
 
   try {
     const [accountsResult, reservationsResult] = await Promise.all([
-      supabase.from('account_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-      supabase.from('reservations').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      supabase
+        .from('account_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending'),
+      supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'pending')
     ]);
 
     if (accountsResult.error) throw accountsResult.error;
     if (reservationsResult.error) throw reservationsResult.error;
 
-    updateAdminNotificationBadge((accountsResult.count || 0) + (reservationsResult.count || 0));
+    updateAdminNotificationBadge(
+      (accountsResult.count || 0) + (reservationsResult.count || 0)
+    );
   } catch (error) {
     console.error('Erreur compteur notifications admin :', error);
     updateAdminNotificationBadge(0);
@@ -3887,24 +3909,19 @@ async function loadAdminLegacyPendingAccounts() {
   `;
 
   try {
-    const request = supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('user_id, first_name, last_name, promotion, account_status, created_at')
       .eq('account_status', 'pending')
       .order('created_at', { ascending: false });
 
-    const timeout = new Promise((_, reject) =>
-      setTimeout(
-        () => reject(new Error('Délai dépassé lors du chargement des anciens comptes en attente.')),
-        10000
-      )
-    );
-
-    const { data, error } = await Promise.race([request, timeout]);
-
     if (error) throw error;
 
-    currentAdminLegacyPendingAccounts = Array.isArray(data) ? data : [];
+    currentAdminLegacyPendingAccounts = (data || []).map(account => ({
+      ...account,
+      email: '',
+      status: 'pending'
+    }));
     renderAdminLegacyPendingAccounts();
   } catch (error) {
     console.error('Erreur anciens comptes en attente :', error);
@@ -4340,102 +4357,6 @@ async function handleEditGameAdmin(event) {
 // ADMIN — RÉSERVATIONS
 // =========================================================
 
-window.kbgHandleReservationAction = async function (button) {
-  try {
-    if (!(button instanceof HTMLButtonElement)) return false;
-
-    const action = button.dataset.act;
-    const reservationId = button.dataset.id;
-    const originalText = button.textContent.trim();
-
-    if (!['approved', 'rejected', 'pending'].includes(action) || !reservationId) {
-      return false;
-    }
-
-    const card = button.closest('.panel');
-    let message = card?.querySelector('.admin-reservation-action-message');
-    if (!message && card) {
-      message = document.createElement('div');
-      message.className = 'admin-reservation-action-message';
-      message.style.cssText = 'margin-top:10px;font-size:13px;font-weight:700;';
-      card.appendChild(message);
-    }
-
-    const showMessage = (text, isError = false) => {
-      if (!message) return;
-      message.textContent = text;
-      message.style.color = isError ? 'var(--danger)' : 'var(--success)';
-    };
-
-    button.disabled = true;
-    button.textContent = '…';
-    showMessage('Mise à jour en cours…');
-
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-
-    const sessionUser = sessionData?.session?.user;
-    if (!sessionUser) {
-      throw new Error('Session Supabase absente ou expirée. Déconnectez-vous puis reconnectez-vous.');
-    }
-
-    // Vérification d'autorisation indépendante de l'état du front-end.
-    const { data: adminOk, error: adminError } = await supabase.rpc('is_admin_user', {
-      p_user_id: sessionUser.id
-    });
-    if (adminError) throw adminError;
-    if (adminOk !== true) {
-      throw new Error("Ce compte n'est pas présent dans la liste des administrateurs (admin_users).");
-    }
-
-    const { data, error } = await supabase
-      .from('reservations')
-      .update({ status: action })
-      .eq('id', reservationId)
-      .select('id, status')
-      .maybeSingle();
-
-    if (error) throw error;
-    if (!data) {
-      throw new Error("Supabase n'a modifié aucune ligne. L'autorisation UPDATE ou l'ID de réservation doit être vérifié.");
-    }
-
-    showMessage(
-      action === 'approved' ? '✓ Réservation validée.' :
-      action === 'rejected' ? '✓ Réservation refusée.' :
-      '✓ Réservation remise en attente.'
-    );
-
-    await loadAdminReservationsList();
-    await refreshAdminNotificationBadge();
-    await loadUserNotifications();
-  } catch (error) {
-    console.error('[KBG ADMIN] Erreur modification réservation :', error);
-    const card = button.closest('.panel');
-    let message = card?.querySelector('.admin-reservation-action-message');
-    if (!message && card) {
-      message = document.createElement('div');
-      message.className = 'admin-reservation-action-message';
-      message.style.cssText = 'margin-top:10px;font-size:13px;font-weight:700;';
-      card.appendChild(message);
-    }
-    if (message) {
-      message.textContent = `Erreur : ${error?.message || 'Impossible de modifier la réservation.'}`;
-      message.style.color = 'var(--danger)';
-    }
-    alert(`Erreur lors de la modification de la réservation :\n\n${error?.message || error}`);
-  } finally {
-    if (button && document.body.contains(button)) {
-      button.disabled = false;
-      if (button.dataset.act === 'approved') button.textContent = '✓ Accepter';
-      else if (button.dataset.act === 'rejected') button.textContent = '✕ Rejeter';
-      else button.textContent = 'Remettre en attente';
-    }
-  }
-
-  return false;
-};
-
 async function loadAdminReservationsList() {
 
   const pendingContainer =
@@ -4453,11 +4374,11 @@ async function loadAdminReservationsList() {
   }
 
 
-  if (
-    !isAdminEmail(
-      currentUser?.email
-    )
-  ) {
+  if (!(await ensureCurrentUserIsAdmin())) {
+    pendingContainer.innerHTML = `
+      <div class="empty">Accès administrateur requis.</div>
+    `;
+    processedContainer.innerHTML = '';
     return;
   }
 
@@ -4596,10 +4517,8 @@ async function loadAdminReservationsList() {
               >
 
                 <button
-                  type="button"
                   class="button primary"
                   data-act="approved"
-                  onclick="return window.kbgHandleReservationAction(this);"
                   data-id="${esc(
                     reservation.id
                   )}"
@@ -4608,10 +4527,8 @@ async function loadAdminReservationsList() {
                 </button>
 
                 <button
-                  type="button"
                   class="button danger"
                   data-act="rejected"
-                  onclick="return window.kbgHandleReservationAction(this);"
                   data-id="${esc(
                     reservation.id
                   )}"
@@ -4722,10 +4639,8 @@ async function loadAdminReservationsList() {
                   reservation.status !== 'approved'
                     ? `
                       <button
-                        type="button"
                         class="button"
                         data-act="approved"
-                        onclick="return window.kbgHandleReservationAction(this);"
                         data-id="${esc(
                           reservation.id
                         )}"
@@ -4740,10 +4655,8 @@ async function loadAdminReservationsList() {
                   reservation.status !== 'rejected'
                     ? `
                       <button
-                        type="button"
                         class="button"
                         data-act="rejected"
-                        onclick="return window.kbgHandleReservationAction(this);"
                         data-id="${esc(
                           reservation.id
                         )}"
@@ -4755,10 +4668,8 @@ async function loadAdminReservationsList() {
                 }
 
                 <button
-                  type="button"
                   class="button"
                   data-act="pending"
-                  onclick="return window.kbgHandleReservationAction(this);"
                   data-id="${esc(
                     reservation.id
                   )}"
@@ -4774,8 +4685,100 @@ async function loadAdminReservationsList() {
         ).join('');
 
 
-  // Les actions sont attachées directement aux boutons générés ci-dessus via
-  // window.kbgHandleReservationAction. Cela évite tout problème de re-rendu.
+  document
+    .querySelectorAll(
+      '#adminModal [data-act]'
+    )
+    .forEach(
+      button => {
+
+        button.onclick =
+          async () => {
+
+            if (!(await ensureCurrentUserIsAdmin())) {
+              alert(
+                "Votre session n'est pas reconnue comme administrateur. Déconnectez-vous puis reconnectez-vous et réessayez."
+              );
+              return;
+            }
+
+            button.disabled = true;
+
+
+            const originalText =
+              button.textContent;
+
+            button.textContent =
+              '…';
+
+
+            // -----------------------------------------------
+            // MISE À JOUR + VÉRIFICATION QU'UNE LIGNE
+            // A RÉELLEMENT ÉTÉ MODIFIÉE (garde-fou RLS)
+            // -----------------------------------------------
+
+            const { data, error } = await supabase
+              .from('reservations')
+              .update({ status: button.dataset.act })
+              .eq('id', button.dataset.id)
+              .select('id,status')
+              .single();
+
+
+            if (error) {
+
+              console.error(
+                'Erreur modification réservation :',
+                error
+              );
+
+
+              alert(
+                'Erreur : ' +
+                error.message
+              );
+
+
+              button.disabled =
+                false;
+
+              button.textContent =
+                originalText;
+
+              return;
+            }
+
+
+            if (!data) {
+              alert(
+                "La réservation n'a pas pu être mise à jour. Vérifiez votre session administrateur."
+              );
+              button.disabled = false;
+              button.textContent = originalText;
+              return;
+            }
+
+            await loadAdminReservationsList();
+
+await renderCalendar();
+
+if (selectedReviewGame) {
+
+  await loadGameAvailability(
+    selectedReviewGame,
+    gameAvailabilityMonth
+  );
+
+}
+
+await loadUserNotifications();
+
+          };
+
+      }
+    );
+
+}
 
 
 // =========================================================

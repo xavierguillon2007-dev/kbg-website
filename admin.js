@@ -219,7 +219,17 @@ async function loadAdminReservations() {
   }
 
   currentReservations = data || [];
+  updateAdminReservationBadge();
   renderReservations();
+}
+
+function updateAdminReservationBadge() {
+  const badge = $('adminReservationsBadge');
+  if (!badge) return;
+
+  const count = currentReservations.filter(r => r.status === 'pending').length;
+  badge.textContent = `${count} en attente`;
+  badge.hidden = count === 0;
 }
 
 function renderReservations() {
@@ -252,41 +262,39 @@ function renderReservations() {
   `).join('');
 
   container.querySelectorAll('[data-action]').forEach(btn => {
-    btn.type = 'button';
-    btn.onclick = () => window.kbgAdminPageReservationAction(btn);
+    btn.onclick = async () => {
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '…';
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: btn.dataset.action })
+        .eq('id', btn.dataset.id)
+        .select();
+
+      if (error) {
+        alert('Erreur : ' + error.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      if (!data || !data.length) {
+        alert(
+          "La mise à jour n'a pas été appliquée. C'est très probablement un problème de permissions Supabase : " +
+          "la policy RLS d'UPDATE sur la table 'reservations' n'autorise pas votre compte à modifier cette ligne. " +
+          "Vérifiez/ajoutez la policy admin dans Supabase (voir message précédent)."
+        );
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      await loadAdminReservations();
+    };
   });
 }
-
-window.kbgAdminPageReservationAction = async function(btn) {
-  if (!(btn instanceof HTMLButtonElement)) return;
-  const action = btn.dataset.action;
-  const id = btn.dataset.id;
-  if (!id || !['approved','rejected'].includes(action)) return;
-
-  const original = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = '…';
-  try {
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-    if (!session?.user) throw new Error('Session Supabase absente ou expirée.');
-
-    const { data: adminOk, error: adminError } = await supabase.rpc('is_admin_user', { p_user_id: session.user.id });
-    if (adminError) throw adminError;
-    if (adminOk !== true) throw new Error("Ce compte n'est pas reconnu comme administrateur dans admin_users.");
-
-    const { data, error } = await supabase.from('reservations').update({ status: action }).eq('id', id).select('id,status').maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error("Supabase n'a modifié aucune ligne.");
-
-    await loadAdminReservations();
-  } catch (error) {
-    console.error('[KBG ADMIN PAGE] Erreur réservation :', error);
-    alert('Erreur lors de la modification de la réservation :\n\n' + (error?.message || error));
-    btn.disabled = false;
-    btn.textContent = original;
-  }
-};
 // =========================================================
 // VALIDATION DES COMPTES — UNE SEULE SECTION
 // Les nouvelles demandes et les anciens comptes pending sont
@@ -300,43 +308,18 @@ async function loadAccountRequests() {
   container.innerHTML = '<div class="loading">Chargement des comptes à valider…</div>';
 
   try {
-    const [requestsResult, legacyResult] = await Promise.all([
-      supabase
-        .from('account_requests')
-        .select('*')
-        .order('created_at', { ascending: false }),
-      supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, promotion, account_status, created_at, email')
-        .eq('account_status', 'pending')
-        .order('created_at', { ascending: false })
-    ]);
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-    if (requestsResult.error) throw requestsResult.error;
-    if (legacyResult.error) throw legacyResult.error;
+    if (error) throw error;
 
-    const requests = (requestsResult.data || []).filter(request => request.status === 'pending').map(request => ({
-      ...request,
-      source: 'request'
-    }));
-
-    const legacy = (legacyResult.data || []).map(account => ({
-      ...account,
-      id: `legacy:${account.user_id}`,
-      source: 'profile',
-      status: 'pending'
-    }));
-
-    // Si un même e-mail apparaît dans les deux systèmes, la demande
-    // explicite account_requests est prioritaire afin d'éviter un doublon.
-    const seenEmails = new Set();
-    currentAccountRequests = [...requests, ...legacy].filter(item => {
-      const email = String(item.email || '').trim().toLowerCase();
-      if (!email) return true;
-      if (seenEmails.has(email)) return false;
-      seenEmails.add(email);
-      return true;
-    });
+    // Le back-office actuel repose sur account_requests.
+    // Aucun appel au RPC legacy get_pending_accounts_admin n'est effectué.
+    currentAccountRequests = (data || [])
+      .filter(request => request.status === 'pending')
+      .map(request => ({ ...request, source: 'request' }));
 
     renderAccountRequests();
     updatePendingAccountsBadge();
