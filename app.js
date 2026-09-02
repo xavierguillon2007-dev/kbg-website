@@ -2162,6 +2162,7 @@ function getGameCopiesCount(game) {
 function getReservedCopiesOnDate(dateStr) {
   return gameAvailabilityReservations.filter(
     reservation =>
+      (!reservation?.status || ['pending', 'approved'].includes(reservation.status)) &&
       dateStr >= reservation.date_start &&
       dateStr <= reservation.date_end
   ).length;
@@ -2382,11 +2383,7 @@ async function loadGameAvailability(
           'game_id',
           game.id
         )
-        .eq(
-          'status',
-          'approved'
-        )
-        .order(
+.order(
           'date_start',
           {
             ascending:true
@@ -3749,6 +3746,11 @@ async function handleGameReservation() {
 
     if (error?.code === '23505') {
       errorMessage = 'Une demande de réservation identique existe déjà.';
+    } else if (
+      error?.message &&
+      /jeu est déjà réservé|capacité.*exemplaire|exemplaires.*disponibles/i.test(error.message)
+    ) {
+      errorMessage = 'Ce jeu est déjà complet sur cette période. Une autre demande occupe déjà tous les exemplaires disponibles.';
     } else if (error?.code === '42501') {
       errorMessage = 'La réservation a été refusée par les règles de sécurité. Vérifiez que votre compte est bien validé.';
     } else if (error?.message) {
