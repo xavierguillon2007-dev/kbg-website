@@ -218,7 +218,10 @@ async function loadAdminReservations() {
     return;
   }
 
-  currentReservations = data || [];
+  const todayStr = new Date().toISOString().slice(0, 10);
+  currentReservations = (data || []).filter(r =>
+    !(r.status === 'pending' && r.date_start && r.date_start < todayStr)
+  );
   updateAdminReservationBadge();
   renderReservations();
 }
