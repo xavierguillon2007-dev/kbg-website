@@ -673,22 +673,49 @@ async function refreshAdminNotificationBadge() {
   }
 
   try {
+    /*
+     * Le badge doit utiliser exactement les mêmes règles que le panneau
+     * administrateur :
+     * - demande de compte : uniquement status = pending
+     * - réservation : pending (ou status vide, comme dans la liste)
+     *   et uniquement si la date n'est pas passée.
+     *
+     * On récupère les champs nécessaires puis on filtre côté client afin
+     * d'éviter les différences entre les règles SQL et celles du rendu.
+     */
+    const todayStr = new Date().toISOString().slice(0, 10);
+
     const [accountsResult, reservationsResult] = await Promise.all([
       supabase
         .from('account_requests')
-        .select('id', { count: 'exact', head: true })
+        .select('id,status')
         .eq('status', 'pending'),
+
       supabase
         .from('reservations')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'pending')
+        .select('id,status,date_start')
     ]);
 
     if (accountsResult.error) throw accountsResult.error;
     if (reservationsResult.error) throw reservationsResult.error;
 
+    const pendingAccounts =
+      (accountsResult.data || []).filter(
+        request => request.status === 'pending'
+      );
+
+    const pendingReservations =
+      (reservationsResult.data || []).filter(
+        reservation =>
+          (!reservation.status || reservation.status === 'pending') &&
+          !(
+            reservation.date_start &&
+            reservation.date_start < todayStr
+          )
+      );
+
     updateAdminNotificationBadge(
-      (accountsResult.count || 0) + (reservationsResult.count || 0)
+      pendingAccounts.length + pendingReservations.length
     );
   } catch (error) {
     console.error('Erreur compteur notifications admin :', error);
