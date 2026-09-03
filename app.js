@@ -1095,6 +1095,21 @@ function getNextEvent() {
       return !Number.isNaN(eventDate.getTime()) && eventDate >= today;
     })
     .sort((a, b) => {
+      /*
+       * La priorité (1 à 3, 1 = la plus faible) est prise en compte
+       * avant la date : un événement plus prioritaire s'affiche en
+       * premier même s'il a lieu après un événement moins prioritaire.
+       * Un événement sans priorité définie est traité comme priorité 0
+       * (la plus faible possible).
+       */
+      const aPriority = Number(a.priority) || 0;
+      const bPriority = Number(b.priority) || 0;
+
+      if (bPriority !== aPriority) {
+        return bPriority - aPriority;
+      }
+
+      // À priorité égale, l'événement le plus proche dans le temps gagne.
       const aValue = a.date || a.event_date || a.date_start || a.start_date;
       const bValue = b.date || b.event_date || b.date_start || b.start_date;
       return new Date(String(aValue).slice(0, 10) + 'T00:00:00') -

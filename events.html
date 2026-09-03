@@ -232,6 +232,42 @@
 
 
   <div class="form-group">
+    <label for="eventPriority">
+      Priorité d'affichage
+    </label>
+
+    <select
+      id="eventPriority"
+      name="priority"
+      style="
+        background:var(--bg);
+        border:1px solid var(--line);
+        color:var(--text);
+        padding:10px 12px;
+        border-radius:6px;
+        outline:none;
+        width:100%;
+      "
+    >
+      <option value="1" selected>1 — Faible (par défaut)</option>
+      <option value="2">2 — Moyenne</option>
+      <option value="3">3 — Élevée</option>
+    </select>
+
+    <small
+      style="
+        color:var(--muted);
+        font-size:11px;
+      "
+    >
+      Détermine, avant la date, quel événement est mis en avant dans le cadre
+      « Prochain événement » de l'accueil : la priorité la plus élevée gagne ;
+      à priorité égale, l'événement le plus proche l'emporte.
+    </small>
+  </div>
+
+
+  <div class="form-group">
     <label for="eventOrganizers">
       Organisateur(s)
     </label>

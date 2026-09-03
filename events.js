@@ -667,9 +667,17 @@ function getNextEvent() {
 
       })
       .sort(
-        (a, b) =>
-          parseEventDate(a) -
-          parseEventDate(b)
+        (a, b) => {
+          // La priorité (1 à 3, 1 = la plus faible) prime sur la date.
+          const aPriority = Number(a.priority) || 0;
+          const bPriority = Number(b.priority) || 0;
+
+          if (bPriority !== aPriority) {
+            return bPriority - aPriority;
+          }
+
+          return parseEventDate(a) - parseEventDate(b);
+        }
       );
 
 
@@ -1048,6 +1056,16 @@ function renderEventCard(
             ? `
               <p class="tag" style="color:var(--warning);margin-top:2px;">
                 🔒 RÉSERVÉ AUX MEMBRES
+              </p>
+            `
+            : ''
+        }
+
+        ${
+          Number(event.priority) >= 2
+            ? `
+              <p class="tag" style="color:var(--accent);margin-top:2px;">
+                ${'⭐'.repeat(Number(event.priority))} PRIORITÉ ${Number(event.priority) === 3 ? 'ÉLEVÉE' : 'MOYENNE'}
               </p>
             `
             : ''
@@ -1602,6 +1620,12 @@ function openEditEventModal(event) {
       form.elements['date'].value = String(rawDate).slice(0, 10);
     }
 
+    if (form.elements['priority']) {
+      const rawPriority = parseInt(event.priority, 10);
+      form.elements['priority'].value =
+        [1, 2, 3].includes(rawPriority) ? String(rawPriority) : '1';
+    }
+
     if (form.elements['organizers']) {
       form.elements['organizers'].value = event.organizers || '';
     }
@@ -1785,6 +1809,19 @@ async function handleAddEvent(e) {
       ).trim();
 
 
+    /*
+     * Priorité d'affichage (1 à 3, 1 = la plus faible).
+     * Sert à décider, avant la date, quel événement s'affiche
+     * dans le cadre "Prochain événement" de l'accueil.
+     */
+
+    const rawPriority =
+      parseInt(formData.get('priority'), 10);
+
+    const priority =
+      [1, 2, 3].includes(rawPriority) ? rawPriority : 1;
+
+
     if (!name) {
 
       throw new Error(
@@ -1845,6 +1882,9 @@ async function handleAddEvent(e) {
 
       date:
         date,
+
+      priority:
+        priority,
 
       photo_url:
         photoUrl || null,
