@@ -21,18 +21,37 @@ const supabase = createClient(
 // ADMIN
 // =========================================================
 
-const ADMIN_EMAILS = [
-  'xavierguillon2007@gmail.com',
-  'kbg.asso@gmail.com'
-];
+// Les droits administrateur sont centralisés dans Supabase via
+// public.admin_users / public.is_admin_user().
+// Il ne faut plus maintenir de liste d'e-mails dans cette page.
+let currentUserIsAdmin = false;
 
-function isAdminEmail(email) {
+async function loadAdminStatus(userId = currentUser?.id) {
+  currentUserIsAdmin = false;
 
-  return !!email &&
-    ADMIN_EMAILS.includes(
-      email.toLowerCase().trim()
-    );
+  if (!userId) return false;
 
+  const { data, error } = await supabase.rpc('is_admin_user', {
+    p_user_id: userId
+  });
+
+  if (error) {
+    console.error('Erreur vérification administrateur :', error);
+    return false;
+  }
+
+  currentUserIsAdmin = data === true;
+  return currentUserIsAdmin;
+}
+
+function isAdminEmail(_email) {
+  // Nom conservé pour compatibilité avec le reste du fichier.
+  // Le résultat provient désormais exclusivement de admin_users.
+  return currentUserIsAdmin;
+}
+
+async function ensureCurrentUserIsAdmin() {
+  return loadAdminStatus(currentUser?.id);
 }
 
 
@@ -254,6 +273,7 @@ async function initializeAuth() {
       data?.session?.user || null;
 
     await loadCurrentProfile(currentUser);
+    await loadAdminStatus(currentUser?.id);
     updateUserNav();
 
   } catch (error) {
@@ -264,6 +284,7 @@ async function initializeAuth() {
     );
 
     currentUser = null;
+    currentUserIsAdmin = false;
 
     updateUserNav();
 
@@ -277,6 +298,7 @@ async function initializeAuth() {
         session?.user || null;
 
       await loadCurrentProfile(currentUser);
+      await loadAdminStatus(currentUser?.id);
       updateUserNav();
 
       /*
@@ -1510,7 +1532,7 @@ async function openEventDetail(event) {
   });
 
   $('deleteEventFromModal')?.addEventListener('click', async () => {
-    if (!isAdminEmail(currentUser?.email)) return;
+    if (!(await ensureCurrentUserIsAdmin())) return;
     if (!confirm('Voulez-vous vraiment supprimer cet événement ?')) return;
 
     const button = $('deleteEventFromModal');
@@ -1711,9 +1733,7 @@ async function handleAddEvent(e) {
 
 
   if (
-    !isAdminEmail(
-      currentUser?.email
-    )
+    !(await ensureCurrentUserIsAdmin())
   ) {
 
     if (msg) {
@@ -2297,16 +2317,9 @@ function setupEventListeners() {
         }
 
 
-        if (
-          !isAdminEmail(
-            currentUser.email
-          )
-        ) {
-
+        if (!(await ensureCurrentUserIsAdmin())) {
           return;
-
         }
-
 
         openAddEventModal();
 
