@@ -2428,7 +2428,15 @@ async function loadGameAvailability(
 
     const copiesInfo = $('gameAvailabilityCopiesInfo');
     if (copiesInfo) {
-      copiesInfo.textContent = `Disponibilité : ${getGameCopiesCount(game)} exemplaire(s) en stock`;
+      const totalCopies = getGameCopiesCount(game);
+      const approvedReservations = gameAvailabilityReservations.length;
+      const reservedLabel = approvedReservations === 1 ? 'exemplaire déjà réservé' : 'exemplaires déjà réservés';
+      copiesInfo.innerHTML = `
+        <strong>${totalCopies} exemplaire${totalCopies > 1 ? 's' : ''}</strong>
+        <span style="color:var(--muted);">•</span>
+        <strong>${approvedReservations}</strong> ${reservedLabel}
+        <span style="color:var(--muted);">(tous utilisateurs)</span>
+      `;
     }
 
     renderGameAvailabilityCalendar(
