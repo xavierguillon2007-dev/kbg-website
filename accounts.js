@@ -135,12 +135,15 @@ async function saveAccount(e) {
   const msg = $('accountEditMsg');
   msg.textContent = 'Enregistrement…';
 
+  const previousStatus = selected.account_status;
+  const newStatus = f.account_status.value;
+
   const { error } = await supabase.rpc('update_account_admin', {
     p_user_id: selected.user_id,
     p_first_name: f.first_name.value.trim(),
     p_last_name: f.last_name.value.trim(),
     p_promotion: f.promotion.value.trim(),
-    p_account_status: f.account_status.value
+    p_account_status: newStatus
   });
 
   if (error) {
@@ -149,7 +152,30 @@ async function saveAccount(e) {
     return;
   }
 
-  msg.textContent = '✓ Modifications enregistrées.';
+  if (previousStatus === 'pending' && newStatus === 'approved') {
+    const { error: emailError } = await supabase.functions.invoke(
+      'send-account-status-email',
+      {
+        body: {
+          to: selected.email,
+          first_name: f.first_name.value.trim(),
+          status: 'approved'
+        }
+      }
+    );
+
+    if (emailError) {
+      console.error('Erreur envoi email validation :', emailError);
+      msg.textContent = '✓ Compte validé, mais l’e-mail de confirmation n’a pas pu être envoyé.';
+      msg.style.color = 'var(--warning)';
+    } else {
+      msg.textContent = '✓ Compte validé et e-mail de confirmation envoyé.';
+      msg.style.color = 'var(--success)';
+    }
+  } else {
+    msg.textContent = '✓ Modifications enregistrées.';
+    msg.style.color = 'var(--success)';
+  }
   msg.style.color = 'var(--success)';
   await loadAccounts();
   setTimeout(() => $('accountModal').classList.add('hidden'), 500);
