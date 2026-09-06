@@ -3950,6 +3950,31 @@ async function handleAdminAccountDecision(requestId, decision, button) {
       );
     }
 
+    if (decision === 'approved') {
+      const { error: emailError } = await supabase.functions.invoke(
+        'send-account-status-email',
+        {
+          body: {
+            to: request.email,
+            first_name: request.first_name,
+            status: 'approved'
+          }
+        }
+      );
+
+      if (emailError) {
+        console.error(
+          'Erreur envoi email validation :',
+          emailError
+        );
+
+        alert(
+          '✓ Compte validé, mais l’email de confirmation n’a pas pu être envoyé.'
+        );
+      }
+    }
+
+
     alert(
       decision === 'approved'
         ? '✓ Compte validé avec succès.'
