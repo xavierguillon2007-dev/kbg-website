@@ -2175,9 +2175,13 @@ function getGameCopiesCount(game) {
 }
 
 function getReservedCopiesOnDate(dateStr) {
+  // Seules les réservations APPROUVÉES (status = 'approved')
+  // occupent un exemplaire dans le calendrier.
+  // Une demande 'pending' reste donc disponible et ne colore
+  // pas la période en rouge.
   return gameAvailabilityReservations.filter(
     reservation =>
-      (!reservation?.status || ['pending', 'approved'].includes(reservation.status)) &&
+      reservation?.status === 'approved' &&
       dateStr >= reservation.date_start &&
       dateStr <= reservation.date_end
   ).length;
@@ -2398,7 +2402,10 @@ async function loadGameAvailability(
           'game_id',
           game.id
         )
-.order(
+        // Le calendrier ne doit charger que les réservations approuvées.
+        // Les demandes pending ne bloquent aucune date.
+        .eq('status', 'approved')
+        .order(
           'date_start',
           {
             ascending:true
@@ -4707,13 +4714,24 @@ async function loadAdminReservationsList() {
 
               console.error(
                 'Erreur modification réservation :',
-                error
+                {
+                  message: error?.message || null,
+                  details: error?.details || null,
+                  hint: error?.hint || null,
+                  code: error?.code || null,
+                  raw: error
+                }
               );
 
 
+              const reservationErrorMessage =
+                error?.message ||
+                error?.details ||
+                'Une erreur inconnue est survenue lors de la modification de la réservation.';
+
               alert(
                 'Erreur : ' +
-                error.message
+                reservationErrorMessage
               );
 
 
