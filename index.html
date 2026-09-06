@@ -993,10 +993,14 @@
           required
         >
 
-        <input
-          name="category"
-          placeholder="Catégorie"
-        >
+        <div class="category-editor" data-category-editor="add">
+          <div class="category-rows"></div>
+          <button type="button" class="button category-add-btn">+ Ajouter une catégorie</button>
+          <div class="category-new-row">
+            <input type="text" name="new_category" placeholder="Nouvelle catégorie (optionnel)">
+            <button type="button" class="button category-create-btn">Créer</button>
+          </div>
+        </div>
 
       </div>
 
@@ -1188,10 +1192,14 @@
           placeholder="Éditeur"
         >
 
-        <input
-          name="category"
-          placeholder="Catégorie"
-        >
+        <div class="category-editor" data-category-editor="edit">
+          <div class="category-rows"></div>
+          <button type="button" class="button category-add-btn">+ Ajouter une catégorie</button>
+          <div class="category-new-row">
+            <input type="text" name="new_category" placeholder="Nouvelle catégorie (optionnel)">
+            <button type="button" class="button category-create-btn">Créer</button>
+          </div>
+        </div>
 
         <input
           name="cover_image"

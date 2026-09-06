@@ -25,6 +25,122 @@ let currentReservations = [];
 let currentGames = [];
 let currentAccountRequests = [];
 
+
+// --- CATÉGORIES MULTIPLES ---
+function getGameCategories(game) {
+  if (Array.isArray(game?.categories)) {
+    return [...new Set(game.categories.map(v => String(v || '').trim()).filter(Boolean))];
+  }
+  const legacy = String(game?.category || '').trim();
+  return legacy ? [legacy] : [];
+}
+
+function getAllGameCategories() {
+  return [...new Set(
+    currentGames
+      .flatMap(getGameCategories)
+      .map(v => String(v || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+function refreshCategorySelects() {
+  document.querySelectorAll('.category-editor select[name="categories[]"]').forEach(select => {
+    const current = select.value;
+    select.innerHTML = '<option value="">— Choisir une catégorie —</option>' +
+      getAllGameCategories().map(category =>
+        `<option value="${esc(category)}">${esc(category)}</option>`
+      ).join('');
+    if (current && getAllGameCategories().includes(current)) {
+      select.value = current;
+    }
+  });
+}
+
+function addCategoryRow(editor, value = '') {
+  const rows = editor.querySelector('.category-rows');
+  if (!rows) return;
+
+  const row = document.createElement('div');
+  row.className = 'category-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+
+  const select = document.createElement('select');
+  select.name = 'categories[]';
+  select.style.flex = '1';
+  select.innerHTML = '<option value="">— Choisir une catégorie —</option>' +
+    getAllGameCategories().map(category =>
+      `<option value="${esc(category)}">${esc(category)}</option>`
+    ).join('');
+  select.value = value || '';
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'button danger';
+  remove.textContent = '×';
+  remove.title = 'Retirer cette catégorie';
+  remove.onclick = () => {
+    row.remove();
+    if (!rows.children.length) addCategoryRow(editor);
+  };
+
+  row.append(select, remove);
+  rows.appendChild(row);
+}
+
+function setupCategoryEditors() {
+  document.querySelectorAll('.category-editor').forEach(editor => {
+    const rows = editor.querySelector('.category-rows');
+    if (!rows || rows.dataset.ready === '1') return;
+
+    rows.dataset.ready = '1';
+    addCategoryRow(editor);
+
+    editor.querySelector('.category-add-btn')?.addEventListener('click', () => {
+      addCategoryRow(editor);
+    });
+
+    editor.querySelector('.category-create-btn')?.addEventListener('click', () => {
+      const input = editor.querySelector('input[name="new_category"]');
+      const value = input?.value.trim();
+      if (!value) return;
+
+      if (!getAllGameCategories().includes(value)) {
+        currentGames.push({ categories: [value] });
+      }
+
+      addCategoryRow(editor, value);
+      refreshCategorySelects();
+
+      const selects = editor.querySelectorAll('select[name="categories[]"]');
+      const last = selects[selects.length - 1];
+      if (last) last.value = value;
+      if (input) input.value = '';
+    });
+  });
+}
+
+function setCategoryEditorValues(form, categories) {
+  const editor = form?.querySelector('.category-editor');
+  const rows = editor?.querySelector('.category-rows');
+  if (!editor || !rows) return;
+
+  rows.innerHTML = '';
+  const values = Array.isArray(categories) ? categories.filter(Boolean) : [];
+  (values.length ? values : ['']).forEach(value => addCategoryRow(editor, value));
+}
+
+function getCategoryEditorValues(form) {
+  const values = [...(form?.querySelectorAll('select[name="categories[]"]') || [])]
+    .map(select => select.value.trim())
+    .filter(Boolean);
+
+  const newCategory = form?.querySelector('input[name="new_category"]')?.value.trim();
+  if (newCategory) values.push(newCategory);
+
+  return [...new Set(values)];
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -74,6 +190,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
 await loadAdminGames();
+setupCategoryEditors();
 await loadAdminReservations();
 await loadAccountRequests();
 });
@@ -89,11 +206,12 @@ async function loadAdminGames() {
   }
 
   currentGames = games || [];
+  refreshCategorySelects();
 
   container.innerHTML = currentGames.map(g => `
     <article class="panel admin-card">
       <div>
-        <p class="tag">${esc(g.category || 'Jeu')}</p>
+        <p class="tag">${esc(getGameCategories(g).join(' · ') || 'Jeu')}</p>
         <h3>${esc(g.name)}</h3>
         <p class="publisher">${esc(g.publisher || '')}</p>
       <p style="font-size:12px;color:var(--muted);margin-top:6px;">🎲 ${Math.max(1, Number(g.copies_count) || 1)} exemplaire(s)</p>
@@ -132,7 +250,8 @@ async function handleAddGame(e) {
     id: crypto.randomUUID(),
     name: f.get('name').trim(),
     publisher: f.get('publisher').trim(),
-    category: f.get('category').trim() || null,
+    categories: getCategoryEditorValues(e.currentTarget),
+    category: getCategoryEditorValues(e.currentTarget)[0] || null,
     cover_image: f.get('cover_image').trim() || null,
     players_min: Number(f.get('players_min')) || null,
     players_max: Number(f.get('players_max')) || null,
@@ -162,7 +281,7 @@ function openEditGameModal(game) {
   form.querySelector('[name="id"]').value = game.id;
   form.querySelector('[name="name"]').value = game.name || '';
   form.querySelector('[name="publisher"]').value = game.publisher || '';
-  form.querySelector('[name="category"]').value = game.category || '';
+  setCategoryEditorValues(form, getGameCategories(game));
   form.querySelector('[name="cover_image"]').value = game.cover_image || '';
   form.querySelector('[name="players_min"]').value = game.players_min ?? '';
   form.querySelector('[name="players_max"]').value = game.players_max ?? '';
@@ -187,7 +306,8 @@ async function handleEditGame(e) {
   const updatedGame = {
     name: f.get('name').trim(),
     publisher: f.get('publisher').trim(),
-    category: f.get('category').trim() || null,
+    categories: getCategoryEditorValues(e.currentTarget),
+    category: getCategoryEditorValues(e.currentTarget)[0] || null,
     cover_image: f.get('cover_image').trim() || null,
     players_min: Number(f.get('players_min')) || null,
     players_max: Number(f.get('players_max')) || null,

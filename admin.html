@@ -43,7 +43,14 @@
         <div class="admin-form-grid">
           <input name="name" placeholder="Nom du jeu" required>
           <input name="publisher" placeholder="Éditeur" required>
-          <input name="category" placeholder="Catégorie (ex. Stratégie)">
+          <div class="category-editor" data-category-editor="add">
+            <div class="category-rows"></div>
+            <button type="button" class="button category-add-btn">+ Ajouter une catégorie</button>
+            <div class="category-new-row">
+              <input type="text" name="new_category" placeholder="Nouvelle catégorie (optionnel)">
+              <button type="button" class="button category-create-btn">Créer</button>
+            </div>
+          </div>
           <input name="cover_image" placeholder="URL de la couverture (https://...)">
         </div>
         <div class="admin-form-grid">
@@ -131,7 +138,14 @@
         <div class="admin-form-grid">
           <input name="name" placeholder="Nom du jeu" required>
           <input name="publisher" placeholder="Éditeur" required>
-          <input name="category" placeholder="Catégorie (ex. Stratégie)">
+          <div class="category-editor" data-category-editor="edit">
+            <div class="category-rows"></div>
+            <button type="button" class="button category-add-btn">+ Ajouter une catégorie</button>
+            <div class="category-new-row">
+              <input type="text" name="new_category" placeholder="Nouvelle catégorie (optionnel)">
+              <button type="button" class="button category-create-btn">Créer</button>
+            </div>
+          </div>
           <input name="cover_image" placeholder="URL de la couverture (https://...)">
         </div>
         <div class="admin-form-grid">

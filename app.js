@@ -108,6 +108,143 @@ let showAllGames = false;
 
 const $ = id => document.getElementById(id);
 
+// =========================================================
+// CATÉGORIES MULTIPLES
+// =========================================================
+function getGameCategories(game) {
+  if (Array.isArray(game?.categories)) {
+    return [...new Set(
+      game.categories.map(value => String(value || '').trim()).filter(Boolean)
+    )];
+  }
+
+  const legacy = String(game?.category || '').trim();
+  return legacy ? [legacy] : [];
+}
+
+function getAllGameCategories() {
+  return [...new Set(
+    allGames.flatMap(getGameCategories)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+function refreshCategoryEditorSelects() {
+  const categories = getAllGameCategories();
+
+  document.querySelectorAll('.category-editor select[name="categories[]"]').forEach(select => {
+    const current = select.value;
+
+    select.innerHTML =
+      '<option value="">— Choisir une catégorie —</option>' +
+      categories.map(category =>
+        `<option value="${esc(category)}">${esc(category)}</option>`
+      ).join('');
+
+    if (current && categories.includes(current)) {
+      select.value = current;
+    }
+  });
+}
+
+function addCategoryEditorRow(editor, value = '') {
+  const rows = editor?.querySelector('.category-rows');
+  if (!rows) return;
+
+  const row = document.createElement('div');
+  row.className = 'category-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+
+  const select = document.createElement('select');
+  select.name = 'categories[]';
+  select.style.flex = '1';
+
+  select.innerHTML =
+    '<option value="">— Choisir une catégorie —</option>' +
+    getAllGameCategories().map(category =>
+      `<option value="${esc(category)}">${esc(category)}</option>`
+    ).join('');
+
+  select.value = value || '';
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'button danger';
+  remove.textContent = '×';
+  remove.title = 'Retirer cette catégorie';
+
+  remove.addEventListener('click', () => {
+    row.remove();
+    if (!rows.children.length) {
+      addCategoryEditorRow(editor);
+    }
+  });
+
+  row.append(select, remove);
+  rows.appendChild(row);
+}
+
+function setupCategoryEditors() {
+  document.querySelectorAll('.category-editor').forEach(editor => {
+    const rows = editor.querySelector('.category-rows');
+    if (!rows || rows.dataset.ready === '1') return;
+
+    rows.dataset.ready = '1';
+    addCategoryEditorRow(editor);
+
+    editor.querySelector('.category-add-btn')?.addEventListener('click', () => {
+      addCategoryEditorRow(editor);
+    });
+
+    editor.querySelector('.category-create-btn')?.addEventListener('click', () => {
+      const input = editor.querySelector('input[name="new_category"]');
+      const value = input?.value.trim();
+
+      if (!value) return;
+
+      addCategoryEditorRow(editor, value);
+      refreshCategoryEditorSelects();
+
+      const selects = editor.querySelectorAll('select[name="categories[]"]');
+      const last = selects[selects.length - 1];
+      if (last) last.value = value;
+
+      if (input) input.value = '';
+    });
+  });
+}
+
+function setCategoryEditorValues(form, categories) {
+  const editor = form?.querySelector('.category-editor');
+  const rows = editor?.querySelector('.category-rows');
+  if (!editor || !rows) return;
+
+  rows.innerHTML = '';
+
+  const values = Array.isArray(categories)
+    ? categories.filter(Boolean)
+    : [];
+
+  (values.length ? values : ['']).forEach(value => {
+    addCategoryEditorRow(editor, value);
+  });
+}
+
+function getCategoryEditorValues(form) {
+  const values = [...(form?.querySelectorAll('select[name="categories[]"]') || [])]
+    .map(select => select.value.trim())
+    .filter(Boolean);
+
+  const newCategory =
+    form?.querySelector('input[name="new_category"]')?.value.trim();
+
+  if (newCategory) {
+    values.push(newCategory);
+  }
+
+  return [...new Set(values)];
+}
+
+
 function esc(value) {
   return String(value ?? '').replace(
     /[&<>"']/g,
@@ -269,6 +406,7 @@ document.addEventListener(
     }
 
    await loadGames();
+   setupCategoryEditors();
 
   }
 );
@@ -1573,16 +1711,7 @@ async function loadGames() {
         : [];
 
 
-    const categories =
-      [
-        ...new Set(
-          allGames
-            .map(
-              game => game.category
-            )
-            .filter(Boolean)
-        )
-      ].sort();
+    const categories = getAllGameCategories();
 
 
     if ($('category')) {
@@ -1772,7 +1901,7 @@ function renderGames() {
         const searchText = `
           ${game.name || ''}
           ${game.publisher || ''}
-          ${game.category || ''}
+          ${getGameCategories(game).join(' ')}
         `.toLowerCase();
 
 
@@ -1781,7 +1910,7 @@ function renderGames() {
             searchText.includes(query))
           &&
           (!category ||
-            game.category === category)
+            getGameCategories(game).includes(category))
           &&
           (!minPlayers ||
             Number(game.players_max || 0) >= minPlayers)
@@ -2020,7 +2149,7 @@ function renderGames() {
 
               <p class="tag">
                 ${esc(
-                  game.category || 'Jeu'
+                  getGameCategories(game).join(' · ') || 'Jeu'
                 )}
               </p>
 
@@ -2977,13 +3106,11 @@ function openReviewModal(game) {
     >
 
       ${
-        game.category
-          ? `
-            <span class="badge">
-              ${esc(game.category)}
-            </span>
-          `
-          : ''
+        getGameCategories(game).map(category => `
+          <span class="badge">
+            ${esc(category)}
+          </span>
+        `).join('')
       }
 
       <span class="badge">
@@ -4353,7 +4480,7 @@ function openEditGameModal(game) {
   setValue('id', game.id);
   setValue('name', game.name);
   setValue('publisher', game.publisher);
-  setValue('category', game.category);
+  setCategoryEditorValues(form, getGameCategories(game));
   setValue('cover_image', game.cover_image);
   setValue('players_min', game.players_min);
   setValue('players_max', game.players_max);
@@ -4405,7 +4532,8 @@ async function handleEditGameAdmin(event) {
     const updatedGame = {
       name,
       publisher: String(formData.get('publisher') || '').trim(),
-      category: String(formData.get('category') || '').trim() || null,
+      categories: getCategoryEditorValues(form),
+      category: getCategoryEditorValues(form)[0] || null,
       cover_image: String(formData.get('cover_image') || '').trim() || null,
       players_min: Number(formData.get('players_min')) || null,
       players_max: Number(formData.get('players_max')) || null,
@@ -4890,10 +5018,11 @@ async function handleAddGame(e) {
           formData.get('publisher') || ''
         ).trim(),
 
+      categories:
+        getCategoryEditorValues(form),
+
       category:
-        String(
-          formData.get('category') || ''
-        ).trim() ||
+        getCategoryEditorValues(form)[0] ||
         null,
 
       cover_image:
