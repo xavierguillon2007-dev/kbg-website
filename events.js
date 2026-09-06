@@ -2301,7 +2301,7 @@ function setupEventListeners() {
   $('openAddEventBtn')
     ?.addEventListener(
       'click',
-      () => {
+      async () => {
 
         if (
           !currentUser
