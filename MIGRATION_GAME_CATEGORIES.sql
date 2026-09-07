@@ -71,3 +71,46 @@ CROSS JOIN LATERAL unnest(
 ) AS category_values(category_name)
 WHERE btrim(category_name) <> ''
 ON CONFLICT ((lower(btrim(name)))) DO NOTHING;
+
+
+-- Création sécurisée d'une catégorie depuis l'administration.
+-- On passe par cette fonction plutôt que par un INSERT direct afin de
+-- ne pas dépendre du contexte RLS du navigateur.
+CREATE OR REPLACE FUNCTION public.create_game_category_admin(p_name text)
+RETURNS TABLE(name text)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_name text := regexp_replace(btrim(coalesce(p_name, '')), '\s+', ' ', 'g');
+  v_existing text;
+BEGIN
+  IF NOT public.is_admin_user(auth.uid()) THEN
+    RAISE EXCEPTION 'Accès réservé aux administrateurs.';
+  END IF;
+
+  IF v_name = '' THEN
+    RAISE EXCEPTION 'Le nom de la catégorie est vide.';
+  END IF;
+
+  SELECT gc.name INTO v_existing
+  FROM public.game_categories gc
+  WHERE lower(btrim(gc.name)) = lower(v_name)
+  LIMIT 1;
+
+  IF v_existing IS NOT NULL THEN
+    RETURN QUERY SELECT v_existing;
+    RETURN;
+  END IF;
+
+  INSERT INTO public.game_categories(name)
+  VALUES (v_name)
+  RETURNING game_categories.name INTO v_existing;
+
+  RETURN QUERY SELECT v_existing;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.create_game_category_admin(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_game_category_admin(text) TO authenticated;

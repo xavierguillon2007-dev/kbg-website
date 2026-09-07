@@ -71,33 +71,22 @@ async function createCategory(name) {
   const value = String(name || '').trim().replace(/\s+/g, ' ');
   if (!value) return { error: new Error('Le nom de la catégorie est vide.') };
 
-  const { data, error } = await supabase
-    .from('game_categories')
-    .insert({ name: value })
-    .select('name')
-    .single();
+  const { data, error } = await supabase.rpc('create_game_category_admin', {
+    p_name: value
+  });
 
-  if (!error) {
-    await loadCategories();
-    return { data, error: null };
+  if (error) {
+    console.error('Erreur création catégorie :', error);
+    return { data: null, error };
   }
 
-  // Une catégorie identique (sans tenir compte de la casse) existe déjà.
-  if (error.code === '23505') {
-    const { data: existing, error: existingError } = await supabase
-      .from('game_categories')
-      .select('name')
-      .ilike('name', value)
-      .limit(1)
-      .maybeSingle();
-
-    if (!existingError && existing?.name) {
-      await loadCategories();
-      return { data: existing, error: null, alreadyExists: true };
-    }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.name) {
+    return { data: null, error: new Error('La catégorie n’a pas été créée.') };
   }
 
-  return { data: null, error };
+  await loadCategories();
+  return { data: row, error: null, alreadyExists: row.name.toLowerCase() !== value.toLowerCase() };
 }
 
 function refreshCategorySelects() {
@@ -159,7 +148,11 @@ function setupCategoryEditors() {
     editor.querySelector('.category-create-btn')?.addEventListener('click', async () => {
       const input = editor.querySelector('input[name="new_category"]');
       const value = input?.value.trim();
-      if (!value) return;
+      if (!value) {
+        alert('Saisissez un nom de catégorie.');
+        input?.focus();
+        return;
+      }
 
       const button = editor.querySelector('.category-create-btn');
       if (button) {
