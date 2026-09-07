@@ -75,7 +75,7 @@ function render() {
   $('accountsList').innerHTML = list.map(a => `
     <article class="panel admin-card">
       <div>
-        <span class="badge badge-${a.account_status === 'approved' ? 'success' : a.account_status === 'rejected' ? 'danger' : 'warning'}">${statusLabel(a.account_status)}</span>
+        <span class="badge badge-${a.account_status === 'approved' ? 'success' : a.account_status === 'rejected' ? 'danger' : a.account_status === 'pending_email' ? 'warning' : 'warning'}">${statusLabel(a.account_status)}</span>
         <h3 style="margin-top:8px;">${esc(a.first_name)} ${esc(a.last_name)}</h3>
         <p class="publisher">${esc(a.email)}</p>
       </div>
@@ -99,7 +99,13 @@ function render() {
 }
 
 function statusLabel(s) {
-  return s === 'approved' ? 'Validé' : s === 'rejected' ? 'Refusé' : 'En attente';
+  return s === 'approved'
+    ? 'Validé'
+    : s === 'pending_email'
+      ? 'Validation admin · e-mail à confirmer'
+      : s === 'rejected'
+        ? 'Refusé'
+        : 'En attente';
 }
 
 function formatDate(v) {
@@ -152,7 +158,7 @@ async function saveAccount(e) {
     return;
   }
 
-  if (previousStatus === 'pending' && newStatus === 'approved') {
+  if (newStatus === 'approved' && ['pending', 'pending_email'].includes(previousStatus)) {
     const { error: emailError } = await supabase.functions.invoke(
       'send-account-status-email',
       {
@@ -176,7 +182,6 @@ async function saveAccount(e) {
     msg.textContent = '✓ Modifications enregistrées.';
     msg.style.color = 'var(--success)';
   }
-  msg.style.color = 'var(--success)';
   await loadAccounts();
   setTimeout(() => $('accountModal').classList.add('hidden'), 500);
 }

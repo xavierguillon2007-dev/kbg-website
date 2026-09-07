@@ -471,7 +471,7 @@ async function handleAuthChange(user) {
           "
         >
           👋 ${esc(displayName)}
-          ${isApprovedMember() ? '' : '<span class="badge badge-warning" style="margin-left:8px;">⏳ En attente</span>'}
+          ${isApprovedMember() ? '' : `<span class="badge badge-warning" style="margin-left:8px;">${currentProfile?.account_status === 'pending_email' ? '✉️ E-mail à confirmer' : '⏳ En attente'}</span>`}
         </span>
 
         <button
@@ -3581,7 +3581,9 @@ async function submitReview(e) {
 
   if (!isApprovedMember()) {
     if (msg) {
-      msg.textContent = 'Votre compte est encore en attente de validation par un administrateur.';
+      msg.textContent = currentProfile?.account_status === 'pending_email'
+        ? 'Votre compte a été validé par un administrateur. Confirmez votre adresse e-mail via le message reçu pour finaliser l’activation.'
+        : 'Votre compte est encore en attente de validation par un administrateur.';
       msg.style.color = 'var(--warning)';
     }
     return;

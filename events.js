@@ -352,7 +352,7 @@ function updateUserNav() {
         "
       >
         👋 ${esc(email)}
-        ${approved ? '' : '<span class="badge badge-warning" style="margin-left:8px;">⏳ En attente</span>'}
+        ${approved ? '' : `<span class="badge badge-warning" style="margin-left:8px;">${currentProfile?.account_status === 'pending_email' ? '✉️ E-mail à confirmer' : '⏳ En attente'}</span>`}
       </span>
 
       <button
@@ -1422,7 +1422,7 @@ async function openEventDetail(event) {
           ? `
             <div style="margin-top:22px;padding:14px;border:1px solid var(--line);background:var(--bg);border-radius:8px;">
               <p style="font-size:13px;color:var(--muted);">
-                ${currentUser ? '⏳ Votre compte est en attente de validation. La participation sera disponible après validation.' : '👤 Connectez-vous pour indiquer votre participation.'}
+                ${currentUser ? (currentProfile?.account_status === 'pending_email' ? '✉️ Votre compte a été validé, mais votre adresse e-mail doit encore être confirmée.' : '⏳ Votre compte est en attente de validation. La participation sera disponible après validation.') : '👤 Connectez-vous pour indiquer votre participation.'}
               </p>
               ${currentUser ? '' : `
                 <button type="button" id="eventLoginForParticipationBtn" class="button primary" style="width:100%;margin-top:10px;">

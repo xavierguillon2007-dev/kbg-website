@@ -619,52 +619,6 @@ function formatAccountRequestDate(value) {
   return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
-async function handleAccountDecision(requestId, decision, button) {
-  const request = currentAccountRequests.find(item => String(item.id) === String(requestId));
-  if (!request || !['approved', 'rejected'].includes(decision)) {
-    alert('Demande de compte invalide.');
-    return;
-  }
-
-  const action = decision === 'approved' ? 'valider' : 'refuser';
-  if (!confirm(`Voulez-vous vraiment ${action} le compte de ${request.first_name} ${request.last_name} ?`)) return;
-
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = '…';
-
-  try {
-    let data;
-    let error;
-
-    if (request.source === 'profile') {
-      ({ data, error } = await supabase.rpc('set_account_status_admin', {
-        p_user_id: request.user_id,
-        p_status: decision
-      }));
-    } else {
-      ({ data, error } = await supabase
-        .from('account_requests')
-        .update({ status: decision })
-        .eq('id', request.id)
-        .select('id, status'));
-    }
-
-    if (error) throw error;
-    if (request.source === 'profile' ? !data : (!data || !data.length)) {
-      throw new Error("La mise à jour du compte n'a pas été appliquée.");
-    }
-
-    alert(decision === 'approved' ? '✓ Compte validé avec succès.' : '✓ Compte refusé.');
-    await loadAccountRequests();
-  } catch (error) {
-    console.error('Erreur validation compte :', error);
-    alert('Erreur : ' + (error?.message || error));
-    button.disabled = false;
-    button.textContent = originalText;
-  }
-}
-
 // =========================================================
 // DATE
 // =========================================================
@@ -761,11 +715,27 @@ async function handleAccountDecision(
       );
     }
 
-    alert(
-      decision === 'approved'
-        ? '✓ Compte validé avec succès.'
-        : '✓ Compte refusé.'
-    );
+    if (decision === 'approved') {
+      const { error: emailError } = await supabase.functions.invoke(
+        'send-account-status-email',
+        {
+          body: {
+            to: request.email,
+            first_name: request.first_name,
+            status: 'approved'
+          }
+        }
+      );
+
+      if (emailError) {
+        console.error('Erreur envoi email validation :', emailError);
+        alert('✓ Compte validé, mais l’e-mail de confirmation n’a pas pu être envoyé.');
+      } else {
+        alert('✓ Compte validé. Un e-mail de confirmation a été envoyé.');
+      }
+    } else {
+      alert('✓ Compte refusé.');
+    }
 
     await loadAccountRequests();
 

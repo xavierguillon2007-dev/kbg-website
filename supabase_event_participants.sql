@@ -14,7 +14,7 @@ create table if not exists public.profiles (
   last_name text not null default '',
   promotion text not null default '',
   account_status text not null default 'pending'
-    check (account_status in ('pending', 'approved', 'rejected')),
+    check (account_status in ('pending', 'pending_email', 'approved', 'rejected')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -34,7 +34,7 @@ begin
   ) then
     alter table public.profiles
       add constraint profiles_account_status_check
-      check (account_status in ('pending', 'approved', 'rejected'));
+      check (account_status in ('pending', 'pending_email', 'approved', 'rejected'));
   end if;
 end $$;
 
@@ -379,7 +379,10 @@ set search_path = public
 as $$
 begin
   update public.profiles p
-  set account_status = new.status,
+  set account_status = case
+        when new.status = 'approved' and u.email_confirmed_at is null then 'pending_email'
+        else new.status
+      end,
       updated_at = now()
   from auth.users u
   where p.user_id = u.id
@@ -608,10 +611,12 @@ create or replace function public.set_account_status_admin(
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, auth
 as $$
 declare
   updated_count integer;
+  target_status text;
+  confirmed_at timestamptz;
 begin
   if not public.is_admin_user(auth.uid()) then
     raise exception 'Accès réservé aux administrateurs.';
@@ -621,8 +626,21 @@ begin
     raise exception 'Statut invalide.';
   end if;
 
+  select email_confirmed_at into confirmed_at
+  from auth.users
+  where id = p_user_id;
+
+  if not found then
+    raise exception 'Utilisateur introuvable.';
+  end if;
+
+  target_status := case
+    when p_status = 'approved' and confirmed_at is null then 'pending_email'
+    else p_status
+  end;
+
   update public.profiles
-  set account_status = p_status,
+  set account_status = target_status,
       updated_at = now()
   where user_id = p_user_id
     and account_status = 'pending';
@@ -684,22 +702,38 @@ create or replace function public.update_account_admin(
 returns boolean
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, auth
 as $$
+declare
+  target_status text;
+  confirmed_at timestamptz;
 begin
   if not public.is_admin_user(auth.uid()) then
     raise exception 'Accès réservé aux administrateurs.';
   end if;
 
-  if p_account_status not in ('pending','approved','rejected') then
+  if p_account_status not in ('pending','pending_email','approved','rejected') then
     raise exception 'Statut invalide.';
   end if;
+
+  select email_confirmed_at into confirmed_at
+  from auth.users
+  where id = p_user_id;
+
+  if not found then
+    raise exception 'Utilisateur introuvable.';
+  end if;
+
+  target_status := case
+    when p_account_status = 'approved' and confirmed_at is null then 'pending_email'
+    else p_account_status
+  end;
 
   update public.profiles
   set first_name = coalesce(p_first_name, ''),
       last_name = coalesce(p_last_name, ''),
       promotion = coalesce(p_promotion, ''),
-      account_status = p_account_status,
+      account_status = target_status,
       updated_at = now()
   where user_id = p_user_id;
 
