@@ -81,6 +81,7 @@ async function ensureCurrentUserIsAdmin() {
 let allGames = [];
 let allReviews = [];
 let allEvents = [];
+let allCategories = [];
 
 let currentUser = null;
 let currentProfile = null;
@@ -123,9 +124,31 @@ function getGameCategories(game) {
 }
 
 function getAllGameCategories() {
+  if (allCategories.length) return [...allCategories];
   return [...new Set(
     allGames.flatMap(getGameCategories)
   )].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+async function loadCategories() {
+  const { data, error } = await supabase
+    .from('game_categories')
+    .select('name')
+    .order('name');
+
+  if (error) {
+    console.error('Erreur chargement catégories :', error);
+    allCategories = [];
+    return false;
+  }
+
+  allCategories = [...new Set(
+    (data || [])
+      .map(row => String(row?.name || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+
+  return true;
 }
 
 function refreshCategoryEditorSelects() {
@@ -1711,6 +1734,7 @@ async function loadGames() {
         : [];
 
 
+    await loadCategories();
     const categories = getAllGameCategories();
 
 

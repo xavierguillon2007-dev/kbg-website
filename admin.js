@@ -24,6 +24,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 let currentReservations = [];
 let currentGames = [];
 let currentAccountRequests = [];
+let allCategories = [];
 
 
 // --- CATÉGORIES MULTIPLES ---
@@ -36,12 +37,67 @@ function getGameCategories(game) {
 }
 
 function getAllGameCategories() {
+  if (allCategories.length) return [...allCategories];
   return [...new Set(
     currentGames
       .flatMap(getGameCategories)
       .map(v => String(v || '').trim())
       .filter(Boolean)
   )].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+async function loadCategories() {
+  const { data, error } = await supabase
+    .from('game_categories')
+    .select('name')
+    .order('name');
+
+  if (error) {
+    console.error('Erreur chargement catégories :', error);
+    allCategories = [];
+    return false;
+  }
+
+  allCategories = [...new Set(
+    (data || [])
+      .map(row => String(row?.name || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+
+  return true;
+}
+
+async function createCategory(name) {
+  const value = String(name || '').trim().replace(/\s+/g, ' ');
+  if (!value) return { error: new Error('Le nom de la catégorie est vide.') };
+
+  const { data, error } = await supabase
+    .from('game_categories')
+    .insert({ name: value })
+    .select('name')
+    .single();
+
+  if (!error) {
+    await loadCategories();
+    return { data, error: null };
+  }
+
+  // Une catégorie identique (sans tenir compte de la casse) existe déjà.
+  if (error.code === '23505') {
+    const { data: existing, error: existingError } = await supabase
+      .from('game_categories')
+      .select('name')
+      .ilike('name', value)
+      .limit(1)
+      .maybeSingle();
+
+    if (!existingError && existing?.name) {
+      await loadCategories();
+      return { data: existing, error: null, alreadyExists: true };
+    }
+  }
+
+  return { data: null, error };
 }
 
 function refreshCategorySelects() {
@@ -100,21 +156,35 @@ function setupCategoryEditors() {
       addCategoryRow(editor);
     });
 
-    editor.querySelector('.category-create-btn')?.addEventListener('click', () => {
+    editor.querySelector('.category-create-btn')?.addEventListener('click', async () => {
       const input = editor.querySelector('input[name="new_category"]');
       const value = input?.value.trim();
       if (!value) return;
 
-      if (!getAllGameCategories().includes(value)) {
-        currentGames.push({ categories: [value] });
+      const button = editor.querySelector('.category-create-btn');
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Création…';
       }
 
-      addCategoryRow(editor, value);
+      const result = await createCategory(value);
+
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Créer';
+      }
+
+      if (result.error) {
+        alert('Impossible de créer la catégorie : ' + result.error.message);
+        return;
+      }
+
       refreshCategorySelects();
+      addCategoryRow(editor, result.data.name);
 
       const selects = editor.querySelectorAll('select[name="categories[]"]');
       const last = selects[selects.length - 1];
-      if (last) last.value = value;
+      if (last) last.value = result.data.name;
       if (input) input.value = '';
     });
   });
@@ -189,6 +259,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.onclick = () => $(btn.dataset.close)?.classList.add('hidden');
   });
 
+await loadCategories();
 await loadAdminGames();
 setupCategoryEditors();
 await loadAdminReservations();
