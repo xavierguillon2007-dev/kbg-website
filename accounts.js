@@ -158,7 +158,16 @@ async function saveAccount(e) {
     return;
   }
 
-  if (newStatus === 'approved' && ['pending', 'pending_email'].includes(previousStatus)) {
+  // L'option « e-mail à confirmer » doit envoyer (ou renvoyer)
+  // immédiatement le mail de confirmation.
+  // Si l'admin choisit directement « Validé » pour une adresse non confirmée,
+  // la fonction SQL peut ramener le statut à pending_email : on envoie donc
+  // également le mail dans ce cas.
+  const shouldSendConfirmationEmail =
+    newStatus === 'pending_email' ||
+    (newStatus === 'approved' && ['pending', 'pending_email'].includes(previousStatus));
+
+  if (shouldSendConfirmationEmail) {
     const { error: emailError } = await supabase.functions.invoke(
       'send-account-status-email',
       {
@@ -172,10 +181,10 @@ async function saveAccount(e) {
 
     if (emailError) {
       console.error('Erreur envoi email validation :', emailError);
-      msg.textContent = '✓ Compte validé, mais l’e-mail de confirmation n’a pas pu être envoyé.';
+      msg.textContent = '✓ Statut enregistré, mais l’e-mail de confirmation n’a pas pu être envoyé.';
       msg.style.color = 'var(--warning)';
     } else {
-      msg.textContent = '✓ Compte validé et e-mail de confirmation envoyé.';
+      msg.textContent = '✓ Statut enregistré et e-mail de confirmation envoyé.';
       msg.style.color = 'var(--success)';
     }
   } else {
