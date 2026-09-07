@@ -158,7 +158,11 @@ async function saveAccount(e) {
     return;
   }
 
-  if (newStatus === 'approved' && ['pending', 'pending_email'].includes(previousStatus)) {
+  const shouldSendConfirmationEmail =
+    newStatus === 'pending_email' ||
+    (newStatus === 'approved' && ['pending', 'pending_email'].includes(previousStatus));
+
+  if (shouldSendConfirmationEmail) {
     const { error: emailError } = await supabase.functions.invoke(
       'send-account-status-email',
       {
