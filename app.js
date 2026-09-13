@@ -3250,17 +3250,33 @@ function openReviewModal(game) {
 
   renderReviews(game);
 
-resetGameAvailabilitySelection();
+const isBorrowable = game.is_borrowable !== false;
+const availabilityContent = $('gameAvailabilityContent');
+const notBorrowableNotice = $('gameNotBorrowableNotice');
 
-gameAvailabilityMonth =
-  new Date();
+if (availabilityContent) {
+  availabilityContent.style.display = isBorrowable ? '' : 'none';
+}
+if (notBorrowableNotice) {
+  notBorrowableNotice.style.display = isBorrowable ? 'none' : '';
+}
 
-loadGameAvailability(
-  game,
-  gameAvailabilityMonth
-);
+if (isBorrowable) {
 
-updateGameReservationButton();
+  resetGameAvailabilitySelection();
+
+  gameAvailabilityMonth =
+    new Date();
+
+  loadGameAvailability(
+    game,
+    gameAvailabilityMonth
+  );
+
+  updateGameReservationButton();
+
+}
+
 modal.classList.remove('hidden');
 
 }
@@ -3917,6 +3933,11 @@ async function handleGameReservation() {
     return;
   }
 
+  if (game.is_borrowable === false) {
+    setMessage('Ce jeu n\'est pas disponible à l\'emprunt.', 'var(--danger)');
+    return;
+  }
+
   // Récupère la session la plus récente au moment précis de la réservation.
   // Cela évite de dépendre d'un état d'authentification devenu obsolète.
   try {
@@ -4439,6 +4460,11 @@ async function loadAdminGamesList() {
             <strong>
               ${esc(game.name)}
             </strong>
+            ${
+              game.is_borrowable === false
+                ? '<span style="color:var(--danger);font-weight:600;margin-left:6px;">🚫 Non empruntable</span>'
+                : ''
+            }
           </span>
 
           <div style="display:flex; gap:6px; align-items:center;">
@@ -4608,6 +4634,9 @@ function openEditGameModal(game) {
   setValue('copies_count', Math.max(1, Number(game.copies_count) || 1));
   setValue('description', game.description);
 
+  const notBorrowableInput = form.querySelector('[name="not_borrowable"]');
+  if (notBorrowableInput) notBorrowableInput.checked = game.is_borrowable === false;
+
   const msg = $('editGameAdminMsg');
   if (msg) {
     msg.textContent = '';
@@ -4659,7 +4688,8 @@ async function handleEditGameAdmin(event) {
       players_max: Number(formData.get('players_max')) || null,
       duration: Number(formData.get('duration')) || null,
       copies_count: Math.max(1, Number(formData.get('copies_count')) || 1),
-      description: String(formData.get('description') || '').trim() || null
+      description: String(formData.get('description') || '').trim() || null,
+      is_borrowable: formData.get('not_borrowable') ? false : true
     };
 
     const { error } = await supabase
@@ -5174,6 +5204,11 @@ async function handleAddGame(e) {
           formData.get('description') || ''
         ).trim() ||
         null,
+
+      is_borrowable:
+        formData.get('not_borrowable') ?
+          false :
+          true,
 
       is_active:
         true

@@ -73,6 +73,10 @@
             </select>
           </label>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+          <input type="checkbox" name="not_borrowable">
+          🚫 Ce jeu ne peut pas être emprunté (le calendrier de réservation sera remplacé par un message d'indisponibilité)
+        </label>
         <textarea name="description" class="admin-form-textarea" placeholder="Description courte..." style="min-height:80px; margin-bottom:12px;"></textarea>
         <button type="submit" class="button primary">+ Ajouter ce jeu</button>
         <p id="addGameMsg" class="form-message" style="margin-top:8px;"></p>
@@ -153,6 +157,10 @@
           <input name="players_max" type="number" placeholder="Joueurs max" min="1">
           <input name="duration" type="number" placeholder="Durée (minutes)">
         </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+          <input type="checkbox" name="not_borrowable">
+          🚫 Ce jeu ne peut pas être emprunté (le calendrier de réservation sera remplacé par un message d'indisponibilité)
+        </label>
         <textarea name="description" class="admin-form-textarea" placeholder="Description courte..." style="min-height:80px; margin-bottom:12px; width:100%; background:var(--bg); border:1px solid var(--line); color:var(--text); padding:10px; border-radius:6px; resize:vertical;"></textarea>
         <button type="submit" class="button primary" style="width:100%;">Enregistrer les modifications →</button>
         <p id="editGameMsg" class="form-message" style="margin-top:8px;"></p>
@@ -164,6 +172,6 @@
     <span>KBG / Association ludique.   Site par Xavier Guillon</span>
     <span>Panneau d'administration</span>
   </footer>
-  <script type="module" src="admin.js?v=11"></script>
+  <script type="module" src="admin.js?v=12"></script>
 </body>
 </html>

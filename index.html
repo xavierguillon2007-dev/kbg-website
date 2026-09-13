@@ -516,52 +516,64 @@
         </div>
       </div>
 
-      <div
-        id="gameAvailabilityCopiesInfo"
-        style="
-          margin-top:12px;
-          padding:10px 12px;
-          border:1px solid var(--line);
-          border-radius:10px;
-          font-size:13px;
-          display:flex;
-          gap:7px;
-          align-items:center;
-          flex-wrap:wrap;
-        "
-      >
-        Chargement du stock…
-      </div>
+      <div id="gameAvailabilityContent">
 
-      <div
-        id="gameAvailabilityCalendar"
-        class="game-availability-calendar"
-        style="margin-top:14px;"
-      >
-        <div class="loading">
-          Chargement des disponibilités…
+        <div
+          id="gameAvailabilityCopiesInfo"
+          style="
+            margin-top:12px;
+            padding:10px 12px;
+            border:1px solid var(--line);
+            border-radius:10px;
+            font-size:13px;
+            display:flex;
+            gap:7px;
+            align-items:center;
+            flex-wrap:wrap;
+          "
+        >
+          Chargement du stock…
         </div>
+
+        <div
+          id="gameAvailabilityCalendar"
+          class="game-availability-calendar"
+          style="margin-top:14px;"
+        >
+          <div class="loading">
+            Chargement des disponibilités…
+          </div>
+        </div>
+
+        <p
+          id="gameAvailabilityHelp"
+          style="
+            color:var(--muted);
+            font-size:12px;
+            margin-top:10px;
+            line-height:1.5;
+          "
+        >
+          Les dates vertes sont disponibles. Sélectionnez une date de début puis une date de fin pour réserver ce jeu.
+        </p>
+
+        <div style="margin-top:16px;">
+          <button id="reserveGameBtn" class="button primary" type="button" disabled style="width:100%; padding:12px;">
+            Sélectionnez vos dates →
+          </button>
+          <p id="gameReservationMessage" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;">
+            Choisissez une date de début puis une date de fin dans le calendrier.
+          </p>
+        </div>
+
       </div>
 
-      <p
-        id="gameAvailabilityHelp"
-        style="
-          color:var(--muted);
-          font-size:12px;
-          margin-top:10px;
-          line-height:1.5;
-        "
+      <div
+        id="gameNotBorrowableNotice"
+        class="empty panel"
+        style="margin-top:14px; display:none; text-align:center;"
       >
-        Les dates vertes sont disponibles. Sélectionnez une date de début puis une date de fin pour réserver ce jeu.
-      </p>
-
-      <div style="margin-top:16px;">
-        <button id="reserveGameBtn" class="button primary" type="button" disabled style="width:100%; padding:12px;">
-          Sélectionnez vos dates →
-        </button>
-        <p id="gameReservationMessage" class="form-message" style="margin-top:10px; text-align:center; font-size:13px;">
-          Choisissez une date de début puis une date de fin dans le calendrier.
-        </p>
+        🚫 Ce jeu n'est pas disponible à l'emprunt actuellement.
       </div>
 
     </div>
@@ -1049,6 +1061,12 @@
       >
 
 
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+        <input type="checkbox" name="not_borrowable">
+        🚫 Ce jeu ne peut pas être emprunté (le calendrier de réservation sera remplacé par un message d'indisponibilité)
+      </label>
+
+
       <textarea
         name="description"
         class="admin-textarea"
@@ -1239,6 +1257,11 @@
         </label>
 
       </div>
+
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;">
+        <input type="checkbox" name="not_borrowable">
+        🚫 Ce jeu ne peut pas être emprunté (le calendrier de réservation sera remplacé par un message d'indisponibilité)
+      </label>
 
       <textarea
         name="description"
@@ -1473,7 +1496,7 @@
 
 <script
   type="module"
-  src="app.js?v=15"
+  src="app.js?v=16"
 ></script>
 
 </body>

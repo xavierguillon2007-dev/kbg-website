@@ -328,6 +328,7 @@ async function loadAdminGames() {
         <h3>${esc(g.name)}</h3>
         <p class="publisher">${esc(g.publisher || '')}</p>
       <p style="font-size:12px;color:var(--muted);margin-top:6px;">🎲 ${Math.max(1, Number(g.copies_count) || 1)} exemplaire(s)</p>
+      ${g.is_borrowable === false ? '<p style="font-size:12px;color:var(--danger);margin-top:4px;font-weight:600;">🚫 Non empruntable</p>' : ''}
       </div>
       <div class="admin-card-actions">
         <button class="button" data-edit-game="${g.id}">✏️ Modifier</button>
@@ -371,6 +372,7 @@ async function handleAddGame(e) {
     duration: Number(f.get('duration')) || null,
     copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
     description: f.get('description').trim() || null,
+    is_borrowable: f.get('not_borrowable') ? false : true,
     is_active: true
   };
 
@@ -401,6 +403,8 @@ function openEditGameModal(game) {
   form.querySelector('[name="duration"]').value = game.duration ?? '';
   form.querySelector('[name="copies_count"]').value = Math.max(1, Number(game.copies_count) || 1);
   form.querySelector('[name="description"]').value = game.description || '';
+  const notBorrowableInput = form.querySelector('[name="not_borrowable"]');
+  if (notBorrowableInput) notBorrowableInput.checked = game.is_borrowable === false;
 
   $('editGameModal')?.classList.remove('hidden');
 }
@@ -426,7 +430,8 @@ async function handleEditGame(e) {
     players_max: Number(f.get('players_max')) || null,
     duration: Number(f.get('duration')) || null,
     copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
-    description: f.get('description').trim() || null
+    description: f.get('description').trim() || null,
+    is_borrowable: f.get('not_borrowable') ? false : true
   };
 
   const { error } = await supabase.from('games').update(updatedGame).eq('id', gameId);
