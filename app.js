@@ -191,44 +191,6 @@ async function deleteCategory(name) {
   return { error: null };
 }
 
-function renderCategoryManager() {
-  const container = $('categoryManagerList');
-  if (!container) return;
-
-  const categories = getAllGameCategories();
-
-  if (!categories.length) {
-    container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Aucune catégorie pour le moment.</p>';
-    return;
-  }
-
-  container.innerHTML = categories.map(category => `
-    <span class="category-chip" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;margin:0 6px 6px 0;font-size:13px;">
-      ${esc(category)}
-      <button type="button" class="category-delete-btn" data-category="${esc(category)}" title="Supprimer cette catégorie" style="border:none;background:none;color:#c0392b;cursor:pointer;font-weight:bold;line-height:1;font-size:14px;">×</button>
-    </span>
-  `).join('');
-
-  container.querySelectorAll('.category-delete-btn').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const name = btn.dataset.category;
-      if (!confirm(`Supprimer la catégorie « ${name} » ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
-
-      btn.disabled = true;
-      const result = await deleteCategory(name);
-
-      if (result.error) {
-        alert('Impossible de supprimer la catégorie : ' + result.error.message);
-        btn.disabled = false;
-        return;
-      }
-
-      refreshCategoryEditorSelects();
-      renderCategoryManager();
-    });
-  });
-}
-
 function refreshCategoryEditorSelects() {
   const categories = getAllGameCategories();
 
@@ -267,11 +229,37 @@ function addCategoryEditorRow(editor, value = '') {
 
   select.value = value || '';
 
+  const deleteCat = document.createElement('button');
+  deleteCat.type = 'button';
+  deleteCat.className = 'button danger';
+  deleteCat.textContent = '🗑';
+  deleteCat.title = 'Supprimer définitivement la catégorie sélectionnée';
+
+  deleteCat.addEventListener('click', async () => {
+    const name = select.value;
+    if (!name) {
+      alert('Choisissez d’abord une catégorie dans la liste pour pouvoir la supprimer.');
+      return;
+    }
+    if (!confirm(`Supprimer la catégorie « ${name} » ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
+
+    deleteCat.disabled = true;
+    const result = await deleteCategory(name);
+    deleteCat.disabled = false;
+
+    if (result.error) {
+      alert('Impossible de supprimer la catégorie : ' + result.error.message);
+      return;
+    }
+
+    refreshCategoryEditorSelects();
+  });
+
   const remove = document.createElement('button');
   remove.type = 'button';
   remove.className = 'button danger';
   remove.textContent = '×';
-  remove.title = 'Retirer cette catégorie';
+  remove.title = 'Retirer cette catégorie de la liste (sans la supprimer)';
 
   remove.addEventListener('click', () => {
     row.remove();
@@ -280,7 +268,7 @@ function addCategoryEditorRow(editor, value = '') {
     }
   });
 
-  row.append(select, remove);
+  row.append(select, deleteCat, remove);
   rows.appendChild(row);
 }
 
@@ -325,7 +313,6 @@ function setupCategoryEditors() {
       }
 
       refreshCategoryEditorSelects();
-      renderCategoryManager();
       addCategoryEditorRow(editor, result.data.name);
 
       const selects = editor.querySelectorAll('select[name="categories[]"]');
@@ -4064,7 +4051,6 @@ async function loadAdminPanel() {
   // Chaque bloc est chargé indépendamment : une panne d'un bloc
   // ne doit pas laisser les autres en chargement infini.
   await loadCategories();
-  renderCategoryManager();
   await loadAdminAccountRequests();
   await loadAdminLegacyPendingAccounts();
   await loadAdminGamesList();
