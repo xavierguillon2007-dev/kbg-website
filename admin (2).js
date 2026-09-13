@@ -1,0 +1,870 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://qqelmmygalllmxinaxrf.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fqFvZNetzIdAfX860bmjBQ_GzJfeVK3';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Le statut administrateur est vérifié côté Supabase.
+let currentUserIsAdmin = false;
+const isAdminEmail = _email => currentUserIsAdmin;
+
+async function loadAdminStatus(userId) {
+  if (!userId) return false;
+  const { data, error } = await supabase.rpc('is_admin_user', { p_user_id: userId });
+  if (error) {
+    console.error('Erreur vérification administrateur :', error);
+    return false;
+  }
+  return data === true;
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+let currentReservations = [];
+let currentGames = [];
+let currentAccountRequests = [];
+let allCategories = [];
+
+
+// --- CATÉGORIES MULTIPLES ---
+function getGameCategories(game) {
+  if (Array.isArray(game?.categories)) {
+    return [...new Set(game.categories.map(v => String(v || '').trim()).filter(Boolean))];
+  }
+  const legacy = String(game?.category || '').trim();
+  return legacy ? [legacy] : [];
+}
+
+function getAllGameCategories() {
+  if (allCategories.length) return [...allCategories];
+  return [...new Set(
+    currentGames
+      .flatMap(getGameCategories)
+      .map(v => String(v || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+}
+
+async function loadCategories() {
+  const { data, error } = await supabase
+    .from('game_categories')
+    .select('name')
+    .order('name');
+
+  if (error) {
+    console.error('Erreur chargement catégories :', error);
+    allCategories = [];
+    return false;
+  }
+
+  allCategories = [...new Set(
+    (data || [])
+      .map(row => String(row?.name || '').trim())
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'fr'));
+
+  return true;
+}
+
+async function createCategory(name) {
+  const value = String(name || '').trim().replace(/\s+/g, ' ');
+  if (!value) return { error: new Error('Le nom de la catégorie est vide.') };
+
+  const { data, error } = await supabase.rpc('create_game_category_admin', {
+    p_name: value
+  });
+
+  if (error) {
+    console.error('Erreur création catégorie :', error);
+    return { data: null, error };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.name) {
+    return { data: null, error: new Error('La catégorie n’a pas été créée.') };
+  }
+
+  await loadCategories();
+  return { data: row, error: null, alreadyExists: row.name.toLowerCase() !== value.toLowerCase() };
+}
+
+async function deleteCategory(name) {
+  const value = String(name || '').trim();
+  if (!value) return { error: new Error('Nom de catégorie invalide.') };
+
+  const { error } = await supabase.rpc('delete_game_category_admin', {
+    p_name: value
+  });
+
+  if (error) {
+    console.error('Erreur suppression catégorie :', error);
+    return { error };
+  }
+
+  await loadCategories();
+  await loadAdminGames();
+  return { error: null };
+}
+
+function refreshCategorySelects() {
+  document.querySelectorAll('.category-editor select[name="categories[]"]').forEach(select => {
+    const current = select.value;
+    select.innerHTML = '<option value="">— Choisir une catégorie —</option>' +
+      getAllGameCategories().map(category =>
+        `<option value="${esc(category)}">${esc(category)}</option>`
+      ).join('');
+    if (current && getAllGameCategories().includes(current)) {
+      select.value = current;
+    }
+  });
+}
+
+function addCategoryRow(editor, value = '') {
+  const rows = editor.querySelector('.category-rows');
+  if (!rows) return;
+
+  const row = document.createElement('div');
+  row.className = 'category-row';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;';
+
+  const select = document.createElement('select');
+  select.name = 'categories[]';
+  select.style.flex = '1';
+  select.style.minWidth = '160px';
+  select.innerHTML = '<option value="">— Choisir une catégorie —</option>' +
+    getAllGameCategories().map(category =>
+      `<option value="${esc(category)}">${esc(category)}</option>`
+    ).join('');
+  select.value = value || '';
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'button';
+  remove.textContent = '×';
+  remove.title = 'Retirer cette ligne du formulaire (sans toucher au catalogue)';
+  remove.style.flex = '0 0 auto';
+  remove.onclick = () => {
+    row.remove();
+    if (!rows.children.length) addCategoryRow(editor);
+  };
+
+  const deleteCat = document.createElement('button');
+  deleteCat.type = 'button';
+  deleteCat.className = 'button danger';
+  deleteCat.textContent = '🗑 Supprimer la catégorie';
+  deleteCat.title = 'Supprimer définitivement cette catégorie du catalogue (tous les jeux concernés la perdront)';
+  deleteCat.style.flex = '0 0 auto';
+  deleteCat.disabled = !select.value;
+
+  select.addEventListener('change', () => {
+    deleteCat.disabled = !select.value;
+  });
+
+  deleteCat.onclick = async () => {
+    const name = select.value;
+    if (!name) return;
+    if (!confirm(`Supprimer définitivement la catégorie « ${name} » du catalogue ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
+
+    deleteCat.disabled = true;
+    const result = await deleteCategory(name);
+
+    if (result.error) {
+      alert('Impossible de supprimer la catégorie : ' + result.error.message);
+      deleteCat.disabled = !select.value;
+      return;
+    }
+
+    refreshCategorySelects();
+  };
+
+  row.append(select, remove, deleteCat);
+  rows.appendChild(row);
+}
+
+function setupCategoryEditors() {
+  document.querySelectorAll('.category-editor').forEach(editor => {
+    const rows = editor.querySelector('.category-rows');
+    if (!rows || rows.dataset.ready === '1') return;
+
+    rows.dataset.ready = '1';
+    addCategoryRow(editor);
+
+    editor.querySelector('.category-add-btn')?.addEventListener('click', () => {
+      addCategoryRow(editor);
+    });
+
+    editor.querySelector('.category-create-btn')?.addEventListener('click', async () => {
+      const input = editor.querySelector('input[name="new_category"]');
+      const value = input?.value.trim();
+      if (!value) {
+        alert('Saisissez un nom de catégorie.');
+        input?.focus();
+        return;
+      }
+
+      const button = editor.querySelector('.category-create-btn');
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Création…';
+      }
+
+      const result = await createCategory(value);
+
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Créer';
+      }
+
+      if (result.error) {
+        alert('Impossible de créer la catégorie : ' + result.error.message);
+        return;
+      }
+
+      refreshCategorySelects();
+      addCategoryRow(editor, result.data.name);
+
+      const selects = editor.querySelectorAll('select[name="categories[]"]');
+      const last = selects[selects.length - 1];
+      if (last) last.value = result.data.name;
+      if (input) input.value = '';
+    });
+  });
+}
+
+function setCategoryEditorValues(form, categories) {
+  const editor = form?.querySelector('.category-editor');
+  const rows = editor?.querySelector('.category-rows');
+  if (!editor || !rows) return;
+
+  rows.innerHTML = '';
+  const values = Array.isArray(categories) ? categories.filter(Boolean) : [];
+  (values.length ? values : ['']).forEach(value => addCategoryRow(editor, value));
+}
+
+function getCategoryEditorValues(form) {
+  const values = [...(form?.querySelectorAll('select[name="categories[]"]') || [])]
+    .map(select => select.value.trim())
+    .filter(Boolean);
+
+  const newCategory = form?.querySelector('input[name="new_category"]')?.value.trim();
+  if (newCategory) values.push(newCategory);
+
+  return [...new Set(values)];
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    currentUserIsAdmin = await loadAdminStatus(session.user.id);
+  }
+
+  if (!session) {
+    $('adminReservationsList').innerHTML = `<div class="empty panel">Accès restreint. Connectez-vous d'abord sur la page d'accueil.</div>`;
+    $('adminGamesList').innerHTML = '';
+    return;
+  }
+
+  if (!isAdminEmail(session.user.email)) {
+    $('adminReservationsList').innerHTML = `<div class="empty panel">Accès réservé aux administrateurs.</div>`;
+    $('adminGamesList').innerHTML = '';
+    $('addGameForm')?.remove();
+    $('userNav').innerHTML = `
+      <span style="font-weight:700; font-size:13px;">👋 ${esc(session.user.email)}</span>
+      <button class="button" id="logoutBtn">Déconnexion</button>
+    `;
+    $('logoutBtn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+    return;
+  }
+
+  $('userNav').innerHTML = `
+    <span style="font-weight:700; font-size:13px;">👋 ${esc(session.user.email)}</span>
+    <button class="button" id="logoutBtn">Déconnexion</button>
+  `;
+  $('logoutBtn').addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    window.location.href = 'index.html';
+  });
+
+  $('filterStatus').addEventListener('change', () => {
+    historyVisibleCount = HISTORY_PAGE_SIZE;
+    renderReservations();
+  });
+  $('addGameForm').addEventListener('submit', handleAddGame);
+  $('editGameForm')?.addEventListener('submit', handleEditGame);
+
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.onclick = () => $(btn.dataset.close)?.classList.add('hidden');
+  });
+
+await loadCategories();
+await loadAdminGames();
+setupCategoryEditors();
+await loadAdminReservations();
+await loadAccountRequests();
+});
+
+// --- GESTION DU CATALOGUE (AJOUT / ÉDITION / SUPPRESSION) ---
+async function loadAdminGames() {
+  const container = $('adminGamesList');
+  const { data: games, error } = await supabase.from('games').select('*').order('name');
+
+  if (error) {
+    container.innerHTML = `<div class="empty panel">Erreur : ${esc(error.message)}</div>`;
+    return;
+  }
+
+  currentGames = games || [];
+  refreshCategorySelects();
+
+  container.innerHTML = currentGames.map(g => `
+    <article class="panel admin-card">
+      <div>
+        <p class="tag">${esc(getGameCategories(g).join(' · ') || 'Jeu')}</p>
+        <h3>${esc(g.name)}</h3>
+        <p class="publisher">${esc(g.publisher || '')}</p>
+      <p style="font-size:12px;color:var(--muted);margin-top:6px;">🎲 ${Math.max(1, Number(g.copies_count) || 1)} exemplaire(s)</p>
+      </div>
+      <div class="admin-card-actions">
+        <button class="button" data-edit-game="${g.id}">✏️ Modifier</button>
+        <button class="button danger" data-delete-game="${g.id}">🗑 Supprimer</button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-edit-game]').forEach(btn => {
+    btn.onclick = () => {
+      const game = currentGames.find(g => String(g.id) === btn.dataset.editGame);
+      if (game) openEditGameModal(game);
+    };
+  });
+
+  container.querySelectorAll('[data-delete-game]').forEach(btn => {
+    btn.onclick = async () => {
+      if (confirm('Voulez-vous vraiment supprimer ce jeu du catalogue ?')) {
+        await supabase.from('games').delete().eq('id', btn.dataset.deleteGame);
+        loadAdminGames();
+      }
+    };
+  });
+}
+
+async function handleAddGame(e) {
+  e.preventDefault();
+  const msg = $('addGameMsg');
+  msg.textContent = 'Enregistrement…';
+
+  const f = new FormData(e.currentTarget);
+  const newGame = {
+    id: crypto.randomUUID(),
+    name: f.get('name').trim(),
+    publisher: f.get('publisher').trim(),
+    categories: getCategoryEditorValues(e.currentTarget),
+    category: getCategoryEditorValues(e.currentTarget)[0] || null,
+    cover_image: f.get('cover_image').trim() || null,
+    players_min: Number(f.get('players_min')) || null,
+    players_max: Number(f.get('players_max')) || null,
+    duration: Number(f.get('duration')) || null,
+    copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
+    description: f.get('description').trim() || null,
+    is_active: true
+  };
+
+  const { error } = await supabase.from('games').insert(newGame);
+
+  if (error) {
+    msg.textContent = 'Erreur : ' + error.message;
+  } else {
+    msg.textContent = '✓ Jeu ajouté au catalogue !';
+    e.currentTarget.reset();
+    loadAdminGames();
+  }
+}
+
+function openEditGameModal(game) {
+  const form = $('editGameForm');
+  const msg = $('editGameMsg');
+  if (!form) return;
+
+  msg.textContent = '';
+  form.querySelector('[name="id"]').value = game.id;
+  form.querySelector('[name="name"]').value = game.name || '';
+  form.querySelector('[name="publisher"]').value = game.publisher || '';
+  setCategoryEditorValues(form, getGameCategories(game));
+  form.querySelector('[name="cover_image"]').value = game.cover_image || '';
+  form.querySelector('[name="players_min"]').value = game.players_min ?? '';
+  form.querySelector('[name="players_max"]').value = game.players_max ?? '';
+  form.querySelector('[name="duration"]').value = game.duration ?? '';
+  form.querySelector('[name="copies_count"]').value = Math.max(1, Number(game.copies_count) || 1);
+  form.querySelector('[name="description"]').value = game.description || '';
+
+  $('editGameModal')?.classList.remove('hidden');
+}
+
+async function handleEditGame(e) {
+  e.preventDefault();
+  const msg = $('editGameMsg');
+  const submitBtn = e.currentTarget.querySelector('button[type="submit"]');
+
+  msg.textContent = 'Enregistrement…';
+  msg.style.color = 'var(--muted)';
+  if (submitBtn) submitBtn.disabled = true;
+
+  const f = new FormData(e.currentTarget);
+  const gameId = f.get('id');
+  const updatedGame = {
+    name: f.get('name').trim(),
+    publisher: f.get('publisher').trim(),
+    categories: getCategoryEditorValues(e.currentTarget),
+    category: getCategoryEditorValues(e.currentTarget)[0] || null,
+    cover_image: f.get('cover_image').trim() || null,
+    players_min: Number(f.get('players_min')) || null,
+    players_max: Number(f.get('players_max')) || null,
+    duration: Number(f.get('duration')) || null,
+    copies_count: Math.max(1, Number(f.get('copies_count')) || 1),
+    description: f.get('description').trim() || null
+  };
+
+  const { error } = await supabase.from('games').update(updatedGame).eq('id', gameId);
+
+  if (submitBtn) submitBtn.disabled = false;
+
+  if (error) {
+    msg.textContent = 'Erreur : ' + error.message;
+    msg.style.color = 'var(--danger)';
+    return;
+  }
+
+  msg.textContent = '✓ Fiche mise à jour !';
+  msg.style.color = 'var(--success)';
+  loadAdminGames();
+  setTimeout(() => $('editGameModal')?.classList.add('hidden'), 600);
+}
+
+// --- GESTION DES RÉSERVATIONS ---
+async function loadAdminReservations() {
+  const container = $('adminReservationsList');
+  const { data, error } = await supabase
+    .from('reservations')
+    .select('*, games(name, publisher)')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    container.innerHTML = `<div class="empty panel">Erreur : ${esc(error.message)}</div>`;
+    return;
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  currentReservations = (data || []).filter(r =>
+    !(r.status === 'pending' && r.date_start && r.date_start < todayStr)
+  );
+  updateAdminReservationBadge();
+  renderReservations();
+}
+
+function updateAdminReservationBadge() {
+  const badge = $('adminReservationsBadge');
+  if (!badge) return;
+
+  const count = currentReservations.filter(r => r.status === 'pending').length;
+  badge.textContent = `${count} en attente`;
+  badge.hidden = count === 0;
+}
+
+// Nombre de lignes d'historique affichées par défaut, et par palier
+// à chaque clic sur "Afficher plus".
+const HISTORY_PAGE_SIZE = 15;
+let historyOpen = false;
+let historyVisibleCount = HISTORY_PAGE_SIZE;
+
+function statusBadgeClass(status) {
+  return status === 'approved' ? 'success' : status === 'rejected' ? 'danger' : 'warning';
+}
+
+function reservationActionButtons(r) {
+  return `
+    ${r.status !== 'approved' ? `<button class="button primary" data-action="approved" data-id="${r.id}">✓ Valider</button>` : ''}
+    ${r.status !== 'rejected' ? `<button class="button danger" data-action="rejected" data-id="${r.id}">✕ Refuser</button>` : ''}
+  `;
+}
+
+function renderReservations() {
+  const container = $('adminReservationsList');
+  const filter = $('filterStatus').value;
+  const list = currentReservations.filter(r => !filter || r.status === filter);
+
+  if (!list.length) {
+    container.innerHTML = `<div class="empty panel">Aucune demande trouvée.</div>`;
+    return;
+  }
+
+  // Sans filtre explicite, on sépare "en attente" (cartes complètes,
+  // toujours toutes visibles) et "historique" (traitées, compactées
+  // et repliées par défaut pour ne pas encombrer la page).
+  const showSeparateHistory = !filter;
+  const pending = showSeparateHistory ? list.filter(r => r.status === 'pending') : list;
+  const processed = showSeparateHistory ? list.filter(r => r.status !== 'pending') : [];
+
+  const pendingHtml = !pending.length
+    ? (showSeparateHistory ? `<div class="empty panel">Aucune demande en attente.</div>` : '')
+    : pending.map(r => `
+      <article class="panel admin-card">
+        <div>
+          <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+          <h3 style="margin-top:8px;">${esc(r.games?.name || 'Jeu inconnu')}</h3>
+        </div>
+        <div class="admin-card-body">
+          <p><strong>Demandeur :</strong> ${esc(r.first_name)} ${esc(r.last_name)} (${esc(r.promotion)})</p>
+          <p><strong>Période :</strong> du ${esc(r.date_start)} au ${esc(r.date_end)}</p>
+        </div>
+        <div class="admin-card-actions">${reservationActionButtons(r)}</div>
+      </article>
+    `).join('');
+
+  let historyHtml = '';
+  if (showSeparateHistory && processed.length) {
+    const visible = processed.slice(0, historyVisibleCount);
+    const remaining = processed.length - visible.length;
+
+    const rowsHtml = visible.map(r => `
+      <div class="admin-card-compact">
+        <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+        <span class="admin-card-compact-main">
+          <strong>${esc(r.games?.name || 'Jeu inconnu')}</strong>
+          — ${esc(r.first_name)} ${esc(r.last_name)}${r.promotion ? ` (${esc(r.promotion)})` : ''}
+          · du ${esc(r.date_start)} au ${esc(r.date_end)}
+        </span>
+        <span class="admin-card-compact-actions">${reservationActionButtons(r)}</span>
+      </div>
+    `).join('');
+
+    historyHtml = `
+      <details id="historyDetails" class="admin-history" ${historyOpen ? 'open' : ''}>
+        <summary>Historique — ${processed.length} demande${processed.length > 1 ? 's' : ''} traitée${processed.length > 1 ? 's' : ''}</summary>
+        <div class="admin-history-list">
+          ${rowsHtml}
+          ${remaining > 0 ? `<button class="button" id="historyShowMore" style="margin-top:8px;">Afficher ${Math.min(remaining, HISTORY_PAGE_SIZE)} de plus (${remaining} restantes)</button>` : ''}
+        </div>
+      </details>
+    `;
+  } else if (processed.length === 0 && showSeparateHistory) {
+    // rien à afficher, pas de section historique
+  } else if (!showSeparateHistory) {
+    // Filtre explicite "approved" ou "rejected" : liste compacte directement,
+    // sans repli, mais toujours paginée.
+    const visible = list.slice(0, historyVisibleCount);
+    const remaining = list.length - visible.length;
+    historyHtml = `
+      <div class="admin-history-list">
+        ${visible.map(r => `
+          <div class="admin-card-compact">
+            <span class="badge badge-${statusBadgeClass(r.status)}">${r.status}</span>
+            <span class="admin-card-compact-main">
+              <strong>${esc(r.games?.name || 'Jeu inconnu')}</strong>
+              — ${esc(r.first_name)} ${esc(r.last_name)}${r.promotion ? ` (${esc(r.promotion)})` : ''}
+              · du ${esc(r.date_start)} au ${esc(r.date_end)}
+            </span>
+            <span class="admin-card-compact-actions">${reservationActionButtons(r)}</span>
+          </div>
+        `).join('')}
+        ${remaining > 0 ? `<button class="button" id="historyShowMore" style="margin-top:8px;">Afficher ${Math.min(remaining, HISTORY_PAGE_SIZE)} de plus (${remaining} restantes)</button>` : ''}
+      </div>
+    `;
+  }
+
+  container.innerHTML = pendingHtml + historyHtml;
+
+  const detailsEl = $('historyDetails');
+  if (detailsEl) {
+    detailsEl.addEventListener('toggle', () => {
+      historyOpen = detailsEl.open;
+    });
+  }
+
+  const showMoreBtn = $('historyShowMore');
+  if (showMoreBtn) {
+    showMoreBtn.onclick = () => {
+      historyVisibleCount += HISTORY_PAGE_SIZE;
+      renderReservations();
+    };
+  }
+
+  container.querySelectorAll('[data-action]').forEach(btn => {
+    btn.onclick = async () => {
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '…';
+
+      const { data, error } = await supabase
+        .from('reservations')
+        .update({ status: btn.dataset.action })
+        .eq('id', btn.dataset.id)
+        .select();
+
+      if (error) {
+        alert('Erreur : ' + error.message);
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      if (!data || !data.length) {
+        alert(
+          "La mise à jour n'a pas été appliquée. C'est très probablement un problème de permissions Supabase : " +
+          "la policy RLS d'UPDATE sur la table 'reservations' n'autorise pas votre compte à modifier cette ligne. " +
+          "Vérifiez/ajoutez la policy admin dans Supabase (voir message précédent)."
+        );
+        btn.disabled = false;
+        btn.textContent = originalText;
+        return;
+      }
+
+      await loadAdminReservations();
+    };
+  });
+}
+// =========================================================
+// VALIDATION DES COMPTES — UNE SEULE SECTION
+// Les nouvelles demandes et les anciens comptes pending sont
+// fusionnés ici pour éviter toute duplication dans l'interface.
+// =========================================================
+
+async function loadAccountRequests() {
+  const container = $('accountRequestsList');
+  if (!container) return;
+
+  container.innerHTML = '<div class="loading">Chargement des comptes à valider…</div>';
+
+  try {
+    const { data, error } = await supabase
+      .from('account_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Le back-office actuel repose sur account_requests.
+    // Aucun appel au RPC legacy get_pending_accounts_admin n'est effectué.
+    currentAccountRequests = (data || [])
+      .filter(request => request.status === 'pending')
+      .map(request => ({ ...request, source: 'request' }));
+
+    renderAccountRequests();
+    updatePendingAccountsBadge();
+  } catch (error) {
+    console.error('Erreur chargement des comptes à valider :', error);
+    container.innerHTML = `
+      <div class="empty panel">
+        <strong>Impossible de charger les comptes à valider.</strong><br><br>
+        <small>${esc(error?.message || String(error))}</small>
+      </div>
+    `;
+  }
+}
+
+// =========================================================
+// AFFICHAGE DES DEMANDES
+// =========================================================
+
+function renderAccountRequests() {
+  const container = $('accountRequestsList');
+  if (!container) return;
+
+  const pendingRequests = currentAccountRequests.filter(
+    request => request.status === 'pending'
+  );
+
+  updatePendingAccountsBadge(pendingRequests.length);
+
+  if (!pendingRequests.length) {
+    container.innerHTML = '<div class="empty panel">Aucune demande de compte en attente.</div>';
+    return;
+  }
+
+  container.innerHTML = pendingRequests.map(request => `
+    <article class="panel admin-card">
+      <div>
+        <span class="badge badge-warning">En attente</span>
+        <h3 style="margin-top:8px;">${esc(request.first_name)} ${esc(request.last_name)}</h3>
+        <p class="publisher">${esc(request.email)}</p>
+      </div>
+      <div class="admin-card-body">
+        <p><strong>Promotion :</strong> ${esc(request.promotion || 'Non renseignée')}</p>
+        <p><strong>Origine :</strong> ${request.source === 'profile' ? 'Compte existant' : 'Nouvelle demande'}</p>
+        <p><strong>Date :</strong> ${formatAccountRequestDate(request.created_at)}</p>
+      </div>
+      <div class="admin-card-actions">
+        <button class="button primary" data-account-action="approved" data-account-id="${esc(request.id)}">✓ Valider</button>
+        <button class="button danger" data-account-action="rejected" data-account-id="${esc(request.id)}">✕ Refuser</button>
+      </div>
+    </article>
+  `).join('');
+
+  container.querySelectorAll('[data-account-action]').forEach(button => {
+    button.addEventListener('click', () =>
+      handleAccountDecision(
+        button.dataset.accountId,
+        button.dataset.accountAction,
+        button
+      )
+    );
+  });
+}
+
+function updatePendingAccountsBadge(count = currentAccountRequests.filter(
+  request => request.status === 'pending'
+).length) {
+  const badge = $('pendingAccountsBadge');
+  if (!badge) return;
+
+  badge.textContent = `${count} en attente`;
+  badge.hidden = count === 0;
+}
+
+function formatAccountRequestDate(value) {
+  if (!value) return 'Date inconnue';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Date inconnue';
+  return date.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+// =========================================================
+// DATE
+// =========================================================
+
+function formatAccountRequestDate(value) {
+
+  if (!value) {
+    return 'Date inconnue';
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return 'Date inconnue';
+  }
+
+  return date.toLocaleString(
+    'fr-FR',
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    }
+  );
+}
+
+
+// =========================================================
+// VALIDATION / REFUS
+// =========================================================
+
+async function handleAccountDecision(
+  requestId,
+  decision,
+  button
+) {
+
+  const request =
+    currentAccountRequests.find(
+      item =>
+        String(item.id) ===
+        String(requestId)
+    );
+
+  if (!request) {
+    alert('Demande introuvable.');
+    return;
+  }
+
+  const action =
+    decision === 'approved'
+      ? 'valider'
+      : 'refuser';
+
+  if (
+    !confirm(
+      `Voulez-vous vraiment ${action} le compte de ` +
+      `${request.first_name} ${request.last_name} ?`
+    )
+  ) {
+    return;
+  }
+
+  const originalText =
+    button.textContent;
+
+  button.disabled = true;
+  button.textContent = '…';
+
+  try {
+
+    // La RLS autorise directement les administrateurs à modifier
+    // account_requests. Le trigger SQL
+    // account_requests_sync_profile_status synchronise ensuite
+    // automatiquement profiles.account_status.
+    const { data, error } = await supabase
+      .from('account_requests')
+      .update({
+        status: decision
+      })
+      .eq('id', request.id)
+      .select('id, status');
+
+    if (error) {
+      console.error(
+        'Erreur mise à jour account_requests :',
+        error
+      );
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      throw new Error(
+        "La mise à jour n'a rien modifié. Vérifiez les policies RLS de la table account_requests."
+      );
+    }
+
+    if (decision === 'approved') {
+      const { error: emailError } = await supabase.functions.invoke(
+        'send-account-status-email',
+        {
+          body: {
+            to: request.email,
+            first_name: request.first_name,
+            status: 'approved'
+          }
+        }
+      );
+
+      if (emailError) {
+        console.error('Erreur envoi email validation :', emailError);
+        alert('✓ Compte validé, mais l’e-mail de confirmation n’a pas pu être envoyé.');
+      } else {
+        alert('✓ Compte validé. Un e-mail de confirmation a été envoyé.');
+      }
+    } else {
+      alert('✓ Compte refusé.');
+    }
+
+    await loadAccountRequests();
+
+  } catch (error) {
+
+    console.error(
+      'Erreur validation compte :',
+      error
+    );
+
+    alert(
+      'Erreur : ' +
+      (error?.message || error)
+    );
+
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
