@@ -126,53 +126,59 @@ function addCategoryRow(editor, value = '') {
 
   const row = document.createElement('div');
   row.className = 'category-row';
-  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;';
+  row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;';
 
   const select = document.createElement('select');
   select.name = 'categories[]';
   select.style.flex = '1';
+  select.style.minWidth = '160px';
   select.innerHTML = '<option value="">— Choisir une catégorie —</option>' +
     getAllGameCategories().map(category =>
       `<option value="${esc(category)}">${esc(category)}</option>`
     ).join('');
   select.value = value || '';
 
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'button';
+  remove.textContent = '×';
+  remove.title = 'Retirer cette ligne du formulaire (sans toucher au catalogue)';
+  remove.style.flex = '0 0 auto';
+  remove.onclick = () => {
+    row.remove();
+    if (!rows.children.length) addCategoryRow(editor);
+  };
+
   const deleteCat = document.createElement('button');
   deleteCat.type = 'button';
   deleteCat.className = 'button danger';
-  deleteCat.textContent = '🗑';
-  deleteCat.title = 'Supprimer définitivement la catégorie sélectionnée';
+  deleteCat.textContent = '🗑 Supprimer la catégorie';
+  deleteCat.title = 'Supprimer définitivement cette catégorie du catalogue (tous les jeux concernés la perdront)';
+  deleteCat.style.flex = '0 0 auto';
+  deleteCat.disabled = !select.value;
+
+  select.addEventListener('change', () => {
+    deleteCat.disabled = !select.value;
+  });
+
   deleteCat.onclick = async () => {
     const name = select.value;
-    if (!name) {
-      alert('Choisissez d’abord une catégorie dans la liste pour pouvoir la supprimer.');
-      return;
-    }
-    if (!confirm(`Supprimer la catégorie « ${name} » ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
+    if (!name) return;
+    if (!confirm(`Supprimer définitivement la catégorie « ${name} » du catalogue ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
 
     deleteCat.disabled = true;
     const result = await deleteCategory(name);
-    deleteCat.disabled = false;
 
     if (result.error) {
       alert('Impossible de supprimer la catégorie : ' + result.error.message);
+      deleteCat.disabled = !select.value;
       return;
     }
 
     refreshCategorySelects();
   };
 
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'button danger';
-  remove.textContent = '×';
-  remove.title = 'Retirer cette catégorie de la liste (sans la supprimer)';
-  remove.onclick = () => {
-    row.remove();
-    if (!rows.children.length) addCategoryRow(editor);
-  };
-
-  row.append(select, deleteCat, remove);
+  row.append(select, remove, deleteCat);
   rows.appendChild(row);
 }
 
