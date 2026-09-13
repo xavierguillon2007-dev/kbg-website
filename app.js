@@ -151,6 +151,28 @@ async function loadCategories() {
   return true;
 }
 
+async function createCategory(name) {
+  const value = String(name || '').trim().replace(/\s+/g, ' ');
+  if (!value) return { data: null, error: new Error('Le nom de la catégorie est vide.') };
+
+  const { data, error } = await supabase.rpc('create_game_category_admin', {
+    p_name: value
+  });
+
+  if (error) {
+    console.error('Erreur création catégorie :', error);
+    return { data: null, error };
+  }
+
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.name) {
+    return { data: null, error: new Error('La catégorie n’a pas été créée.') };
+  }
+
+  await loadCategories();
+  return { data: row, error: null };
+}
+
 function refreshCategoryEditorSelects() {
   const categories = getAllGameCategories();
 
@@ -218,18 +240,40 @@ function setupCategoryEditors() {
       addCategoryEditorRow(editor);
     });
 
-    editor.querySelector('.category-create-btn')?.addEventListener('click', () => {
+    editor.querySelector('.category-create-btn')?.addEventListener('click', async () => {
       const input = editor.querySelector('input[name="new_category"]');
       const value = input?.value.trim();
 
-      if (!value) return;
+      if (!value) {
+        alert('Saisissez un nom de catégorie.');
+        input?.focus();
+        return;
+      }
 
-      addCategoryEditorRow(editor, value);
+      const button = editor.querySelector('.category-create-btn');
+      if (button) {
+        button.disabled = true;
+        button.textContent = 'Création…';
+      }
+
+      const result = await createCategory(value);
+
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'Créer';
+      }
+
+      if (result.error) {
+        alert('Impossible de créer la catégorie : ' + result.error.message);
+        return;
+      }
+
       refreshCategoryEditorSelects();
+      addCategoryEditorRow(editor, result.data.name);
 
       const selects = editor.querySelectorAll('select[name="categories[]"]');
       const last = selects[selects.length - 1];
-      if (last) last.value = value;
+      if (last) last.value = result.data.name;
 
       if (input) input.value = '';
     });
