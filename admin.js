@@ -89,6 +89,62 @@ async function createCategory(name) {
   return { data: row, error: null, alreadyExists: row.name.toLowerCase() !== value.toLowerCase() };
 }
 
+async function deleteCategory(name) {
+  const value = String(name || '').trim();
+  if (!value) return { error: new Error('Nom de catégorie invalide.') };
+
+  const { error } = await supabase.rpc('delete_game_category_admin', {
+    p_name: value
+  });
+
+  if (error) {
+    console.error('Erreur suppression catégorie :', error);
+    return { error };
+  }
+
+  await loadCategories();
+  await loadAdminGames();
+  return { error: null };
+}
+
+function renderCategoryManager() {
+  const container = $('categoryManagerList');
+  if (!container) return;
+
+  const categories = getAllGameCategories();
+
+  if (!categories.length) {
+    container.innerHTML = '<p style="color:var(--muted);font-size:13px;">Aucune catégorie pour le moment.</p>';
+    return;
+  }
+
+  container.innerHTML = categories.map(category => `
+    <span class="category-chip" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;margin:0 6px 6px 0;font-size:13px;">
+      ${esc(category)}
+      <button type="button" class="category-delete-btn" data-category="${esc(category)}" title="Supprimer cette catégorie" style="border:none;background:none;color:#c0392b;cursor:pointer;font-weight:bold;line-height:1;font-size:14px;">×</button>
+    </span>
+  `).join('');
+
+  container.querySelectorAll('.category-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const name = btn.dataset.category;
+      if (!confirm(`Supprimer la catégorie « ${name} » ? Elle sera retirée de tous les jeux qui l'utilisent.`)) return;
+
+      btn.disabled = true;
+      const result = await deleteCategory(name);
+
+      if (result.error) {
+        alert('Impossible de supprimer la catégorie : ' + result.error.message);
+        btn.disabled = false;
+        return;
+      }
+
+      refreshCategorySelects();
+      renderCategoryManager();
+    });
+  });
+}
+
 function refreshCategorySelects() {
   document.querySelectorAll('.category-editor select[name="categories[]"]').forEach(select => {
     const current = select.value;
@@ -173,6 +229,7 @@ function setupCategoryEditors() {
       }
 
       refreshCategorySelects();
+      renderCategoryManager();
       addCategoryRow(editor, result.data.name);
 
       const selects = editor.querySelectorAll('select[name="categories[]"]');
@@ -253,6 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
 await loadCategories();
+renderCategoryManager();
 await loadAdminGames();
 setupCategoryEditors();
 await loadAdminReservations();
