@@ -2112,6 +2112,33 @@ function renderGames() {
         new Date(a.created_at || 0)
     );
 
+  } else if (sortBy === 'rating_desc' || sortBy === 'rating_asc') {
+
+    // jeux sans aucun avis : toujours relégués en fin de liste,
+    // quel que soit le sens du tri (ils n'ont pas de note à comparer)
+    const direction = sortBy === 'rating_desc' ? -1 : 1;
+
+    games.sort((a, b) => {
+
+      const countA = getGameReviews(a.id).length;
+      const countB = getGameReviews(b.id).length;
+
+      if (!countA && !countB) {
+        return String(a.name || '').localeCompare(String(b.name || ''), 'fr');
+      }
+      if (!countA) return 1;
+      if (!countB) return -1;
+
+      const ratingA = getAverageRating(a.id);
+      const ratingB = getAverageRating(b.id);
+
+      return (
+        direction * (ratingA - ratingB) ||
+        String(a.name || '').localeCompare(String(b.name || ''), 'fr')
+      );
+
+    });
+
   } else {
 
     games.sort(
@@ -5714,8 +5741,11 @@ function setupEventListeners() {
     event.stopPropagation();
   });
 
-  document.addEventListener('click', () => {
-    setCategoryFilterOpen(false);
+  // ferme le menu si on clique n'importe où en dehors de #categoryFilter
+  document.addEventListener('click', event => {
+    if (!event.target.closest('#categoryFilter')) {
+      setCategoryFilterOpen(false);
+    }
   });
 
   document.addEventListener('keydown', event => {
