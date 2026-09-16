@@ -513,3 +513,142 @@ footer { display: flex; justify-content: space-between; padding: 40px 20px; bord
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================
+   VERSION MOBILE
+   Tout ce qui suit ne s'applique qu'en dessous de 768px
+   (ou 480px pour les très petits écrans) : la version
+   ordinateur ci-dessus n'est jamais modifiée.
+   ========================================================= */
+
+/* case à cocher + bouton "burger" : invisibles par défaut,
+   ils ne s'affichent qu'en media query mobile ci-dessous */
+.nav-toggle-checkbox { display: none; }
+
+.nav-toggle-label {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.nav-toggle-label:hover { border-color: var(--purple-light); }
+
+@media (max-width: 768px) {
+
+  /* HEADER : logo + burger sur une ligne, menu déroulant en dessous */
+  .topbar {
+    flex-wrap: wrap;
+    padding: 14px 20px;
+    row-gap: 12px;
+  }
+
+  .brand { font-size: 14px; }
+  .brand-logo { width: 34px; height: 34px; }
+
+  .nav-toggle-label { display: inline-flex; order: 2; }
+
+  .topbar nav {
+    order: 3;
+    flex-basis: 100%;
+    width: 100%;
+    max-height: 0;
+    overflow: hidden;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0 solid var(--line);
+    transition: max-height 0.2s ease;
+  }
+
+  .nav-toggle-checkbox:checked ~ nav {
+    max-height: 600px;
+    margin-top: 6px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .topbar nav a {
+    padding: 10px 4px;
+    width: 100%;
+  }
+
+  .topbar nav #notifBtn {
+    align-self: flex-start;
+    margin-right: 0 !important;
+  }
+
+  .topbar nav .user-nav,
+  .topbar nav #userNav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .topbar nav .user-nav .button,
+  .topbar nav #userNav .button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* HERO */
+  .hero { padding: 32px 0; }
+  main { padding: 24px 16px; }
+  h1 { font-size: 30px; }
+  h2 { font-size: 20px; }
+  .home-hero { gap: 24px; }
+  .section { margin-top: 40px; }
+  .section-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+
+  /* CATALOGUE & CARTES */
+  .grid { grid-template-columns: 1fr; gap: 16px; }
+  .toolbar { flex-direction: column; }
+  .toolbar input, .toolbar select { width: 100%; }
+
+  /* FORMULAIRES */
+  .form-row { grid-template-columns: 1fr; }
+  .admin-form-grid { grid-template-columns: 1fr; }
+  .form-card { padding: 18px; }
+
+  /* MODALES */
+  .modal { padding: 12px; }
+  .modal-card { padding: 20px; max-height: 85vh; }
+  .team-modal-photo { width: 140px; height: 140px; }
+
+  /* CALENDRIER : on autorise un défilement horizontal plutôt que
+     d'écraser le texte des jours si l'écran est trop étroit */
+  .calendar-wrapper { padding: 12px; overflow-x: auto; }
+  .calendar-grid-header,
+  .calendar-grid { min-width: 480px; }
+  .cal-day { min-height: 64px; padding: 4px; font-size: 10px; }
+  .cal-event { font-size: 9px; padding: 2px 4px; }
+
+  /* PIED DE PAGE */
+  footer {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+    padding: 28px 20px;
+    margin-top: 48px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 26px; }
+  .modal-card { padding: 16px; }
+  .team-modal-photo { width: 120px; height: 120px; }
+  .contact-link { font-size: 12px; padding: 10px 6px; }
+}
