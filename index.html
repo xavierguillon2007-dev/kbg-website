@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KBG — Catalogue de jeux</title>
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=12">
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 
@@ -170,13 +170,29 @@
         autocomplete="off"
       >
 
-      <select id="category">
+      <div class="filter-dropdown" id="categoryFilter">
 
-        <option value="">
-          Toutes les catégories
-        </option>
+        <button
+          type="button"
+          id="categoryFilterToggle"
+          class="filter-dropdown-toggle"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          Catégories
+          <span id="categoryFilterCount" class="filter-dropdown-count hidden">0</span>
+          <span class="filter-dropdown-arrow">▾</span>
+        </button>
 
-      </select>
+        <div id="categoryFilterPanel" class="filter-dropdown-panel hidden">
+          <div class="filter-dropdown-panel-head">
+            <span class="filter-dropdown-panel-title">Filtrer par catégorie</span>
+            <button type="button" id="categoryFilterClear" class="filter-dropdown-clear">Tout désélectionner</button>
+          </div>
+          <div id="categoryFilterOptions" class="filter-dropdown-options"></div>
+        </div>
+
+      </div>
 
 
       <select id="players">
@@ -1499,7 +1515,7 @@
 
 <script
   type="module"
-  src="app.js?v=16"
+  src="app.js?v=17"
 ></script>
 
 </body>

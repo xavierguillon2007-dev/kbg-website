@@ -82,6 +82,7 @@ let allGames = [];
 let allReviews = [];
 let allEvents = [];
 let allCategories = [];
+let selectedGameCategories = new Set();
 
 let currentUser = null;
 let currentProfile = null;
@@ -189,6 +190,71 @@ async function deleteCategory(name) {
   await loadCategories();
   await loadAdminGamesList();
   return { error: null };
+}
+
+function renderCategoryFilterOptions(categories) {
+
+  const container = $('categoryFilterOptions');
+  if (!container) return;
+
+  // on ne garde que les catégories encore sélectionnées qui existent toujours
+  selectedGameCategories = new Set(
+    [...selectedGameCategories].filter(category => categories.includes(category))
+  );
+
+  container.innerHTML = categories.length
+    ? categories.map(category => `
+        <label class="filter-dropdown-option">
+          <input
+            type="checkbox"
+            name="categoryFilterOption"
+            value="${esc(category)}"
+            ${selectedGameCategories.has(category) ? 'checked' : ''}
+          >
+          <span>${esc(category)}</span>
+        </label>
+      `).join('')
+    : `<p class="muted" style="font-size:13px;padding:8px 4px;">Aucune catégorie pour le moment.</p>`;
+
+  container.querySelectorAll('input[name="categoryFilterOption"]').forEach(checkbox => {
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        selectedGameCategories.add(checkbox.value);
+      } else {
+        selectedGameCategories.delete(checkbox.value);
+      }
+      updateCategoryFilterCount();
+      renderGames();
+    });
+  });
+
+  updateCategoryFilterCount();
+}
+
+function updateCategoryFilterCount() {
+
+  const badge = $('categoryFilterCount');
+  const toggle = $('categoryFilterToggle');
+  if (!badge || !toggle) return;
+
+  const count = selectedGameCategories.size;
+
+  badge.textContent = String(count);
+  badge.classList.toggle('hidden', count === 0);
+  toggle.classList.toggle('filter-dropdown-toggle-active', count > 0);
+
+}
+
+function setCategoryFilterOpen(open) {
+
+  const panel = $('categoryFilterPanel');
+  const toggle = $('categoryFilterToggle');
+  if (!panel || !toggle) return;
+
+  panel.classList.toggle('hidden', !open);
+  toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  toggle.classList.toggle('filter-dropdown-toggle-open', open);
+
 }
 
 function refreshCategoryEditorSelects() {
@@ -1831,20 +1897,9 @@ async function loadGames() {
     const categories = getAllGameCategories();
 
 
-    if ($('category')) {
+    if ($('categoryFilterOptions')) {
 
-      $('category').innerHTML = `
-        <option value="">
-          Toutes les catégories
-        </option>
-      ` +
-      categories.map(
-        category => `
-          <option value="${esc(category)}">
-            ${esc(category)}
-          </option>
-        `
-      ).join('');
+      renderCategoryFilterOptions(categories);
 
     }
 
@@ -1997,10 +2052,6 @@ function renderGames() {
       .trim() || '';
 
 
-  const category =
-    $('category')?.value || '';
-
-
   const minPlayers =
     Number(
       $('players')?.value || 0
@@ -2026,8 +2077,8 @@ function renderGames() {
           (!query ||
             searchText.includes(query))
           &&
-          (!category ||
-            getGameCategories(game).includes(category))
+          (!selectedGameCategories.size ||
+            getGameCategories(game).some(category => selectedGameCategories.has(category)))
           &&
           (!minPlayers ||
             Number(game.players_max || 0) >= minPlayers)
@@ -5620,7 +5671,6 @@ function setupEventListeners() {
 
   [
     'search',
-    'category',
     'players',
     'sort'
   ].forEach(
@@ -5638,6 +5688,41 @@ function setupEventListeners() {
 
     }
   );
+
+
+  // -------------------------------------------------------
+  // FILTRE CATÉGORIES (menu déroulant à cases à cocher)
+  // -------------------------------------------------------
+
+  $('categoryFilterToggle')?.addEventListener('click', event => {
+    event.stopPropagation();
+    const panel = $('categoryFilterPanel');
+    setCategoryFilterOpen(panel?.classList.contains('hidden'));
+  });
+
+  $('categoryFilterClear')?.addEventListener('click', event => {
+    event.stopPropagation();
+    selectedGameCategories.clear();
+    $('categoryFilterOptions')
+      ?.querySelectorAll('input[name="categoryFilterOption"]')
+      .forEach(checkbox => { checkbox.checked = false; });
+    updateCategoryFilterCount();
+    renderGames();
+  });
+
+  $('categoryFilterPanel')?.addEventListener('click', event => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', () => {
+    setCategoryFilterOpen(false);
+  });
+
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      setCategoryFilterOpen(false);
+    }
+  });
 
 
   // -------------------------------------------------------
