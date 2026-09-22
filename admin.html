@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KBG — Administration</title>
-  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="styles.css?v=13">
   <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
@@ -110,6 +110,35 @@
       </div>
     </section>
 
+    <!-- SECTION CALENDRIER DES EMPRUNTS -->
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">ADMINISTRATION · 05</p>
+          <h2>Calendrier des emprunts</h2>
+        </div>
+      </div>
+
+      <div class="calendar-wrapper">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+          <button id="adminPrevMonthBtn" class="button" type="button">← Mois précédent</button>
+          <h3 id="adminCalendarMonthLabel" style="font-size:18px;font-weight:700;text-transform:capitalize;">—</h3>
+          <button id="adminNextMonthBtn" class="button" type="button">Mois suivant →</button>
+        </div>
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+          🎲 = emprunt validé · Cliquez sur un jour pour voir le détail des jeux empruntés.
+        </p>
+
+        <div class="calendar-grid-header">
+          <div>Lun</div><div>Mar</div><div>Mer</div><div>Jeu</div><div>Ven</div><div>Sam</div><div>Dim</div>
+        </div>
+        <div id="adminReservationsCalendar" class="calendar-grid">
+          <div class="loading" style="grid-column:1/-1;">Chargement du calendrier…</div>
+        </div>
+      </div>
+    </section>
+
     <!-- SECTION GESTION DES RÉSERVATIONS -->
     <section class="section">
       <div class="section-head">
@@ -131,6 +160,16 @@
       </div>
     </section>
   </main>
+
+  <!-- MODALE DÉTAIL D'UNE JOURNÉE -->
+  <div id="adminDayModal" class="modal hidden">
+    <div class="modal-card">
+      <button class="modal-close" data-close="adminDayModal">×</button>
+      <p class="eyebrow">EMPRUNTS DU JOUR</p>
+      <h2 id="adminDayModalTitle">—</h2>
+      <div id="adminDayModalList" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
 
   <!-- MODALE ÉDITION D'UN JEU -->
   <div id="editGameModal" class="modal hidden">
@@ -174,6 +213,6 @@
     <span>KBG / Association ludique.   Site par Xavier Guillon grâce à l'aide indispensable de Périne Barbat et Maxime Albert</span>
     <span>Panneau d'administration</span>
   </footer>
-  <script type="module" src="admin.js?v=12"></script>
+  <script type="module" src="admin.js?v=13"></script>
 </body>
 </html>

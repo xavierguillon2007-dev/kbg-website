@@ -294,6 +294,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     historyVisibleCount = HISTORY_PAGE_SIZE;
     renderReservations();
   });
+
+  $('adminPrevMonthBtn')?.addEventListener('click', async () => {
+    adminCalendarDate.setMonth(adminCalendarDate.getMonth() - 1);
+    await renderAdminBorrowingCalendar();
+  });
+
+  $('adminNextMonthBtn')?.addEventListener('click', async () => {
+    adminCalendarDate.setMonth(adminCalendarDate.getMonth() + 1);
+    await renderAdminBorrowingCalendar();
+  });
+
   $('addGameForm').addEventListener('submit', handleAddGame);
   $('editGameForm')?.addEventListener('submit', handleEditGame);
 
@@ -469,6 +480,7 @@ async function loadAdminReservations() {
   );
   updateAdminReservationBadge();
   renderReservations();
+  await renderAdminBorrowingCalendar(currentReservations);
 }
 
 function updateAdminReservationBadge() {
@@ -632,6 +644,153 @@ function renderReservations() {
     };
   });
 }
+// =========================================================
+// ADMIN — CALENDRIER DES EMPRUNTS
+// =========================================================
+// Le calendrier affiche uniquement les réservations validées :
+// ce sont les jeux effectivement empruntés. Les demandes en attente
+// et les réservations refusées ne sont donc pas comptées ici.
+
+async function renderAdminBorrowingCalendar(preloadedReservations = null) {
+  const container = $('adminReservationsCalendar');
+  const label = $('adminCalendarMonthLabel');
+
+  if (!container) return;
+
+  const year = adminCalendarDate.getFullYear();
+  const month = adminCalendarDate.getMonth();
+
+  if (label) {
+    label.textContent = adminCalendarDate.toLocaleDateString('fr-FR', {
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  try {
+    let reservations = preloadedReservations;
+
+    if (!reservations) {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*, games(name, publisher, copies_count)')
+        .eq('status', 'approved')
+        .order('date_start', { ascending: true });
+
+      if (error) throw error;
+      reservations = data || [];
+    }
+
+    const approved = (reservations || []).filter(r =>
+      String(r.status || '').toLowerCase() === 'approved' &&
+      r.date_start
+    );
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset === -1) startOffset = 6;
+
+    const dayReservationsMap = {};
+    let html = '';
+
+    for (let i = 0; i < startOffset; i++) {
+      html += '<div class="cal-day" style="opacity:.15;background:transparent;border:1px dashed var(--line);"></div>';
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr =
+        `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      const dayReservations = approved.filter(r => {
+        const start = String(r.date_start).slice(0, 10);
+        const end = String(r.date_end || r.date_start).slice(0, 10);
+        return dateStr >= start && dateStr <= end;
+      });
+
+      dayReservationsMap[dateStr] = dayReservations;
+
+      const visibleEvents = dayReservations.slice(0, 4);
+      const extraCount = dayReservations.length - visibleEvents.length;
+
+      html += `
+        <div class="cal-day${dayReservations.length ? ' has-events' : ''}"
+             data-admin-date="${dateStr}"
+             aria-label="${dayReservations.length ? `${dayReservations.length} emprunt(s)` : 'Aucun emprunt'}">
+          <span class="cal-day-num">${day}</span>
+          ${visibleEvents.map(r => `
+            <span class="cal-event" title="${esc(r.games?.name || 'Jeu')} — ${esc(r.first_name)} ${esc(r.last_name)}">
+              🎲 ${esc(r.games?.name || 'Jeu')}
+            </span>
+          `).join('')}
+          ${extraCount > 0 ? `<span style="font-size:10px;color:var(--muted);font-weight:700;">+ ${extraCount} autre${extraCount > 1 ? 's' : ''}</span>` : ''}
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.cal-day.has-events').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        openAdminBorrowingDayModal(
+          dayEl.dataset.adminDate,
+          dayReservationsMap[dayEl.dataset.adminDate] || []
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Erreur calendrier des emprunts admin :', error);
+    container.innerHTML = `
+      <div class="empty panel" style="grid-column:1/-1;">
+        Impossible de charger le calendrier des emprunts.<br>
+        <small>${esc(error?.message || error)}</small>
+      </div>
+    `;
+  }
+}
+
+function openAdminBorrowingDayModal(dateStr, reservations) {
+  const modal = $('adminDayModal');
+  const title = $('adminDayModalTitle');
+  const list = $('adminDayModalList');
+
+  if (!modal || !list) return;
+
+  const date = new Date(`${dateStr}T00:00:00`);
+
+  if (title) {
+    const formatted = date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+    title.textContent = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  }
+
+  if (!reservations.length) {
+    list.innerHTML = '<div class="empty panel">Aucun jeu emprunté ce jour-là.</div>';
+  } else {
+    list.innerHTML = reservations.map(r => `
+      <div class="panel" style="padding:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <strong>${esc(r.games?.name || 'Jeu inconnu')}</strong>
+          <span class="badge badge-success">Emprunt validé</span>
+        </div>
+        <p style="color:var(--muted);font-size:12px;margin-top:7px;">
+          Emprunteur : ${esc(r.first_name || '')} ${esc(r.last_name || '')}${r.promotion ? ` · ${esc(r.promotion)}` : ''}
+        </p>
+        <p style="font-size:12px;margin-top:4px;">
+          Du ${esc(String(r.date_start).slice(0, 10))} au ${esc(String(r.date_end || r.date_start).slice(0, 10))}
+        </p>
+      </div>
+    `).join('');
+  }
+
+  modal.classList.remove('hidden');
+}
+
 // =========================================================
 // VALIDATION DES COMPTES — UNE SEULE SECTION
 // Les nouvelles demandes et les anciens comptes pending sont
