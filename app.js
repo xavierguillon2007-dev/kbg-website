@@ -88,6 +88,7 @@ let currentUser = null;
 let currentProfile = null;
 
 let currentCalendarDate = new Date();
+let adminCalendarDate = new Date();
 
 let selectedReviewGame = null;
 let selectedRating = 0;
@@ -4328,6 +4329,7 @@ async function handleAdminAccountDecision(requestId, decision, button) {
     );
 
     await loadAdminAccountRequests();
+    await refreshAdminNotificationBadge();
   } catch (error) {
     console.error('Erreur validation compte :', error);
     alert('Erreur : ' + (error?.message || error));
@@ -4462,6 +4464,7 @@ async function handleAdminLegacyAccountDecision(userId, decision, button) {
     );
 
     await loadAdminLegacyPendingAccounts();
+    await refreshAdminNotificationBadge();
   } catch (error) {
     console.error('Erreur validation ancien compte :', error);
     alert('Erreur : ' + (error?.message || error));
@@ -4875,6 +4878,15 @@ async function loadAdminReservationsList() {
       </div>
     `;
 
+    const calendarContainer = $('adminReservationsCalendar');
+    if (calendarContainer) {
+      calendarContainer.innerHTML = `
+        <div class="empty panel" style="grid-column:1/-1;">
+          Impossible de charger le calendrier des réservations.
+        </div>
+      `;
+    }
+
     return;
   }
 
@@ -5059,6 +5071,8 @@ async function loadAdminReservationsList() {
   }
 
 
+  await renderAdminCalendar(reservations || []);
+
   document
     .querySelectorAll(
       '#adminModal [data-act]'
@@ -5157,12 +5171,159 @@ if (selectedReviewGame) {
 }
 
 await loadUserNotifications();
+await refreshAdminNotificationBadge();
 
           };
 
       }
     );
 
+}
+
+
+// =========================================================
+// ADMIN — CALENDRIER DE TOUS LES JEUX RÉSERVÉS
+// =========================================================
+
+async function renderAdminCalendar(preloadedReservations = null) {
+
+  const container = $('adminReservationsCalendar');
+  const label = $('adminCalendarMonthLabel');
+
+  if (!container) return;
+
+  const year = adminCalendarDate.getFullYear();
+  const month = adminCalendarDate.getMonth();
+
+  if (label) {
+    label.textContent = adminCalendarDate.toLocaleDateString('fr-FR', {
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  try {
+    let reservations = preloadedReservations;
+
+    if (!reservations) {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select('*, games(name, publisher)')
+        .order('date_start', { ascending: true });
+
+      if (error) throw error;
+      reservations = data || [];
+    }
+
+    // Seules les réservations validées ou en attente occupent le
+    // calendrier ; une réservation refusée n'immobilise plus le jeu.
+    const relevantReservations = reservations.filter(
+      r => !r.status || r.status === 'pending' || r.status === 'approved'
+    );
+
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Lundi = 0 ... Dimanche = 6
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset === -1) startOffset = 6;
+
+    const dayReservationsMap = {};
+
+    let html = '';
+
+    for (let i = 0; i < startOffset; i++) {
+      html += `
+        <div class="cal-day" style="opacity:0.15;background:transparent;border:1px dashed var(--line);"></div>
+      `;
+    }
+
+    for (let day = 1; day <= lastDay.getDate(); day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      const dayReservations = relevantReservations.filter(r => {
+        if (!r.date_start) return false;
+        const start = String(r.date_start).slice(0, 10);
+        const end = String(r.date_end || r.date_start).slice(0, 10);
+        return dateStr >= start && dateStr <= end;
+      });
+
+      dayReservationsMap[dateStr] = dayReservations;
+
+      html += `
+        <div class="cal-day${dayReservations.length ? ' has-events' : ''}" data-admin-date="${dateStr}">
+          <span class="cal-day-num">${day}</span>
+          ${dayReservations.map(r => `
+            <span class="cal-event" style="${r.status === 'approved' ? '' : 'background:var(--warning);color:#000;'}" title="${esc(r.games?.name || 'Jeu')} — ${esc(r.first_name)} ${esc(r.last_name)}">
+              ${r.status === 'approved' ? '🎲' : '⏳'} ${esc(r.games?.name || 'Jeu')}
+            </span>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('.cal-day.has-events').forEach(dayEl => {
+      dayEl.addEventListener('click', () => {
+        openAdminDayModal(dayEl.dataset.adminDate, dayReservationsMap[dayEl.dataset.adminDate] || []);
+      });
+    });
+
+  } catch (error) {
+    console.error('Erreur calendrier réservations admin :', error);
+    container.innerHTML = `
+      <div class="empty panel" style="grid-column:1/-1;">
+        Impossible de charger le calendrier des réservations.
+        <br>
+        <small>${esc(error?.message || error)}</small>
+      </div>
+    `;
+  }
+
+}
+
+function openAdminDayModal(dateStr, reservations) {
+
+  const modal = $('adminDayModal');
+  const title = $('adminDayModalTitle');
+  const list = $('adminDayModalList');
+
+  if (!modal || !list) return;
+
+  const date = new Date(dateStr + 'T00:00:00');
+
+  if (title) {
+    let dateLabel = date.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    title.textContent = dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1);
+  }
+
+  if (!reservations.length) {
+    list.innerHTML = '<div class="empty">Aucun jeu réservé ce jour-là.</div>';
+  } else {
+    list.innerHTML = reservations.map(r => `
+      <div class="panel" style="padding:12px;font-size:13px;">
+        <strong>${esc(r.games?.name || 'Jeu')}</strong>
+        <span class="badge badge-${r.status === 'approved' ? 'success' : 'warning'}" style="margin-left:8px;">
+          ${r.status === 'approved' ? 'Validée' : 'En attente'}
+        </span>
+        <p style="color:var(--muted);font-size:12px;margin-top:6px;">
+          ${esc(r.first_name)} ${esc(r.last_name)}${r.promotion ? ` (${esc(r.promotion)})` : ''}
+        </p>
+        <p style="font-size:12px;margin-top:4px;">
+          Du ${esc(r.date_start)} au ${esc(r.date_end)}
+        </p>
+      </div>
+    `).join('');
+  }
+
+  modal.classList.remove('hidden');
 }
 
 
@@ -5897,6 +6058,36 @@ $('reserveGameBtn')?.addEventListener('click', handleGameReservation);
         );
 
         await renderCalendar();
+
+      }
+    );
+
+
+  $('adminPrevMonthBtn')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        adminCalendarDate.setMonth(
+          adminCalendarDate.getMonth() - 1
+        );
+
+        await renderAdminCalendar();
+
+      }
+    );
+
+
+  $('adminNextMonthBtn')
+    ?.addEventListener(
+      'click',
+      async () => {
+
+        adminCalendarDate.setMonth(
+          adminCalendarDate.getMonth() + 1
+        );
+
+        await renderAdminCalendar();
 
       }
     );

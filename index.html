@@ -1002,6 +1002,53 @@
 </div>
 
 
+    <!-- DEMANDES DE COMPTE -->
+
+    <div style="margin-top:20px;">
+
+      <p
+        class="eyebrow"
+        style="color:var(--warning);"
+      >
+        👤 COMPTES À VALIDER
+      </p>
+
+      <div
+        id="adminPendingAccounts"
+        class="grid"
+        style="
+          grid-template-columns:1fr;
+          gap:10px;
+          margin-top:10px;
+        "
+      ></div>
+
+    </div>
+
+    <!-- ANCIENS COMPTES EN ATTENTE -->
+
+    <div style="margin-top:20px;">
+
+      <p
+        class="eyebrow"
+        style="color:var(--warning);"
+      >
+        👤 ANCIENS COMPTES EN ATTENTE
+      </p>
+
+      <div
+        id="adminLegacyPendingAccounts"
+        class="grid"
+        style="
+          grid-template-columns:1fr;
+          gap:10px;
+          margin-top:10px;
+        "
+      ></div>
+
+    </div>
+
+
     <!-- AJOUT JEU -->
 
     <form
@@ -1189,6 +1236,121 @@
       ></div>
 
     </div>
+
+
+    <!-- CALENDRIER DES JEUX RÉSERVÉS -->
+
+    <div style="margin-top:30px;">
+
+      <p
+        class="eyebrow"
+        style="color:var(--muted);"
+      >
+        📅 CALENDRIER DES JEUX RÉSERVÉS
+      </p>
+
+      <div class="calendar-wrapper" style="margin-top:10px;">
+
+        <div
+          style="
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            flex-wrap:wrap;
+            margin-bottom:14px;
+          "
+        >
+
+          <button
+            id="adminPrevMonthBtn"
+            class="button"
+          >
+            ← Mois précédent
+          </button>
+
+          <h3
+            id="adminCalendarMonthLabel"
+            style="
+              font-size:18px;
+              font-weight:700;
+              text-transform:capitalize;
+            "
+          >
+            ---
+          </h3>
+
+          <button
+            id="adminNextMonthBtn"
+            class="button"
+          >
+            Mois suivant →
+          </button>
+
+        </div>
+
+        <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+          🎲 = réservation validée &nbsp;·&nbsp; ⏳ = en attente de validation
+        </p>
+
+        <div class="calendar-grid-header">
+
+          <div>Lun</div>
+          <div>Mar</div>
+          <div>Mer</div>
+          <div>Jeu</div>
+          <div>Ven</div>
+          <div>Sam</div>
+          <div>Dim</div>
+
+        </div>
+
+        <div
+          id="adminReservationsCalendar"
+          class="calendar-grid"
+        >
+
+          <div class="loading">
+            Chargement du calendrier...
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- =====================================================
+     JOUR — DÉTAIL DES RÉSERVATIONS (ADMIN)
+====================================================== -->
+
+<div
+  id="adminDayModal"
+  class="modal hidden"
+>
+
+  <div class="modal-card">
+
+    <button
+      class="modal-close"
+      data-close="adminDayModal"
+    >
+      ×
+    </button>
+
+    <p class="eyebrow">CE JOUR-LÀ</p>
+
+    <h2 id="adminDayModalTitle">—</h2>
+
+    <div
+      id="adminDayModalList"
+      style="margin-top:16px;display:flex;flex-direction:column;gap:10px;"
+    ></div>
 
   </div>
 
