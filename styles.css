@@ -779,3 +779,38 @@ footer { display: flex; justify-content: space-between; padding: 40px 20px; bord
   .team-modal-photo { width: 120px; height: 120px; }
   .contact-link { font-size: 12px; padding: 10px 6px; }
 }
+
+
+/* Compteur Xavier — visible dans sa modale */
+.xavier-counter {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border, rgba(255,255,255,.12));
+  border-radius: 12px;
+  background: rgba(255,255,255,.03);
+}
+.xavier-counter-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.xavier-counter-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.xavier-counter-value-row strong {
+  font-size: 30px;
+  line-height: 1;
+}
+.xavier-counter-controls {
+  display: flex;
+  gap: 6px;
+}
+.xavier-counter-controls .button {
+  min-width: 38px;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 18px;
+}
