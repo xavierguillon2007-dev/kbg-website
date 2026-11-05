@@ -3153,7 +3153,7 @@ function openReviewModal(game) {
     .querySelectorAll('.star-button')
     .forEach(
       star =>
-        star.classList.remove('active')
+        star.classList.remove('active', 'half-active')
     );
 
 
@@ -3916,7 +3916,7 @@ async function submitReview(e) {
       .querySelectorAll('.star-button')
       .forEach(
         star =>
-          star.classList.remove('active')
+          star.classList.remove('active', 'half-active')
       );
 
 
@@ -5921,16 +5921,12 @@ function setupEventListeners() {
     .forEach(
       star => {
 
-        star.addEventListener(
-          'click',
-          () => {
-
-            setReviewRating(
-              star.dataset.rating
-            );
-
-          }
-        );
+        star.addEventListener('click', event => {
+          const rect = star.getBoundingClientRect();
+          const isLeftHalf = event.clientX < rect.left + rect.width / 2;
+          const wholeStar = Number(star.dataset.rating);
+          setReviewRating(isLeftHalf ? wholeStar - 0.5 : wholeStar);
+        });
 
       }
     );
