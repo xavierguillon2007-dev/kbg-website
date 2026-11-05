@@ -449,10 +449,19 @@ footer { display: flex; justify-content: space-between; padding: 40px 20px; bord
 /* Étoiles affichées dans les avis */
 
 .review-stars {
-  color: var(--accent);
+  color: var(--line);
   letter-spacing: 2px;
   font-size: 17px;
   line-height: 1;
+  white-space: nowrap;
+}
+
+.review-star {
+  display: inline-block;
+  color: transparent;
+  background: linear-gradient(to right, var(--accent) var(--star-fill), var(--line) var(--star-fill));
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 

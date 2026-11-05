@@ -2279,12 +2279,11 @@ function renderGames() {
               "
             >
 
-              <span class="review-stars">
-                ${'★'.repeat(rounded)}
-
-                <span style="color:var(--line);">
-                  ${'★'.repeat(5 - rounded)}
-                </span>
+              <span class="review-stars" aria-label="${average.toFixed(1)} sur 5">
+                ${Array.from({ length: 5 }, (_, i) => {
+                  const fill = Math.max(0, Math.min(100, (rounded - i) * 100));
+                  return `<span class="review-star" style="--star-fill:${fill}%">★</span>`;
+                }).join('')}
               </span>
 
               <span
@@ -3402,12 +3401,11 @@ function renderReviews(game) {
 
       averageContainer.innerHTML = `
 
-        <span class="review-stars">
-          ${'★'.repeat(rounded)}
-
-          <span style="color:var(--line);">
-            ${'★'.repeat(5 - rounded)}
-          </span>
+        <span class="review-stars" aria-label="${average.toFixed(1)} sur 5">
+          ${Array.from({ length: 5 }, (_, i) => {
+            const fill = Math.max(0, Math.min(100, (rounded - i) * 100));
+            return `<span class="review-star" style="--star-fill:${fill}%">★</span>`;
+          }).join('')}
         </span>
 
         <span
@@ -3513,17 +3511,11 @@ function renderReviews(game) {
 
               </div>
 
-              <span
-                class="review-stars"
-                title="${rating}/5"
-              >
-
-                ${'★'.repeat(rating)}
-
-                <span style="color:var(--line);">
-                  ${'★'.repeat(5 - rating)}
-                </span>
-
+              <span class="review-stars" title="${rating}/5" aria-label="${rating} sur 5">
+                ${Array.from({ length: 5 }, (_, i) => {
+                  const fill = Math.max(0, Math.min(100, (rating - i) * 100));
+                  return `<span class="review-star" style="--star-fill:${fill}%">★</span>`;
+                }).join('')}
               </span>
 
             </div>
