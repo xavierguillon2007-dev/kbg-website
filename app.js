@@ -2264,7 +2264,7 @@ function renderGames() {
               0,
               Math.min(
                 5,
-                Math.round(average)
+                Math.round(average * 2) / 2
               )
             );
 
@@ -3395,7 +3395,7 @@ function renderReviews(game) {
           0,
           Math.min(
             5,
-            Math.round(average)
+            Math.round(average * 2) / 2
           )
         );
 
@@ -3707,50 +3707,18 @@ function formatReviewDate(date) {
 // =========================================================
 
 function setReviewRating(rating) {
-
-  selectedRating =
-    Number(rating);
-
-
-  const input =
-    $('reviewRating');
-
-  const help =
-    $('ratingHelp');
-
-
-  if (input) {
-    input.value =
-      String(selectedRating);
-  }
-
-
-  document
-    .querySelectorAll('.star-button')
-    .forEach(
-      star => {
-
-        const value =
-          Number(
-            star.dataset.rating
-          );
-
-        star.classList.toggle(
-          'active',
-          value <= selectedRating
-        );
-
-      }
-    );
-
-
-  if (help) {
-    help.textContent =
-      `${selectedRating}/5 étoiles`;
-  }
-
+  selectedRating = Math.max(0, Math.min(5, Math.round(Number(rating) * 2) / 2));
+  const input = $('reviewRating');
+  const help = $('ratingHelp');
+  if (input) input.value = String(selectedRating);
+  document.querySelectorAll('.star-button').forEach(star => {
+    const value = Number(star.dataset.rating);
+    star.classList.toggle('active', value <= selectedRating);
+    star.classList.toggle('half-active', value - 0.5 === selectedRating);
+    star.setAttribute('aria-pressed', String(value === selectedRating));
+  });
+  if (help) help.textContent = `${selectedRating}/5 étoiles`;
 }
-
 
 // =========================================================
 // ENVOI AVIS
